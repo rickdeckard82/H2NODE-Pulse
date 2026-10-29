@@ -1,0 +1,132 @@
+name: pulse-services
+
+x-backend: &backend
+  image: pulse-services-backend:0.1.0
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  env_file: .env
+  environment:
+    POSTGRES_HOST: db
+    POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
+  secrets: [postgres_password, django_secret_key]
+  networks: [private]
+  init: true
+  read_only: true
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  mem_limit: 512m
+  cpus: 1.0
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  db:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pulse}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [postgres_password, postgres_admin_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/10-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    networks: [private]
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    shm_size: 128mb
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+  migrate:
+    <<: *backend
+    command: [python, manage.py, migrate, --noinput]
+    restart: "no"
+    depends_on:
+      db: {condition: service_healthy}
+
+  api:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready/', timeout=6)"]
+      interval: 15s
+      timeout: 8s
+      retries: 5
+      start_period: 15s
+
+  worker:
+    <<: *backend
+    command: [python, manage.py, runworker]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; assert time.time()-pathlib.Path('/tmp/pulse-worker-heartbeat').stat().st_mtime < 30"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  gateway:
+    image: pulse-services-frontend:0.1.0
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      UPSTREAM_SCHEME: ${UPSTREAM_SCHEME:-http}
+      NGINX_ENVSUBST_FILTER: UPSTREAM_SCHEME
+    ports: ["${BIND_IP:-127.0.0.1}:${HTTP_PORT:-8080}:8080"]
+    networks: [edge, private]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /etc/nginx/conf.d:rw,noexec,nosuid,size=1m,uid=101,gid=101
+      - /var/cache/nginx:rw,noexec,nosuid,size=32m,uid=101,gid=101
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 128m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+networks:
+  edge: {}
+  private:
+    internal: true
+
+volumes:
+  postgres_data:
+
+secrets:
+  postgres_admin_password:
+    file: ./secrets/postgres_admin_password.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  django_secret_key:
+    file: ./secrets/django_secret_key.txt

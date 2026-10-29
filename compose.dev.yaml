@@ -1,0 +1,16 @@
+# Optional hot reload: docker compose -f compose.yaml -f compose.dev.yaml up --build
+services:
+  api:
+    command: [python, manage.py, runserver, "0.0.0.0:8000"]
+    volumes: [./backend:/app:ro]
+  frontend-dev:
+    image: node:24.21.0-bookworm-slim
+    working_dir: /app
+    user: node
+    command: [sh, -c, "npm ci && npm run dev"]
+    volumes: [./frontend:/app]
+    ports: ["127.0.0.1:5173:5173"]
+    networks: [edge, private]
+    depends_on:
+      api: {condition: service_healthy}
+    security_opt: [no-new-privileges:true]
