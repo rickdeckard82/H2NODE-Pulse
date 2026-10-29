@@ -1,4 +1,8 @@
-# Operação da fundação
+# Operação da aplicação
+
+Para bootstrap administrativo, configuração de SMTP de identidade, MFA, domínios
+e sessões, consultar [IDENTIDADE.md](IDENTIDADE.md). As interfaces de produto
+serão implementadas na etapa 4; estas operações são realizadas pela API/comandos.
 
 ## Produção atrás do NPM
 
@@ -16,9 +20,9 @@ Não passar overrides dev junto de produção. O proxy usa esquema fixo HTTPS em
 
 ## Saúde e logs
 
-`/api/v1/health/live/` verifica processo; `/api/v1/health/ready/` verifica conexão PostgreSQL, retornando 503 sem detalhes sensíveis quando indisponível. As rotas são intencionalmente públicas e mínimas. Migrações são requisito do startup; não são verificadas a cada probe. `/api/v1/schema/` exige sessão de administrador, ainda sem fluxo de login de produto; contrato estático em docs/openapi.yaml.
+`/api/v1/health/live/` verifica processo; `/api/v1/health/ready/` verifica conexão PostgreSQL, retornando 503 sem detalhes sensíveis quando indisponível. As rotas são intencionalmente públicas e mínimas. Migrações são requisito do startup; não são verificadas a cada probe. `/api/v1/schema/` exige sessão verificada de administrador com MFA; contrato estático em docs/openapi.yaml.
 
-`docker compose ps` e `docker compose logs --tail=100 api worker migrate` auxiliam diagnóstico. Não habilitar logs de corpos de requisição, segredos ou cabeçalhos de autenticação. Logs Docker têm rotação de 10 MB × 3 por serviço. Não interpretar heartbeat do worker como entrega de notificações.
+`docker compose ps` e `docker compose logs --tail=100 api worker migrate` auxiliam diagnóstico. Não habilitar logs de corpos de requisição, segredos ou cabeçalhos de autenticação. Logs Docker têm rotação de 10 MB × 3 por serviço. O worker processa desafios de identidade quando SMTP está configurado; heartbeat não comprova entrega. Notificações de tickets continuam na etapa 5.
 
 ## Atualização e dados
 
@@ -28,4 +32,8 @@ O script de role PostgreSQL roda apenas quando o volume está vazio. Alterar sen
 
 ## Limites atuais
 
-Esta fundação não constitui sistema pronto para produção ou LGPD. Autenticação corporativa, papéis, tickets, notificações, anexos, retenção e direitos dos titulares ainda estão nas próximas etapas. A execução Docker local foi validada; consultar o registro da etapa 1 para as evidências e o estado do CI remoto. A operação do runner dedicado está documentada em `infra/ci-runner/README.md`.
+O sistema ainda não está pronto para produção. Identidade, papéis e organização
+foram validados pela API; tickets, telas integradas, notificações de atendimento,
+anexos, retenção e direitos dos titulares pertencem às próximas etapas. Consultar
+os registros das etapas 1 e 2 para evidências locais e limites do CI remoto. A
+operação do runner dedicado está documentada em `infra/ci-runner/README.md`.

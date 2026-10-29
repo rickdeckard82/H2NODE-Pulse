@@ -1,0 +1,16 @@
+# Explicit opt-in: trusted SMTP configuration only. Do not add to local smoke tests.
+services:
+  worker:
+    networks: [private, mail_egress]
+    environment:
+      EMAIL_HOST: ${EMAIL_HOST:?Set the authorized SMTP host}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:?Set the SMTP account}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:?Set the authorized sender}
+      SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+    secrets: [postgres_password, django_secret_key, identity_key, smtp_password]
+networks:
+  mail_egress: {}
+secrets:
+  smtp_password:
+    file: ${SMTP_SECRET_PATH:?Set the protected SMTP password file path}

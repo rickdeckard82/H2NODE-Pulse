@@ -2,12 +2,14 @@
 
 Gestão interna de chamados de TI. Backend Django/DRF, frontend React/TypeScript e PostgreSQL, com Docker Compose e acesso de produção por Nginx Proxy Manager.
 
-**Status:** etapa 1 — fundação em validação. Ainda não há cadastro corporativo, login de produto, tickets ou notificações implementados. Consulte [a validação](docs/validacoes/etapa-01.md) antes de iniciar a etapa 2.
+**Status:** etapas 1 e 2 aprovadas no escopo local. API de identidade, MFA e organização implementada e testada em PostgreSQL; o frontend continua em preparação para a etapa 4. Próxima etapa: núcleo de tickets e auditoria. Consulte [a validação da identidade](docs/validacoes/etapa-02.md). SMTP corporativo, tickets e notificações de atendimento ainda não estão homologados.
 
 ## Documentação
 
 - [Plano e critérios por etapa](docs/PLANO_DE_EXECUCAO.md)
 - [Decisões iniciais](docs/decisoes/0001-fundacao.md)
+- [Decisões de identidade](docs/decisoes/0002-identidade.md)
+- [Operação e API de identidade](docs/IDENTIDADE.md)
 - [Instruções para Codex e Claude](agent.md), carregadas por `AGENTS.md` e `CLAUDE.md`
 - [Contrato OpenAPI inicial](docs/openapi.yaml)
 - [Operação e Nginx Proxy Manager](docs/OPERACAO.md)
@@ -23,7 +25,7 @@ docker compose config --quiet
 docker compose up --build --wait --wait-timeout 180
 ```
 
-Acesse `http://localhost:8080`. O bootstrap cria `.env` de desenvolvimento e três arquivos aleatórios em `secrets/`, sem sobrescrever valores existentes. Esses arquivos são ignorados pelo Git. Não publicar essa configuração de desenvolvimento.
+Acesse `http://localhost:8080`. O bootstrap cria `.env` de desenvolvimento e quatro arquivos aleatórios em `secrets/`, incluindo a chave de identidade, sem sobrescrever valores existentes. Execute-o novamente após atualizar para a etapa 2. Esses arquivos são ignorados pelo Git. Não publicar essa configuração de desenvolvimento. O portal visual ainda é a página inicial; os fluxos desta etapa estão disponíveis pela API.
 
 Ordem: PostgreSQL saudável → migração única → API/worker → gateway. A API e o worker compartilham a imagem; não executam migrações concorrentes no startup. O volume `postgres_data` persiste dados. `docker compose down` preserva o volume; **não usar `down -v` em ambiente com dados a preservar**.
 
@@ -55,9 +57,10 @@ python tests/verify_compose.py
 docker compose exec -T api python manage.py migrate --check
 docker compose exec -T api python manage.py makemigrations --check --dry-run
 python tests/smoke_docker.py
+python tests/run_identity.py
 ```
 
-O smoke test reinicia serviços de desenvolvimento e verifica prontidão, migrações, identidade do cluster persistida e runtime sem root. Não executá-lo em produção. Os testes unitários de saúde simulam a conexão; não substituem esse teste real.
+O smoke test reinicia serviços de desenvolvimento e verifica prontidão, migrações, identidade do cluster persistida e runtime sem root. Não executá-lo em produção. A suíte de identidade usa outro cluster PostgreSQL em tmpfs e testa autenticação, CSRF, permissões, concorrência e SMTP local. Não envia mensagens a pessoas reais. Os testes unitários de saúde simulam a conexão; não substituem esses testes reais.
 
 ## Dependências
 

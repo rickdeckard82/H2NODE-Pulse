@@ -70,6 +70,20 @@ DATABASES = {
 }
 # Custom identity from the first migration avoids replacing auth.User later.
 AUTH_USER_MODEL = "core.User"
+IDENTITY_KEY = secret("IDENTITY_KEY")
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+IDENTITY_RATE_LIMIT = 10
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = secret("SMTP_PASSWORD") if os.environ.get("SMTP_PASSWORD_FILE") else ""
+EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "")
+SESSION_COOKIE_AGE = 8 * 60 * 60
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -77,8 +91,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["core.authentication.VerifiedSessionAuthentication"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
@@ -86,9 +101,9 @@ REST_FRAMEWORK = {
 }
 SPECTACULAR_SETTINGS = {
     "TITLE": "Pulse Services API",
-    "VERSION": "0.1.0",
+    "VERSION": "0.2.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
+    "SERVE_PERMISSIONS": ["core.authentication.IsIdentityAdmin"],
 }
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "UTC"

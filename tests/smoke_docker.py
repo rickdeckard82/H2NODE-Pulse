@@ -4,6 +4,7 @@ import json
 import subprocess
 import time
 import urllib.request
+from urllib.error import HTTPError
 
 
 def compose(*args):
@@ -31,6 +32,23 @@ def ready():
 
 
 ready()
+base_url = f"http://127.0.0.1:{port}/api/v1/auth"
+with urllib.request.urlopen(f"{base_url}/csrf/", timeout=5) as response:
+    assert response.headers["Cache-Control"] == "no-store"
+    assert json.load(response)["csrfToken"]
+for request in [
+    urllib.request.Request(f"{base_url}/me/"),
+    urllib.request.Request(
+        f"{base_url}/login/", data=b"{}", headers={"Content-Type": "application/json"}
+    ),
+]:
+    try:
+        urllib.request.urlopen(request, timeout=5)
+    except HTTPError as error:
+        assert error.code == 403
+    else:
+        raise AssertionError("Anonymous profile or login without CSRF was accepted")
+print("Identity HTTP smoke passed: CSRF bootstrap, protected profile and login CSRF.")
 before = compose(
     "exec",
     "-T",

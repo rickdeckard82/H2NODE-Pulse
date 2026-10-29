@@ -11,6 +11,7 @@ env = {
     **os.environ,
     "APP_ENV": "test",
     "DJANGO_SECRET_KEY_FILE": str(root / "secrets/django_secret_key.txt"),
+    "IDENTITY_KEY_FILE": str(root / "secrets/identity_key.txt"),
     "POSTGRES_PASSWORD_FILE": str(root / "secrets/postgres_password.txt"),
     "POSTGRES_HOST": "127.0.0.1",
     "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,testserver",
@@ -29,7 +30,7 @@ def run(*args, overrides=None):
 run("-m", "ruff", "check", ".")
 run("-m", "ruff", "format", "--check", ".")
 run("manage.py", "check")
-run("manage.py", "test", "core")
+run("manage.py", "test", "core.tests")
 run(
     "manage.py",
     "spectacular",

@@ -1,0 +1,38 @@
+# Opt-in only. Disposable PostgreSQL cluster in tmpfs; application volumes are untouched.
+services:
+  identity-db:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_DB: pulse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [postgres_password, postgres_admin_password]
+    volumes:
+      - ./infra/postgres/10-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+      - ./infra/postgres/20-test-db.sh:/docker-entrypoint-initdb.d/20-test-db.sh:ro
+    tmpfs: [/var/lib/postgresql/data]
+    networks: [private]
+    mem_limit: 768m
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d test_pulse']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  identity-tests:
+    image: pulse-services-backend:0.1.0
+    environment:
+      APP_ENV: test
+      POSTGRES_HOST: identity-db
+      POSTGRES_DB: pulse
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
+      IDENTITY_KEY_FILE: /run/secrets/identity_key
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+    secrets: [postgres_password, django_secret_key, identity_key]
+    networks: [private]
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 1g
+    command: [python, manage.py, test, core.test_identity, --keepdb, --noinput, -v, '2']

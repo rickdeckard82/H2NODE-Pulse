@@ -1,8 +1,733 @@
 openapi: 3.0.3
 info:
   title: Pulse Services API
-  version: 0.1.0
+  version: 0.2.0
 paths:
+  /api/v1/auth/confirm/:
+    post:
+      operationId: auth_confirm_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/confirm-email/:
+    post:
+      operationId: auth_confirm_email_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/csrf/:
+    get:
+      operationId: auth_csrf_retrieve
+      tags:
+      - auth
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/email/:
+    post:
+      operationId: auth_email_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/forgot/:
+    post:
+      operationId: auth_forgot_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/mfa/replace/:
+    post:
+      operationId: auth_mfa_replace_create
+      description: Replace a lost authenticator after login with a single-use recovery
+        code.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordInput'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/mfa/replace/confirm/:
+    post:
+      operationId: auth_mfa_replace_confirm_create
+      description: Replace a lost authenticator after login with a single-use recovery
+        code.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CodeInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CodeInput'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/mfa/setup/:
+    post:
+      operationId: auth_mfa_setup_create
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/mfa/verify/:
+    post:
+      operationId: auth_mfa_verify_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CodeInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CodeInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/resend/:
+    post:
+      operationId: auth_resend_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/reset/:
+    post:
+      operationId: auth_reset_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetInput'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/revoke/:
+    post:
+      operationId: auth_revoke_create
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/departments/:
+    get:
+      operationId: departments_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - departments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrganizationList'
+          description: ''
+    post:
+      operationId: departments_create
+      tags:
+      - departments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Organization'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Organization'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Organization'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+  /api/v1/departments/{id}/:
+    get:
+      operationId: departments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este department.
+        required: true
+      tags:
+      - departments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+    patch:
+      operationId: departments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este department.
+        required: true
+      tags:
+      - departments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganization'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganization'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganization'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+  /api/v1/groups/:
+    get:
+      operationId: groups_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - groups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGroupList'
+          description: ''
+    post:
+      operationId: groups_create
+      tags:
+      - groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Group'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Group'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+  /api/v1/groups/{id}/:
+    get:
+      operationId: groups_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este support group.
+        required: true
+      tags:
+      - groups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+    patch:
+      operationId: groups_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este support group.
+        required: true
+      tags:
+      - groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGroup'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
   /api/v1/health/live/:
     get:
       operationId: health_live_retrieve
@@ -33,8 +758,293 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
           description: ''
+  /api/v1/memberships/:
+    get:
+      operationId: memberships_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - memberships
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMembershipList'
+          description: ''
+    post:
+      operationId: memberships_create
+      tags:
+      - memberships
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Membership'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Membership'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Membership'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+          description: ''
+  /api/v1/memberships/{id}/:
+    delete:
+      operationId: memberships_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este membership.
+        required: true
+      tags:
+      - memberships
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/settings/domains/:
+    get:
+      operationId: settings_domains_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDomainList'
+          description: ''
+    post:
+      operationId: settings_domains_create
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Domain'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Domain'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Domain'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+          description: ''
+  /api/v1/settings/domains/{id}/:
+    get:
+      operationId: settings_domains_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este allowed domain.
+        required: true
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+          description: ''
+    patch:
+      operationId: settings_domains_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este allowed domain.
+        required: true
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDomain'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDomain'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDomain'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+          description: ''
+  /api/v1/users/:
+    get:
+      operationId: users_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - users
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateInput'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
 components:
   schemas:
+    CodeInput:
+      type: object
+      properties:
+        code:
+          type: string
+          writeOnly: true
+          maxLength: 64
+      required:
+      - code
+    Domain:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        domain:
+          type: string
+          maxLength: 253
+        is_active:
+          type: boolean
+        reason:
+          type: string
+          writeOnly: true
+          maxLength: 300
+      required:
+      - domain
+      - id
+      - reason
+    EmailInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+      - email
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        is_active:
+          type: boolean
+      required:
+      - id
+      - name
     Health:
       type: object
       properties:
@@ -42,3 +1052,353 @@ components:
           type: string
       required:
       - status
+    IdentityResult:
+      type: object
+      properties:
+        status:
+          type: string
+        detail:
+          type: string
+        errors: {}
+        csrfToken:
+          type: string
+        secret:
+          type: string
+        uri:
+          type: string
+        recovery_codes:
+          type: array
+          items:
+            type: string
+    LoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+      required:
+      - email
+      - password
+    Membership:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+        group:
+          type: integer
+      required:
+      - group
+      - id
+      - user
+    Organization:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        is_active:
+          type: boolean
+      required:
+      - id
+      - name
+    PaginatedDomainList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Domain'
+    PaginatedGroupList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Group'
+    PaginatedMembershipList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Membership'
+    PaginatedOrganizationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PasswordInput:
+      type: object
+      properties:
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+      required:
+      - password
+    PatchedDomain:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        domain:
+          type: string
+          maxLength: 253
+        is_active:
+          type: boolean
+        reason:
+          type: string
+          writeOnly: true
+          maxLength: 300
+    PatchedGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        is_active:
+          type: boolean
+    PatchedOrganization:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        is_active:
+          type: boolean
+    PatchedUserUpdateInput:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/UserUpdateInputRoleEnum'
+        is_active:
+          type: boolean
+        department:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+          maxLength: 300
+    RegisterInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+        name:
+          type: string
+          maxLength: 150
+      required:
+      - email
+      - name
+      - password
+    ResetInput:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          maxLength: 128
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 256
+      required:
+      - password
+      - token
+    TokenInput:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          maxLength: 128
+      required:
+      - token
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Endereço de email
+        first_name:
+          type: string
+          readOnly: true
+          title: Primeiro nome
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRoleEnum'
+          readOnly: true
+        department:
+          type: integer
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Ativo
+          description: Indica que o usuário será tratado como ativo. Ao invés de excluir
+            contas de usuário, desmarque isso.
+        mfa_enabled:
+          type: boolean
+          readOnly: true
+      required:
+      - department
+      - email
+      - first_name
+      - id
+      - is_active
+      - mfa_enabled
+      - role
+    UserRoleEnum:
+      enum:
+      - collaborator
+      - technician
+      - manager
+      - admin
+      - privacy
+      type: string
+      description: |-
+        * `collaborator` - Colaborador
+        * `technician` - Técnico
+        * `manager` - Gestor de TI
+        * `admin` - Administrador
+        * `privacy` - Responsável por privacidade
+    UserUpdateInputRoleEnum:
+      enum:
+      - collaborator
+      - technician
+      - manager
+      - admin
+      - privacy
+      type: string
+      description: |-
+        * `collaborator` - collaborator
+        * `technician` - technician
+        * `manager` - manager
+        * `admin` - admin
+        * `privacy` - privacy
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+      description: Sessão verificada; MFA obrigatório para perfis privilegiados. Mutações
+        exigem cookie CSRF e cabeçalho X-CSRFToken, inclusive login/cadastro.
