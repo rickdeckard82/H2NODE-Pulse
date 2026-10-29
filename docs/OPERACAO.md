@@ -28,4 +28,4 @@ O script de role PostgreSQL roda apenas quando o volume está vazio. Alterar sen
 
 ## Limites atuais
 
-Esta fundação não constitui sistema pronto para produção ou LGPD. Autenticação corporativa, papéis, tickets, notificações, anexos, retenção e direitos dos titulares ainda estão nas próximas etapas. No Windows desta sessão, o engine Docker negou acesso ao pipe; consultar o registro de validação para distinguir checks concluídos de execução real pendente.
+Esta fundação não constitui sistema pronto para produção ou LGPD. Autenticação corporativa, papéis, tickets, notificações, anexos, retenção e direitos dos titulares ainda estão nas próximas etapas. A execução Docker local foi validada; consultar o registro da etapa 1 para as evidências e o estado do CI remoto. A operação do runner dedicado está documentada em `infra/ci-runner/README.md`.

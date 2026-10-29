@@ -11,6 +11,7 @@ Gestão interna de chamados de TI. Backend Django/DRF, frontend React/TypeScript
 - [Instruções para Codex e Claude](agent.md), carregadas por `AGENTS.md` e `CLAUDE.md`
 - [Contrato OpenAPI inicial](docs/openapi.yaml)
 - [Operação e Nginx Proxy Manager](docs/OPERACAO.md)
+- [Runner do CI no servidor Docker](infra/ci-runner/README.md)
 
 ## Subir localmente
 
@@ -64,4 +65,4 @@ Python: entradas em `backend/requirements*.in`, locks completos com hashes em `b
 
 Pipeline em `.gitea/workflows/ci.yml`: checks backend, contrato, frontend, topologia Compose, build, migrações reais e persistência. A existência do workflow não comprova execução no Gitea; confirmar resultado antes de aprovar a etapa.
 
-O Gitea Actions precisa estar habilitado no reposit?rio, com runner Linux de label `ubuntu-latest`, Docker Engine e Compose acess?veis. A disponibilidade do runner e a execu??o remota ainda n?o foram verificadas. Consulte a [documenta??o do Gitea Actions](https://docs.gitea.com/usage/actions/quickstart/).
+O Gitea Actions está habilitado e possui runner dedicado no servidor Docker, com label `ubuntu-latest`. Consulte o [registro de validação](docs/validacoes/etapa-01.md) para os resultados e a [documentação do Gitea Actions](https://docs.gitea.com/usage/actions/quickstart/) para os requisitos.
