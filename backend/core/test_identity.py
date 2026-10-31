@@ -102,6 +102,11 @@ class IdentityTests(HTTPHelpers, TestCase):
         response = self.post(self.client, "/api/v1/auth/register/", data)
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(email="new@company.test")
+        self.assertEqual(
+            IdentityMail.objects.filter(token__user=user, token__purpose="verify").count(),
+            1,
+        )
+        self.assertIsNone(IdentityMail.objects.get(token__user=user).sent_at)
         self.assertTrue(user.password.startswith("argon2$argon2id$"))
         self.assertEqual(user.role, User.Role.COLLABORATOR)
         self.assertFalse(user.is_staff or user.is_superuser)
@@ -227,6 +232,51 @@ class IdentityTests(HTTPHelpers, TestCase):
         )
         self.assertEqual(
             self.post(self.client, "/api/v1/auth/confirm/", {"token": second}).status_code, 200
+        )
+
+    def test_authenticated_password_change_requires_current_and_revokes_session(self):
+        client = self.login(self.alice)
+        self.assertEqual(
+            self.post(
+                client,
+                "/api/v1/auth/password/",
+                {"current_password": "invalid", "new_password": NEW_PASSWORD},
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.post(
+                client,
+                "/api/v1/auth/password/",
+                {"current_password": PASSWORD, "new_password": PASSWORD},
+            ).status_code,
+            400,
+        )
+        self.assertEqual(
+            self.post(
+                client,
+                "/api/v1/auth/password/",
+                {"current_password": PASSWORD, "new_password": NEW_PASSWORD},
+            ).status_code,
+            200,
+        )
+        self.assertEqual(client.get("/api/v1/auth/me/").status_code, 403)
+        self.assertEqual(
+            self.post(
+                self.client_for_test(),
+                "/api/v1/auth/login/",
+                {
+                    "email": self.alice.email,
+                    "password": PASSWORD,
+                },
+            ).status_code,
+            403,
+        )
+        self.login(self.alice, self.client_for_test(), password=NEW_PASSWORD)
+        self.assertTrue(
+            IdentityEvent.objects.filter(
+                actor=self.alice, action="account.password_changed"
+            ).exists()
         )
 
     def test_reset_is_single_use_and_revokes_all_sessions(self):

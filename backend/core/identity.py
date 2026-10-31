@@ -176,12 +176,12 @@ def redeem_token(raw, purpose, password=None):
     audit(user, f"account.{purpose}", user.pk)
 
 
-def start_session(request, user):
+def start_session(request, user, fresh_mfa=True):
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     request.session["identity_version"] = user.session_version
     request.session["mfa_verified"] = user.mfa_enabled
     if user.mfa_enabled:
-        request.session["mfa_at"] = time.time()
+        request.session["mfa_at"] = time.time() if fresh_mfa else 0
     request.session.set_expiry(8 * 60 * 60)
 
 
@@ -195,6 +195,16 @@ def password_login(request, email, password):
         raise PermissionDenied("Credenciais inválidas ou conta indisponível.")
     request.session.flush()
     if user.privileged or user.mfa_enabled:
+        from core.trusted_devices import consume
+
+        expiry = consume(request, user)
+        if expiry:
+            start_session(request, user, fresh_mfa=False)
+            request.session.set_expiry(
+                min(8 * 60 * 60, max(1, int((expiry - timezone.now()).total_seconds())))
+            )
+            audit(user, "session.login_trusted_device", user.pk)
+            return {"status": "authenticated"}
         request.session["pending_identity"] = {
             "id": user.pk,
             "version": user.session_version,
@@ -235,7 +245,7 @@ def setup_mfa(request):
 
 
 @transaction.atomic
-def verify_mfa(request, code):
+def verify_mfa(request, code, remember_device=False):
     user = pending_user(request)
     if not user.mfa_secret:
         raise ValidationError("Configure o autenticador primeiro.")
@@ -266,6 +276,11 @@ def verify_mfa(request, code):
     user.save()
     request.session.flush()
     start_session(request, user)
+    if remember_device:
+        from core.trusted_devices import issue
+
+        issue(request, user)
+        audit(user, "device.remembered", user.pk, {"days": 30})
     audit(user, "session.login_mfa", user.pk)
     return result
 

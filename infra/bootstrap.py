@@ -11,6 +11,7 @@ folder.mkdir(mode=0o700, exist_ok=True)
 for name in (
     "postgres_password",
     "postgres_admin_password",
+    "postgres_runtime_password",
     "django_secret_key",
     "identity_key",
 ):

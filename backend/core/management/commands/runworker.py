@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand
 from django.db import connection
 
 from core.identity_mail import cleanup, deliver_one
+from tickets.attachments import scan_one
 
 
 class Command(BaseCommand):
@@ -30,6 +31,7 @@ class Command(BaseCommand):
             heartbeat.touch()
             cleanup()
             deliver_one()
+            scan_one()
             for _ in range(10):
                 if stopping:
                     break

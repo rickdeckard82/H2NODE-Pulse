@@ -45,6 +45,9 @@ class SupportGroup(models.Model):
 class Membership(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group = models.ForeignKey(SupportGroup, on_delete=models.PROTECT)
+    can_view_restricted = models.BooleanField(default=False)
+    can_transfer = models.BooleanField(default=False)
+    can_cancel = models.BooleanField(default=False)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "group"], name="membership_unique")]
@@ -87,3 +90,31 @@ class AuthRateBucket(models.Model):
     key = models.CharField(max_length=64, primary_key=True)
     window = models.BigIntegerField()
     count = models.PositiveIntegerField(default=0)
+
+
+class TrustedDevice(models.Model):
+    digest = models.CharField(max_length=64, primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    version = models.PositiveIntegerField()
+    credential_stamp = models.CharField(max_length=64)
+    created_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+
+
+class SmtpConfiguration(models.Model):
+    """Single configuration, with credentials encrypted by the external identity key."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    enabled = models.BooleanField(default=False)
+    host = models.CharField(max_length=253, blank=True)
+    port = models.PositiveIntegerField(default=587)
+    security = models.CharField(
+        max_length=8, choices=[("starttls", "STARTTLS"), ("ssl", "TLS")], default="starttls"
+    )
+    username = models.CharField(max_length=254, blank=True)
+    encrypted_password = models.TextField(blank=True)
+    from_email = models.EmailField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="smtp_singleton")]

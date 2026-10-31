@@ -3,13 +3,15 @@
 from datetime import timedelta
 from smtplib import SMTPException
 
-from django.conf import settings
+from cryptography.fernet import InvalidToken
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from core.identity import cipher, domain_allowed
-from core.models import AuthRateBucket, IdentityMail, IdentityToken
+from core.models import AuthRateBucket, IdentityMail, IdentityToken, TrustedDevice
+from core.smtp_settings import delivery_configuration
 
 
 @transaction.atomic
@@ -37,8 +39,6 @@ def deliver_one():
     ):
         mail.delete()
         return True
-    if not settings.EMAIL_HOST or not settings.DEFAULT_FROM_EMAIL:
-        return False
     raw = cipher().decrypt(mail.encrypted_body.encode()).decode()
     labels = {
         "verify": "Confirmação de cadastro",
@@ -46,17 +46,22 @@ def deliver_one():
         "email": "Confirmação de novo e-mail",
     }
     try:
+        config = delivery_configuration()
+        if config is None:
+            return False
+        sender, connection = config
         delivered = send_mail(
             f"Pulse Services — {labels[token.purpose]}",
             f"Seu código de uso único (válido por 30 minutos):\n{raw}\n\n"
             "Use-o no portal Pulse Services. Se não fez esta solicitação, ignore a mensagem.",
-            settings.DEFAULT_FROM_EMAIL,
+            sender,
             [token.email],
             fail_silently=False,
+            connection=connection,
         )
         if delivered != 1:
             raise OSError("Mail not accepted")
-    except SMTPException, OSError:
+    except SMTPException, OSError, ValidationError, InvalidToken:
         # Never log SMTP exceptions: providers can echo recipient/message content.
         mail.attempts += 1
         mail.next_attempt_at = now + timedelta(seconds=min(60 * 2 ** min(mail.attempts, 5), 900))
@@ -69,5 +74,6 @@ def deliver_one():
 
 def cleanup():
     now = timezone.now()
+    TrustedDevice.objects.filter(expires_at__lte=now).delete()
     IdentityToken.objects.filter(expires_at__lt=now).delete()
     AuthRateBucket.objects.filter(window__lt=int(now.timestamp()) // 900 - 1).delete()

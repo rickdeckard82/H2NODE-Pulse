@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "core",
+    "tickets",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -101,9 +102,11 @@ REST_FRAMEWORK = {
 }
 SPECTACULAR_SETTINGS = {
     "TITLE": "Pulse Services API",
-    "VERSION": "0.2.0",
+    "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["core.authentication.IsIdentityAdmin"],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {"CommentVisibilityEnum": "tickets.models.Comment.Visibility"},
 }
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "UTC"
@@ -133,3 +136,9 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "INFO"},
 }
+
+ATTACHMENT_ROOT = os.environ.get("ATTACHMENT_ROOT", "/var/lib/pulse/attachments")
+CLAMAV_HOST = os.environ.get("CLAMAV_HOST", "antimalware")
+CLAMAV_PORT = int(os.environ.get("CLAMAV_PORT", "3310"))
+
+SMTP_ALLOWED_HOSTS = csv("SMTP_ALLOWED_HOSTS")

@@ -24,7 +24,9 @@ from core.serializers import (
     IdentityResult,
     LoginInput,
     MembershipSerializer,
+    MfaVerifyInput,
     OrganizationSerializer,
+    PasswordChangeInput,
     PasswordInput,
     RegisterInput,
     ResetInput,
@@ -89,8 +91,10 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
         elif self.action == "mfa_setup":
             result = identity.setup_mfa(request)
         elif self.action == "mfa_verify":
-            result = identity.verify_mfa(request, data["code"])
-        return Response(result)
+            result = identity.verify_mfa(request, **data)
+        from core.trusted_devices import apply_cookie
+
+        return apply_cookie(request, Response(result))
 
 
 class RegisterView(AuthActionView):
@@ -126,7 +130,7 @@ class MfaSetupView(AuthActionView):
 
 
 class MfaVerifyView(AuthActionView):
-    action, serializer_class = "mfa_verify", CodeInput
+    action, serializer_class = "mfa_verify", MfaVerifyInput
 
 
 class MeView(NoStoreMixin, generics.RetrieveAPIView):
@@ -148,9 +152,18 @@ class SessionActionView(NoStoreMixin, generics.GenericAPIView):
         if self.action == "revoke":
             user.session_version += 1
             user.save(update_fields=["session_version"])
+            from core.models import TrustedDevice
+
+            TrustedDevice.objects.filter(user=user).delete()
+        if self.action in {"forget_device", "revoke"}:
+            from core.trusted_devices import forget
+
+            forget(request, user)
         identity.audit(user, f"session.{self.action}", user.pk)
         logout(request)
-        return Response({"status": "completed"})
+        from core.trusted_devices import apply_cookie
+
+        return apply_cookie(request, Response({"status": "completed"}))
 
 
 class EmailChangeView(NoStoreMixin, generics.GenericAPIView):
@@ -179,8 +192,39 @@ class EmailChangeView(NoStoreMixin, generics.GenericAPIView):
         return Response({"detail": "Se o endereço for elegível, enviaremos um código por e-mail."})
 
 
-def locked_actor(request, admin=False):
-    user = User.objects.select_for_update().get(pk=request.user.pk)
+class PasswordChangeView(NoStoreMixin, generics.GenericAPIView):
+    serializer_class = PasswordChangeInput
+
+    @extend_schema(responses={200: IdentityResult})
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        identity.rate_limit("password_change", str(request.user.pk), settings.IDENTITY_RATE_LIMIT)
+        return self.change_password(request, serializer.validated_data)
+
+    @transaction.atomic
+    def change_password(self, request, data):
+        identity.identity_lock()
+        user = locked_actor(request)
+        if not user.check_password(data["current_password"]):
+            raise PermissionDenied("Credenciais inválidas.")
+        if user.check_password(data["new_password"]):
+            raise ValidationError({"new_password": ["A nova senha deve ser diferente da atual."]})
+        user.password = identity.password_hash(data["new_password"], user)
+        user.session_version += 1
+        user.save(update_fields=["password", "session_version"])
+        from core.models import TrustedDevice
+        from core.trusted_devices import apply_cookie, forget
+
+        TrustedDevice.objects.filter(user=user).delete()
+        forget(request, user)
+        identity.audit(user, "account.password_changed", user.pk)
+        logout(request)
+        return apply_cookie(request, Response({"status": "completed"}))
+
+
+def locked_actor(request, admin=False, no_key=False):
+    user = User.objects.select_for_update(no_key=no_key).get(pk=request.user.pk)
     if (
         not identity.eligible(user)
         or request.session.get("identity_version") != user.session_version
@@ -432,7 +476,16 @@ class MembershipViewSet(
         serializer.is_valid(raise_exception=True)
         obj = serializer.save()
         identity.audit(
-            request.user, "membership.created", obj.pk, {"user": obj.user_id, "group": obj.group_id}
+            request.user,
+            "membership.created",
+            obj.pk,
+            {
+                "user": obj.user_id,
+                "group": obj.group_id,
+                "can_view_restricted": obj.can_view_restricted,
+                "can_transfer": obj.can_transfer,
+                "can_cancel": obj.can_cancel,
+            },
         )
         return Response(serializer.data, status=201)
 

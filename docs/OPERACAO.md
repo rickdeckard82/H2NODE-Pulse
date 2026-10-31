@@ -3,6 +3,8 @@
 Para bootstrap administrativo, configuração de SMTP de identidade, MFA, domínios
 e sessões, consultar [IDENTIDADE.md](IDENTIDADE.md). As interfaces de produto
 serão implementadas na etapa 4; estas operações são realizadas pela API/comandos.
+Para categorias, permissões de atendimento, reabertura, fluxo dos tickets e
+separação das roles PostgreSQL, consultar [TICKETS.md](TICKETS.md).
 
 ## Produção atrás do NPM
 
@@ -28,12 +30,31 @@ Não passar overrides dev junto de produção. O proxy usa esquema fixo HTTPS em
 
 Backup e teste de restauração são requisitos da homologação futura. Antes de qualquer migração sobre dados reais, criar backup externo cifrado e verificar restauração. Não inventar rollback de schema: voltar imagem só é seguro quando a migração é compatível. `docker compose down` preserva volumes. Não usar `down -v` nem remover volumes sem autorização explícita.
 
-O script de role PostgreSQL roda apenas quando o volume está vazio. Alterar senha no arquivo depois não altera automaticamente a senha armazenada no banco; usar procedimento de rotação autenticado e atualizar consumidores juntos. Nunca reinicializar o volume para trocar senha.
+O script inicial da role proprietária `pulse` roda apenas quando o volume está
+vazio. Sua senha e a do administrador exigem rotação explícita no PostgreSQL.
+A etapa 3 acrescenta `db-permissions`, executado após as migrações: configura a
+senha separada de `pulse_runtime` e aplica grants antes de iniciar API/worker.
+Somente o job de migração recebe a senha de `pulse`; o job de permissões recebe
+o segredo administrativo. API/worker não recebem nenhum desses dois segredos.
+Rotacionar runtime de forma coordenada com job e consumidores. Nunca reinicializar
+o volume para trocar senha. Migrações devem ser executadas pelo serviço `migrate`;
+o runtime não é proprietário do schema e não deve ser promovido para esse fim.
 
 ## Limites atuais
 
-O sistema ainda não está pronto para produção. Identidade, papéis e organização
-foram validados pela API; tickets, telas integradas, notificações de atendimento,
-anexos, retenção e direitos dos titulares pertencem às próximas etapas. Consultar
-os registros das etapas 1 e 2 para evidências locais e limites do CI remoto. A
+O sistema ainda não está pronto para produção. Identidade, papéis, organização
+e núcleo de tickets foram validados pela API; portal, console e anexos foram
+aprovados no escopo técnico local da etapa 4. Notificações de atendimento,
+retenção e direitos dos titulares continuam nas próximas etapas.
+Auditoria é append-only para runtime, sem impedir alterações pelo dono do banco.
+Consultar os registros das etapas 1 a 4 para evidências locais e limites do CI remoto. A
 operação do runner dedicado está documentada em `infra/ci-runner/README.md`.
+
+## Anexos e antimalware
+
+Consulte [Portal e anexos](PORTAL_ANEXOS.md). API/worker montam o volume privado
+`attachments`; o gateway não o monta. ClamAV usa rede interna para INSTREAM e
+rede de saída separada para atualizar assinaturas, com reserva de 4 GiB. Sem scan
+aprovado, o download fica indisponível. Preserve o volume de anexos junto ao banco
+e às chaves na estratégia de backup/restauração. Logs e healthcheck do scanner
+não substituem o monitoramento da data das definições.

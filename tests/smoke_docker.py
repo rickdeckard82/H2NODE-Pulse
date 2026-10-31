@@ -101,4 +101,6 @@ after = compose(
 assert before == after
 assert compose("exec", "-T", "api", "id", "-u") != "0"
 assert compose("exec", "-T", "gateway", "id", "-u") != "0"
-print("Docker smoke passed: readiness, migrations, restart, persisted cluster, non-root runtimes.")
+print(
+    "Docker smoke passed: readiness, migrations, restart, persisted cluster, non-root runtimes."
+)

@@ -38,8 +38,17 @@ class CodeInput(StrictSerializer):
     code = serializers.CharField(max_length=64, write_only=True)
 
 
+class MfaVerifyInput(CodeInput):
+    remember_device = serializers.BooleanField(required=False, default=False)
+
+
 class PasswordInput(StrictSerializer):
     password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
+
+
+class PasswordChangeInput(StrictSerializer):
+    current_password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
+    new_password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
 
 
 class IdentityResult(serializers.Serializer):
@@ -120,11 +129,13 @@ class DomainSerializer(serializers.ModelSerializer):
 class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
-        fields = ["id", "user", "group"]
+        fields = ["id", "user", "group", "can_view_restricted", "can_transfer", "can_cancel"]
         read_only_fields = ["id"]
 
     def validate(self, attrs):
         user, group = attrs["user"], attrs["group"]
+        if attrs.get("can_cancel") and user.role != User.Role.MANAGER:
+            raise serializers.ValidationError("Cancelamento de gestão exige papel de gestor.")
         if (
             user.role not in {User.Role.TECHNICIAN, User.Role.MANAGER}
             or not user.is_active

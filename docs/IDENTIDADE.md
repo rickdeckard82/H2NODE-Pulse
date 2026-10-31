@@ -11,6 +11,10 @@ Executar `python infra/bootstrap.py` novamente após atualizar: ele acrescenta
 banco e em backup protegido. Não a regenerar: segredos MFA e mensagens pendentes
 existentes deixariam de ser decifráveis. Django/API/worker leem o arquivo montado.
 
+Na etapa 3, o bootstrap também acrescenta a senha separada de `pulse_runtime`.
+Consultar `TICKETS.md` para o job de permissões e a operação de migrações; a API
+passa a usar a conta restrita, sem credenciais de proprietária do banco.
+
 `docker compose up --build --wait --wait-timeout 180` aplica a migração aditiva
 0002. O índice único de e-mail ignora endereços vazios legados, mas bloqueia
 duplicidades não vazias sem diferenciar maiúsculas. Se houver contas anteriores,
@@ -19,7 +23,7 @@ legada ganha acesso automaticamente. Não apagar contas para fazer a migração 
 
 ## E-mail e primeiro administrador
 
-O worker base não tem credenciais nem saída para SMTP. Para uma integração
+O worker base tem uma rede de saída SMTP, mas não envia sem configuração. A configuração pelo painel é descrita em [CONFIGURACOES.md](CONFIGURACOES.md); os parâmetros de ambiente abaixo continuam como fallback enquanto nenhuma configuração do painel foi salva. Para uma integração
 autorizada, preparar host/remetente/usuário e arquivo protegido de senha fora do
 Git; definir `EMAIL_HOST`, `EMAIL_PORT` (587 por padrão), `EMAIL_HOST_USER`,
 `DEFAULT_FROM_EMAIL` e `SMTP_SECRET_PATH`. Não colocar a senha em `.env` ou no
@@ -61,7 +65,7 @@ persistir senha, tokens ou segredo MFA em localStorage. Respostas privadas têm
 | Reenviar confirmação | POST `/auth/resend/` | `email`; invalida código anterior |
 | Login | POST `/auth/login/` | `email`, `password`; status `authenticated`, `mfa_required` ou `mfa_setup_required` |
 | Iniciar MFA | POST `/auth/mfa/setup/` | `{}`; segredo/URI somente após senha validada |
-| Confirmar MFA ou recuperar | POST `/auth/mfa/verify/` | `code` TOTP ou código de recuperação; primeira configuração retorna oito códigos |
+| Confirmar MFA ou recuperar | POST `/auth/mfa/verify/` | `code` TOTP ou código de recuperação e `remember_device` opcional (false por padrão); primeira configuração retorna oito códigos |
 | Esqueci a senha | POST `/auth/forgot/` | `email`; resposta genérica |
 | Redefinir senha | POST `/auth/reset/` | `token`, `password`; revoga sessões, preserva MFA |
 | Perfil atual | GET `/auth/me/` | Dados próprios, sem material de autenticação |
@@ -69,8 +73,23 @@ persistir senha, tokens ou segredo MFA em localStorage. Respostas privadas têm
 | Revogar todas | POST `/auth/revoke/` | `{}`; encerra todas as sessões da conta |
 | Trocar e-mail | POST `/auth/email/` | `email` novo e `password` atual |
 | Confirmar novo e-mail | POST `/auth/confirm-email/` | `token`; troca endereço e revoga sessões |
+| Alterar senha autenticado | POST `/auth/password/` | `current_password`, `new_password`; revoga sessões e dispositivos lembrados |
 | Substituir MFA | POST `/auth/mfa/replace/` | `password`; exige login MFA há menos de cinco minutos |
 | Confirmar substituição | POST `/auth/mfa/replace/confirm/` | `code` do novo dispositivo; revoga sessões antigas e retorna novos códigos de recuperação |
+
+No portal público, somente **Criar conta** e **Recuperar senha** aparecem como
+alternativas ao login. Um cadastro elegível já cria e enfileira o código de
+confirmação; ao concluir o formulário, o portal abre diretamente a etapa para
+informar esse código e permite reenviá-lo. Da mesma forma, a tela para definir a
+nova senha aparece depois de solicitar a recuperação. A troca e a confirmação de
+novo e-mail ficam em **Perfil**, exigem sessão e senha atual para iniciar e
+revogam as sessões depois da confirmação.
+
+Após o login, o cabeçalho apresenta um avatar circular local com a inicial do
+nome e um menu de conta. O menu contém **Alterar senha**, **Perfil** e **Sair**;
+**Administração** aparece somente para o papel administrador. Não há mais ação
+visual separada para esquecer o dispositivo. A troca de senha revoga também os
+dispositivos lembrados e exige novo login.
 
 Senha inválida, conta desativada/não confirmada e usuário ausente não são
 diferenciados no login. Campos adicionais de privilégio são rejeitados no
@@ -116,3 +135,27 @@ banco de testes com o administrador do cluster isolado; os testes usam a role
 `pulse`, sem superuser/createdb. Ao terminar, para/remove somente o container
 temporário de testes. Não executa testes no banco da aplicação e não remove seus
 volumes. O CI executa a mesma suíte depois do build. Os dados são sintéticos.
+
+O provisionamento automático opt-in via `.env` e a exceção auditada de confiança
+no e-mail do administrador inicial estão em [CONFIGURACOES.md](CONFIGURACOES.md).
+O comando interativo `bootstrap_admin` mantém o comportamento anterior de confirmação.
+
+## QR Code e dispositivo lembrado
+
+O cadastro do autenticador mostra QR Code gerado no navegador e chave manual.
+Marque **Lembrar este dispositivo por 30 dias** somente em navegador pessoal.
+Após o MFA válido, logins nesse navegador ainda pedem senha, mas dispensam o
+código até o prazo original de 30 dias. A validade não se renova ao fazer login.
+
+**Sair** mantém a confiança; **Sair e esquecer dispositivo** encerra a sessão e
+remove a confiança atual (`POST /auth/forget-device/`, com CSRF). A revogação
+`POST /auth/revoke/` revoga sessões e todos os dispositivos. Trocas de senha/MFA,
+alterações de acesso e desativação invalidam o uso da confiança. Nenhuma chave
+ou credencial é persistida em localStorage. O cookie é HttpOnly e Secure em produção.
+
+Substituir o autenticador exige MFA recente: um login com dispositivo lembrado
+não cumpre esse requisito. Use **Sair e esquecer dispositivo** e faça login com
+MFA/recuperação antes da substituição. Não confundir confiança no navegador com
+confirmação de domínio corporativo ou recuperação de senha.
+
+Evidências em [ajuste-mfa-dispositivo.md](validacoes/ajuste-mfa-dispositivo.md).

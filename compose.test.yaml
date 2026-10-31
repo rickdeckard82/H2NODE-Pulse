@@ -30,9 +30,9 @@ services:
       DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
       IDENTITY_KEY_FILE: /run/secrets/identity_key
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
-    secrets: [postgres_password, django_secret_key, identity_key]
+    secrets: [postgres_password, postgres_runtime_password, django_secret_key, identity_key]
     networks: [private]
     read_only: true
     tmpfs: [/tmp]
     mem_limit: 1g
-    command: [python, manage.py, test, core.test_identity, --keepdb, --noinput, -v, '2']
+    command: [python, manage.py, test, core.test_identity, core.test_configuration, core.test_trusted_devices, tickets, --keepdb, --noinput, -v, '2']

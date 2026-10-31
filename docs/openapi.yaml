@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Pulse Services API
-  version: 0.2.0
+  version: 0.3.0
 paths:
   /api/v1/auth/confirm/:
     post:
@@ -12,13 +12,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenInput'
+              $ref: '#/components/schemas/TokenInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TokenInput'
+              $ref: '#/components/schemas/TokenInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TokenInput'
+              $ref: '#/components/schemas/TokenInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -57,13 +57,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenInput'
+              $ref: '#/components/schemas/TokenInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TokenInput'
+              $ref: '#/components/schemas/TokenInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TokenInput'
+              $ref: '#/components/schemas/TokenInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -114,14 +114,28 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: '#/components/schemas/LoginInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: '#/components/schemas/LoginInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: '#/components/schemas/LoginInputRequest'
         required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/forget-device/:
+    post:
+      operationId: auth_forget_device_create
+      tags:
+      - auth
       security:
       - cookieAuth: []
       responses:
@@ -140,13 +154,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailInput'
+              $ref: '#/components/schemas/EmailInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EmailInput'
+              $ref: '#/components/schemas/EmailInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EmailInput'
+              $ref: '#/components/schemas/EmailInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -185,13 +199,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: '#/components/schemas/LoginInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: '#/components/schemas/LoginInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: '#/components/schemas/LoginInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -260,13 +274,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PasswordInput'
+              $ref: '#/components/schemas/PasswordInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PasswordInput'
+              $ref: '#/components/schemas/PasswordInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PasswordInput'
+              $ref: '#/components/schemas/PasswordInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -288,13 +302,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CodeInput'
+              $ref: '#/components/schemas/CodeInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CodeInput'
+              $ref: '#/components/schemas/CodeInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CodeInput'
+              $ref: '#/components/schemas/CodeInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -347,13 +361,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CodeInput'
+              $ref: '#/components/schemas/MfaVerifyInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CodeInput'
+              $ref: '#/components/schemas/MfaVerifyInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CodeInput'
+              $ref: '#/components/schemas/MfaVerifyInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -383,6 +397,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/IdentityResult'
           description: ''
+  /api/v1/auth/password/:
+    post:
+      operationId: auth_password_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
   /api/v1/auth/register/:
     post:
       operationId: auth_register_create
@@ -392,13 +432,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterInput'
+              $ref: '#/components/schemas/RegisterInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/RegisterInput'
+              $ref: '#/components/schemas/RegisterInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/RegisterInput'
+              $ref: '#/components/schemas/RegisterInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -437,13 +477,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailInput'
+              $ref: '#/components/schemas/EmailInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EmailInput'
+              $ref: '#/components/schemas/EmailInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EmailInput'
+              $ref: '#/components/schemas/EmailInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -482,13 +522,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ResetInput'
+              $ref: '#/components/schemas/ResetInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ResetInput'
+              $ref: '#/components/schemas/ResetInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ResetInput'
+              $ref: '#/components/schemas/ResetInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -532,6 +572,104 @@ paths:
               schema:
                 $ref: '#/components/schemas/IdentityResult'
           description: ''
+  /api/v1/categories/:
+    get:
+      operationId: categories_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - categories
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCategoryList'
+          description: ''
+    post:
+      operationId: categories_create
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/v1/categories/{id}/:
+    get:
+      operationId: categories_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este category.
+        required: true
+      tags:
+      - categories
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    patch:
+      operationId: categories_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
   /api/v1/departments/:
     get:
       operationId: departments_list
@@ -561,13 +699,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Organization'
+              $ref: '#/components/schemas/OrganizationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Organization'
+              $ref: '#/components/schemas/OrganizationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Organization'
+              $ref: '#/components/schemas/OrganizationRequest'
         required: true
       security:
       - cookieAuth: []
@@ -614,13 +752,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedOrganization'
+              $ref: '#/components/schemas/PatchedOrganizationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedOrganization'
+              $ref: '#/components/schemas/PatchedOrganizationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedOrganization'
+              $ref: '#/components/schemas/PatchedOrganizationRequest'
       security:
       - cookieAuth: []
       responses:
@@ -659,13 +797,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Group'
+              $ref: '#/components/schemas/GroupRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Group'
+              $ref: '#/components/schemas/GroupRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Group'
+              $ref: '#/components/schemas/GroupRequest'
         required: true
       security:
       - cookieAuth: []
@@ -712,13 +850,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedGroup'
+              $ref: '#/components/schemas/PatchedGroupRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedGroup'
+              $ref: '#/components/schemas/PatchedGroupRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedGroup'
+              $ref: '#/components/schemas/PatchedGroupRequest'
       security:
       - cookieAuth: []
       responses:
@@ -787,13 +925,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Membership'
+              $ref: '#/components/schemas/MembershipRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Membership'
+              $ref: '#/components/schemas/MembershipRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Membership'
+              $ref: '#/components/schemas/MembershipRequest'
         required: true
       security:
       - cookieAuth: []
@@ -850,13 +988,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Domain'
+              $ref: '#/components/schemas/DomainRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Domain'
+              $ref: '#/components/schemas/DomainRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Domain'
+              $ref: '#/components/schemas/DomainRequest'
         required: true
       security:
       - cookieAuth: []
@@ -903,13 +1041,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedDomain'
+              $ref: '#/components/schemas/PatchedDomainRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedDomain'
+              $ref: '#/components/schemas/PatchedDomainRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedDomain'
+              $ref: '#/components/schemas/PatchedDomainRequest'
       security:
       - cookieAuth: []
       responses:
@@ -918,6 +1056,655 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Domain'
+          description: ''
+  /api/v1/settings/reopen-policies/:
+    get:
+      operationId: settings_reopen_policies_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReopenPolicyList'
+          description: ''
+    post:
+      operationId: settings_reopen_policies_create
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReopenPolicyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReopenPolicyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReopenPolicyRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReopenPolicy'
+          description: ''
+  /api/v1/settings/smtp/:
+    get:
+      operationId: settings_smtp_retrieve
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmtpOutput'
+          description: ''
+    patch:
+      operationId: settings_smtp_partial_update
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSmtpInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSmtpInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSmtpInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmtpOutput'
+          description: ''
+  /api/v1/settings/ticket-access/:
+    get:
+      operationId: settings_ticket_access_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReadGrantList'
+          description: ''
+    post:
+      operationId: settings_ticket_access_create
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadGrantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReadGrantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReadGrantRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadGrant'
+          description: ''
+  /api/v1/settings/ticket-access/{id}/:
+    delete:
+      operationId: settings_ticket_access_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este read grant.
+        required: true
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/tickets/:
+    get:
+      operationId: tickets_list
+      parameters:
+      - in: query
+        name: assignee
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: department
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: group
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: number
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: ordering
+        schema:
+          enum:
+          - -created_at
+          - created_at
+          - priority
+          - -priority
+          type: string
+          minLength: 1
+        description: |-
+          * `-created_at` - -created_at
+          * `created_at` - created_at
+          * `priority` - priority
+          * `-priority` - -priority
+      - in: query
+        name: page
+        schema:
+          type: integer
+          minimum: 1
+      - in: query
+        name: priority
+        schema:
+          type: integer
+          maximum: 4
+          minimum: 1
+      - in: query
+        name: search
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 200
+      - in: query
+        name: state
+        schema:
+          enum:
+          - new
+          - in_progress
+          - waiting_information
+          - waiting_test
+          - resolved
+          - closed
+          - cancelled
+          type: string
+          minLength: 1
+        description: |-
+          * `new` - new
+          * `in_progress` - in_progress
+          * `waiting_information` - waiting_information
+          * `waiting_test` - waiting_test
+          * `resolved` - resolved
+          * `closed` - closed
+          * `cancelled` - cancelled
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTicketList'
+          description: ''
+    post:
+      operationId: tickets_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Chave única por usuário/operação. Reuso com payload diferente
+          retorna 409.
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+  /api/v1/tickets/{ticket_id}/attachments/:
+    get:
+      operationId: tickets_attachments_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - in: path
+        name: ticket_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAttachmentList'
+          description: ''
+    post:
+      operationId: tickets_attachments_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: ticket_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttachmentInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+  /api/v1/tickets/{ticket_id}/attachments/{attachment_id}/download/:
+    get:
+      operationId: tickets_attachments_download_retrieve
+      parameters:
+      - in: path
+        name: attachment_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: ticket_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/tickets/{uuid}/:
+    get:
+      operationId: tickets_retrieve
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/v1/tickets/{uuid}/claim/:
+    post:
+      operationId: tickets_claim_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Chave única por usuário/operação. Reuso com payload diferente
+          retorna 409.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VersionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VersionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/tickets/{uuid}/comments/:
+    get:
+      operationId: tickets_comments_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCommentList'
+          description: ''
+    post:
+      operationId: tickets_comments_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Chave única por usuário/operação. Reuso com payload diferente
+          retorna 409.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CommentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CommentInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/tickets/{uuid}/events/:
+    get:
+      operationId: tickets_events_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventList'
+          description: ''
+  /api/v1/tickets/{uuid}/transfer/:
+    post:
+      operationId: tickets_transfer_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Chave única por usuário/operação. Reuso com payload diferente
+          retorna 409.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TransferInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TransferInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/tickets/{uuid}/transfer-options/:
+    get:
+      operationId: tickets_transfer_options_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTransferOptionList'
+          description: ''
+  /api/v1/tickets/{uuid}/transitions/:
+    post:
+      operationId: tickets_transitions_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Chave única por usuário/operação. Reuso com payload diferente
+          retorna 409.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TransitionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TransitionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/users/:
     get:
@@ -976,13 +1763,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedUserUpdateInput'
+              $ref: '#/components/schemas/PatchedUserUpdateInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedUserUpdateInput'
+              $ref: '#/components/schemas/PatchedUserUpdateInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedUserUpdateInput'
+              $ref: '#/components/schemas/PatchedUserUpdateInputRequest'
       security:
       - cookieAuth: []
       responses:
@@ -994,15 +1781,229 @@ paths:
           description: ''
 components:
   schemas:
-    CodeInput:
+    ActionEnum:
+      enum:
+      - request_information
+      - request_test
+      - resolve
+      - confirm
+      - reopen
+      - cancel
+      - return_queue
+      type: string
+      description: |-
+        * `request_information` - request_information
+        * `request_test` - request_test
+        * `resolve` - resolve
+        * `confirm` - confirm
+        * `reopen` - reopen
+        * `cancel` - cancel
+        * `return_queue` - return_queue
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        comment:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        media_type:
+          type: string
+          readOnly: true
+        size:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        scanned_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - comment
+      - created_at
+      - id
+      - media_type
+      - name
+      - scanned_at
+      - size
+      - status
+    AttachmentInputRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        body:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        visibility:
+          $ref: '#/components/schemas/CommentVisibilityEnum'
+        corrects:
+          type: string
+          format: uuid
+        file:
+          type: string
+          format: binary
+      required:
+      - body
+      - expected_version
+      - file
+      - visibility
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        group:
+          type: integer
+        restricted:
+          type: boolean
+        is_active:
+          type: boolean
+      required:
+      - group
+      - id
+      - name
+    CategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        group:
+          type: integer
+        restricted:
+          type: boolean
+        is_active:
+          type: boolean
+      required:
+      - group
+      - name
+    CodeInputRequest:
       type: object
       properties:
         code:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 64
       required:
       - code
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        actor_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/CommentVisibilityEnum'
+          readOnly: true
+        corrects:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+      required:
+      - actor
+      - actor_name
+      - body
+      - corrects
+      - created_at
+      - id
+      - visibility
+    CommentInputRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        body:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        visibility:
+          $ref: '#/components/schemas/CommentVisibilityEnum'
+        corrects:
+          type: string
+          format: uuid
+      required:
+      - body
+      - expected_version
+      - visibility
+    CommentVisibilityEnum:
+      enum:
+      - public
+      - internal
+      type: string
+      description: |-
+        * `public` - Resposta pública
+        * `internal` - Nota interna
+    CreateInputRequest:
+      type: object
+      properties:
+        category:
+          type: integer
+          minimum: 1
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        impact:
+          type: integer
+          maximum: 3
+          minimum: 1
+        urgency:
+          type: integer
+          maximum: 3
+          minimum: 1
+        related_ticket:
+          type: string
+          format: uuid
+      required:
+      - category
+      - description
+      - impact
+      - subject
+      - urgency
     Domain:
       type: object
       properties:
@@ -1014,23 +2015,93 @@ components:
           maxLength: 253
         is_active:
           type: boolean
-        reason:
-          type: string
-          writeOnly: true
-          maxLength: 300
       required:
       - domain
       - id
+    DomainRequest:
+      type: object
+      properties:
+        domain:
+          type: string
+          minLength: 1
+          maxLength: 253
+        is_active:
+          type: boolean
+        reason:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 300
+      required:
+      - domain
       - reason
-    EmailInput:
+    EmailInputRequest:
       type: object
       properties:
         email:
           type: string
           format: email
+          minLength: 1
           maxLength: 254
       required:
       - email
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        actor_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        correlation_id:
+          type: string
+          format: uuid
+          readOnly: true
+        action:
+          type: string
+          readOnly: true
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/CommentVisibilityEnum'
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        from_state:
+          type: string
+          readOnly: true
+        to_state:
+          type: string
+          readOnly: true
+        comment:
+          allOf:
+          - $ref: '#/components/schemas/Comment'
+          readOnly: true
+          nullable: true
+        changes:
+          readOnly: true
+      required:
+      - action
+      - actor
+      - actor_name
+      - changes
+      - comment
+      - correlation_id
+      - created_at
+      - from_state
+      - id
+      - to_state
+      - version
+      - visibility
     Group:
       type: object
       properties:
@@ -1044,6 +2115,17 @@ components:
           type: boolean
       required:
       - id
+      - name
+    GroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        is_active:
+          type: boolean
+      required:
       - name
     Health:
       type: object
@@ -1070,16 +2152,18 @@ components:
           type: array
           items:
             type: string
-    LoginInput:
+    LoginInputRequest:
       type: object
       properties:
         email:
           type: string
           format: email
+          minLength: 1
           maxLength: 254
         password:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 256
       required:
       - email
@@ -1094,10 +2178,88 @@ components:
           type: integer
         group:
           type: integer
+        can_view_restricted:
+          type: boolean
+        can_transfer:
+          type: boolean
+        can_cancel:
+          type: boolean
       required:
       - group
       - id
       - user
+    MembershipRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+        group:
+          type: integer
+        can_view_restricted:
+          type: boolean
+        can_transfer:
+          type: boolean
+        can_cancel:
+          type: boolean
+      required:
+      - group
+      - user
+    MfaVerifyInputRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 64
+        remember_device:
+          type: boolean
+          default: false
+      required:
+      - code
+    MutationResult:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+        event_id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        state:
+          $ref: '#/components/schemas/MutationResultStateEnum'
+        correlation_id:
+          type: string
+          format: uuid
+      required:
+      - correlation_id
+      - event_id
+      - number
+      - state
+      - ticket_id
+      - version
+    MutationResultStateEnum:
+      enum:
+      - new
+      - in_progress
+      - waiting_information
+      - waiting_test
+      - resolved
+      - closed
+      - cancelled
+      type: string
+      description: |-
+        * `new` - new
+        * `in_progress` - in_progress
+        * `waiting_information` - waiting_information
+        * `waiting_test` - waiting_test
+        * `resolved` - resolved
+        * `closed` - closed
+        * `cancelled` - cancelled
     Organization:
       type: object
       properties:
@@ -1112,6 +2274,86 @@ components:
       required:
       - id
       - name
+    OrganizationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        is_active:
+          type: boolean
+      required:
+      - name
+    PaginatedAttachmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+    PaginatedCategoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    PaginatedCommentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
     PaginatedDomainList:
       type: object
       required:
@@ -1135,6 +2377,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Domain'
+    PaginatedEventList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
     PaginatedGroupList:
       type: object
       required:
@@ -1204,6 +2469,98 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Organization'
+    PaginatedReadGrantList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadGrant'
+    PaginatedReopenPolicyList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReopenPolicy'
+    PaginatedTicketList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+    PaginatedTransferOptionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferOption'
     PaginatedUserList:
       type: object
       required:
@@ -1227,53 +2584,111 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/User'
-    PasswordInput:
+    PasswordChangeInputRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 256
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 256
+      required:
+      - current_password
+      - new_password
+    PasswordInputRequest:
       type: object
       properties:
         password:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 256
       required:
       - password
-    PatchedDomain:
+    PatchedCategoryRequest:
       type: object
       properties:
-        id:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        group:
           type: integer
-          readOnly: true
+        restricted:
+          type: boolean
+        is_active:
+          type: boolean
+    PatchedDomainRequest:
+      type: object
+      properties:
         domain:
           type: string
+          minLength: 1
           maxLength: 253
         is_active:
           type: boolean
         reason:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 300
-    PatchedGroup:
+    PatchedGroupRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         name:
           type: string
+          minLength: 1
           maxLength: 120
         is_active:
           type: boolean
-    PatchedOrganization:
+    PatchedOrganizationRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         name:
           type: string
+          minLength: 1
           maxLength: 120
         is_active:
           type: boolean
-    PatchedUserUpdateInput:
+    PatchedSmtpInputRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        host:
+          type: string
+          maxLength: 253
+        port:
+          $ref: '#/components/schemas/PortEnum'
+        security:
+          $ref: '#/components/schemas/SmtpInputSecurityEnum'
+        username:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 1024
+        clear_password:
+          type: boolean
+          writeOnly: true
+          default: false
+        from_email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+    PatchedUserUpdateInputRequest:
       type: object
       properties:
         role:
@@ -1285,48 +2700,407 @@ components:
           nullable: true
         reason:
           type: string
+          minLength: 1
           maxLength: 300
-    RegisterInput:
+    PortEnum:
+      enum:
+      - 25
+      - 465
+      - 587
+      - 2525
+      type: integer
+      description: |-
+        * `25` - 25
+        * `465` - 465
+        * `587` - 587
+        * `2525` - 2525
+    ReadGrant:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+        group:
+          type: integer
+        internal:
+          type: boolean
+        restricted:
+          type: boolean
+      required:
+      - group
+      - id
+      - user
+    ReadGrantRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+        group:
+          type: integer
+        internal:
+          type: boolean
+        restricted:
+          type: boolean
+      required:
+      - group
+      - user
+    RegisterInputRequest:
       type: object
       properties:
         email:
           type: string
           format: email
+          minLength: 1
           maxLength: 254
         password:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 256
         name:
           type: string
+          minLength: 1
           maxLength: 150
       required:
       - email
       - name
       - password
-    ResetInput:
+    ReopenPolicy:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        hours:
+          type: integer
+          maximum: 8760
+          minimum: 0
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reason:
+          type: string
+          maxLength: 300
+      required:
+      - actor
+      - created_at
+      - hours
+      - id
+      - reason
+    ReopenPolicyRequest:
+      type: object
+      properties:
+        hours:
+          type: integer
+          maximum: 8760
+          minimum: 0
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - hours
+      - reason
+    ResetInputRequest:
       type: object
       properties:
         token:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 128
         password:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 256
       required:
       - password
       - token
-    TokenInput:
+    SmtpInputSecurityEnum:
+      enum:
+      - starttls
+      - ssl
+      type: string
+      description: |-
+        * `starttls` - starttls
+        * `ssl` - ssl
+    SmtpOutput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        host:
+          type: string
+          maxLength: 253
+        port:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        security:
+          $ref: '#/components/schemas/SmtpOutputSecurityEnum'
+        username:
+          type: string
+          maxLength: 254
+        from_email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        password_configured:
+          type: boolean
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        source:
+          type: string
+          readOnly: true
+      required:
+      - password_configured
+      - source
+      - updated_at
+    SmtpOutputSecurityEnum:
+      enum:
+      - starttls
+      - ssl
+      type: string
+      description: |-
+        * `starttls` - STARTTLS
+        * `ssl` - TLS
+    StatusEnum:
+      enum:
+      - quarantine
+      - clean
+      - blocked
+      type: string
+      description: |-
+        * `quarantine` - Quarentena
+        * `clean` - Liberado
+        * `blocked` - Bloqueado
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        number:
+          type: integer
+          readOnly: true
+        requester:
+          type: integer
+          readOnly: true
+        requester_name:
+          type: string
+          readOnly: true
+        department:
+          type: integer
+          readOnly: true
+          nullable: true
+        department_name:
+          type: string
+          readOnly: true
+        category:
+          type: integer
+          readOnly: true
+        subject:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        impact:
+          type: integer
+          readOnly: true
+        urgency:
+          type: integer
+          readOnly: true
+        priority:
+          type: integer
+          readOnly: true
+        group:
+          type: integer
+          readOnly: true
+        assignee:
+          type: integer
+          readOnly: true
+          nullable: true
+        assignee_name:
+          type: string
+          readOnly: true
+          nullable: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/TicketStateEnum'
+          readOnly: true
+        restricted:
+          type: boolean
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        resolution_class:
+          type: string
+          readOnly: true
+        reopen_policy:
+          type: integer
+          readOnly: true
+          nullable: true
+        related_ticket:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        can_transfer:
+          type: boolean
+          readOnly: true
+        can_cancel:
+          type: boolean
+          readOnly: true
+      required:
+      - assignee
+      - assignee_name
+      - can_cancel
+      - can_transfer
+      - category
+      - closed_at
+      - created_at
+      - department
+      - department_name
+      - description
+      - group
+      - id
+      - impact
+      - number
+      - priority
+      - related_ticket
+      - reopen_policy
+      - requester
+      - requester_name
+      - resolution_class
+      - resolved_at
+      - restricted
+      - state
+      - subject
+      - updated_at
+      - urgency
+      - version
+    TicketStateEnum:
+      enum:
+      - new
+      - in_progress
+      - waiting_information
+      - waiting_test
+      - resolved
+      - closed
+      - cancelled
+      type: string
+      description: |-
+        * `new` - Novo
+        * `in_progress` - Em atendimento
+        * `waiting_information` - Aguardando informações
+        * `waiting_test` - Aguardando teste
+        * `resolved` - Resolvido
+        * `closed` - Fechado
+        * `cancelled` - Cancelado
+    TokenInputRequest:
       type: object
       properties:
         token:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 128
       required:
       - token
+    TransferInputRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        group:
+          type: integer
+          minimum: 1
+        assignee:
+          type: integer
+          minimum: 1
+        message:
+          type: string
+          minLength: 1
+          maxLength: 8000
+      required:
+      - assignee
+      - expected_version
+      - group
+      - message
+    TransferOption:
+      type: object
+      properties:
+        group:
+          type: integer
+        group_name:
+          type: string
+        user:
+          type: integer
+        user_name:
+          type: string
+      required:
+      - group
+      - group_name
+      - user
+      - user_name
+    TransitionInputRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        message:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        resolution_class:
+          type: string
+          minLength: 1
+          maxLength: 80
+        assignee:
+          type: integer
+          minimum: 1
+      required:
+      - action
+      - expected_version
     User:
       type: object
       properties:
@@ -1395,6 +3169,14 @@ components:
         * `manager` - manager
         * `admin` - admin
         * `privacy` - privacy
+    VersionInputRequest:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+      required:
+      - expected_version
   securitySchemes:
     cookieAuth:
       type: apiKey
