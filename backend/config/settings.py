@@ -106,7 +106,10 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["core.authentication.IsIdentityAdmin"],
     "COMPONENT_SPLIT_REQUEST": True,
-    "ENUM_NAME_OVERRIDES": {"CommentVisibilityEnum": "tickets.models.Comment.Visibility"},
+    "ENUM_NAME_OVERRIDES": {
+        "CommentVisibilityEnum": "tickets.models.Comment.Visibility",
+        "UserRoleEnum": "core.models.User.Role",
+    },
 }
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "UTC"
@@ -142,3 +145,4 @@ CLAMAV_HOST = os.environ.get("CLAMAV_HOST", "antimalware")
 CLAMAV_PORT = int(os.environ.get("CLAMAV_PORT", "3310"))
 
 SMTP_ALLOWED_HOSTS = csv("SMTP_ALLOWED_HOSTS")
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8080")

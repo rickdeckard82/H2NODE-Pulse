@@ -89,8 +89,28 @@ confirmar posse do e-mail. Subdomínios não herdam confiança automaticamente.
 Desativar um domínio bloqueia as contas afetadas e revoga sessões; a API impede
 bloquear o último administrador ativo.
 
-O SMTP desta entrega atende à identidade. Notificações de tickets, Google Chat,
-homologação com provedores reais e produção continuam nas etapas seguintes.
+O SMTP também envia notificações de chamados (etapa 5). Homologação com
+provedores reais e produção continuam pendentes.
+
+## Google Chat e diagnóstico de entregas
+
+Em **Administração → Google Chat**, cole o webhook do espaço da TI
+(`https://chat.googleapis.com/v1/spaces/…/messages?key=…&token=…`), informe a
+justificativa e ative. O webhook é cifrado com `IDENTITY_KEY`, nunca é devolvido
+pela API e só é aceito com esse formato. O espaço recebe apenas número, estado
+e link de eventos públicos de chamados não restritos. Mensagens individuais não
+são suportadas.
+
+Em **Administração → Entregas**, veja as últimas 200 entregas com destinatário
+mascarado e código de erro sanitizado. **Reenviar** recoloca na fila uma entrega
+com falha. **Testar e-mail/Testar Google Chat** enfileiram um teste que o worker
+executa (a API não tem saída de rede); o e-mail vai só ao administrador que pediu.
+Todas as ações exigem justificativa e são auditadas. Defina `APP_BASE_URL` com a
+URL pública do portal para os links das mensagens.
+
+API: `GET/PATCH /api/v1/settings/chat/`, `GET /api/v1/settings/notifications/`,
+`POST /api/v1/settings/notifications/{id}/retry/` e
+`GET/POST /api/v1/settings/notifications/test/`.
 
 A opção **Lembrar este dispositivo por 30 dias** dispensa o código nos próximos
 logins com senha nesse navegador, até expirar ou ser revogada. Consulte

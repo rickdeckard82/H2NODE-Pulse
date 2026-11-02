@@ -68,11 +68,10 @@ persistir senha, tokens ou segredo MFA em localStorage. Respostas privadas têm
 | Confirmar MFA ou recuperar | POST `/auth/mfa/verify/` | `code` TOTP ou código de recuperação e `remember_device` opcional (false por padrão); primeira configuração retorna oito códigos |
 | Esqueci a senha | POST `/auth/forgot/` | `email`; resposta genérica |
 | Redefinir senha | POST `/auth/reset/` | `token`, `password`; revoga sessões, preserva MFA |
-| Perfil atual | GET `/auth/me/` | Dados próprios, sem material de autenticação |
+| Perfil atual | GET `/auth/me/` | Dados próprios e foto, sem material de autenticação |
+| Editar perfil | PATCH `/auth/me/` | `first_name` e/ou `avatar` (data URL JPEG até 100 KB; vazio remove); e-mail não é aceito |
 | Logout | POST `/auth/logout/` | `{}`; encerra sessão atual |
 | Revogar todas | POST `/auth/revoke/` | `{}`; encerra todas as sessões da conta |
-| Trocar e-mail | POST `/auth/email/` | `email` novo e `password` atual |
-| Confirmar novo e-mail | POST `/auth/confirm-email/` | `token`; troca endereço e revoga sessões |
 | Alterar senha autenticado | POST `/auth/password/` | `current_password`, `new_password`; revoga sessões e dispositivos lembrados |
 | Substituir MFA | POST `/auth/mfa/replace/` | `password`; exige login MFA há menos de cinco minutos |
 | Confirmar substituição | POST `/auth/mfa/replace/confirm/` | `code` do novo dispositivo; revoga sessões antigas e retorna novos códigos de recuperação |
@@ -110,7 +109,9 @@ Para cadastrar técnicos, confirmar a conta de colaborador e depois promovê-la.
 `/groups/`: admin vê todos; técnico/gestor vê apenas memberships autorizados e
 ativos; colaborador não herda grupo por área. `/memberships/`: admin lista/cria
 ou remove a relação. Só contas confirmadas de técnico/gestor entram em grupos.
-`/settings/domains/`: todas as operações exigem admin; criar/alterar exige motivo.
+`/users/`: POST (admin) cria conta de colaborador com `email`, `first_name`, `department` opcional e `reason`; a pessoa recebe convite por e-mail (72 h) e define a senha pelo fluxo de redefinição, que também confirma o e-mail. PATCH altera papel, área e ativação com motivo.
+
+`/settings/domains/`: todas as operações exigem admin; criar, alterar e remover (DELETE com `reason`) exigem motivo. Remover um domínio ativo desativa as contas dele, como a desativação, e é recusado se bloquear o último administrador ativo.
 Domínios não são renomeados: cadastrar o novo e desativar o anterior.
 
 Toda alteração administrativa de conta revoga sessões. Mudança para papel sem

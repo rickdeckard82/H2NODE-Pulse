@@ -31,6 +31,7 @@ class TransitionInput(VersionInput):
             "request_test",
             "resolve",
             "confirm",
+            "close",
             "reopen",
             "cancel",
             "return_queue",
@@ -81,6 +82,10 @@ class TicketSerializer(serializers.ModelSerializer):
     related_ticket = serializers.UUIDField(
         source="related_ticket.uuid", read_only=True, allow_null=True
     )
+    participants = serializers.SerializerMethodField()
+
+    def get_participants(self, obj) -> list[dict]:
+        return [{"id": u.pk, "name": u.first_name} for u in obj.participants.all()]
 
     class Meta:
         model = Ticket
@@ -100,6 +105,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "group",
             "assignee",
             "assignee_name",
+            "participants",
             "state",
             "restricted",
             "version",

@@ -50,8 +50,10 @@ class TicketViewSet(
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Ticket.objects.none()
-        queryset = visible_tickets(self.request.user).select_related(
-            "requester", "assignee", "related_ticket"
+        queryset = (
+            visible_tickets(self.request.user)
+            .select_related("requester", "assignee", "related_ticket")
+            .prefetch_related("participants")
         )
         if self.action != "list":
             return queryset
@@ -87,6 +89,15 @@ class TicketViewSet(
     @action(detail=True, methods=["post"])
     def claim(self, request, uuid=None):
         return self.mutate(request, "claim", VersionInput, services.claim, uuid)
+
+    @extend_schema(
+        request=VersionInput,
+        responses={200: MutationResult, 409: OpenApiTypes.OBJECT},
+        parameters=[KEY_PARAMETER],
+    )
+    @action(detail=True, methods=["post"])
+    def join(self, request, uuid=None):
+        return self.mutate(request, "join", VersionInput, services.join, uuid)
 
     @extend_schema(
         request=TransitionInput,
@@ -229,9 +240,11 @@ class ReadGrantViewSet(
     NoStoreMixin,
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     serializer_class = ReadGrantSerializer
     permission_classes = [IsIdentityAdmin]
     queryset = ReadGrant.objects.order_by("pk")
@@ -247,6 +260,26 @@ class ReadGrantViewSet(
         identity.audit(
             self.request.user,
             "ticket_access.granted",
+            obj.pk,
+            {
+                "user": obj.user_id,
+                "group": obj.group_id,
+                "internal": obj.internal,
+                "restricted": obj.restricted,
+            },
+        )
+
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        identity.identity_lock()
+        locked_actor(request, admin=True)
+        return super().partial_update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        identity.audit(
+            self.request.user,
+            "ticket_access.updated",
             obj.pk,
             {
                 "user": obj.user_id,

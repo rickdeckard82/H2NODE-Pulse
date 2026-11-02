@@ -11,18 +11,37 @@ def support_memberships(user):
     return Membership.objects.filter(user=user, group__is_active=True)
 
 
-def visible_tickets(user):
-    if not user.is_authenticated or not eligible(user):
-        return Ticket.objects.none()
+def group_scope(user):
     memberships = support_memberships(user)
-    scope = Q(requester=user)
-    scope |= Q(group_id__in=memberships.values("group_id"), restricted=False)
+    # Every technician sees the whole open queue; restricted tickets still need an explicit grant.
+    scope = (
+        Q(group__is_active=True, restricted=False)
+        if user.role in {User.Role.TECHNICIAN, User.Role.MANAGER}
+        else Q(pk__in=[])
+    )
     scope |= Q(group_id__in=memberships.filter(can_view_restricted=True).values("group_id"))
     if user.role in {User.Role.ADMIN, User.Role.PRIVACY}:
         grants = ReadGrant.objects.filter(user=user, group__is_active=True)
         scope |= Q(group_id__in=grants.values("group_id"), restricted=False)
         scope |= Q(group_id__in=grants.filter(restricted=True).values("group_id"))
-    return Ticket.objects.filter(scope)
+    return scope
+
+
+def visible_tickets(user):
+    if not user.is_authenticated or not eligible(user):
+        return Ticket.objects.none()
+    return Ticket.objects.filter(Q(requester=user) | group_scope(user))
+
+
+def report_tickets(user):
+    """Reports follow group scope only: being the requester never widens them."""
+    if not eligible(user) or user.role not in {
+        User.Role.MANAGER,
+        User.Role.ADMIN,
+        User.Role.PRIVACY,
+    }:
+        return Ticket.objects.none()
+    return Ticket.objects.filter(group_scope(user))
 
 
 def membership(user, ticket):
@@ -30,8 +49,11 @@ def membership(user, ticket):
         return None  # A technician requesting help acts as requester on their own ticket.
     memberships = support_memberships(user).filter(group_id=ticket.group_id)
     if ticket.restricted:
-        memberships = memberships.filter(can_view_restricted=True)
-    return memberships.first()
+        return memberships.filter(can_view_restricted=True).first()
+    if not ticket.group.is_active or user.role not in {User.Role.TECHNICIAN, User.Role.MANAGER}:
+        return None
+    # Outside their groups a technician supports the ticket without transfer/cancel rights.
+    return memberships.first() or Membership(user=user, group=ticket.group)
 
 
 def can_read_internal(user, ticket):

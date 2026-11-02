@@ -54,13 +54,17 @@ conforme `IDENTIDADE.md`:
 
 Prefixo `/api/v1`. `{id}` é o UUID retornado em `ticket_id`, não o número público.
 
+Número público: `AAAAMM` + sequência mensal de 6 dígitos (ex.: `202611000001`),
+gerado sob lock consultivo por mês. Chamados anteriores ao ajuste mantêm o número antigo.
+
 | Endpoint | Conteúdo |
 |---|---|
-| GET `/tickets/` | Chamados próprios e fila de grupos autorizados, sem conteúdo interno |
+| GET `/tickets/` | Chamados próprios e, para técnicos/gestores, a fila completa de chamados não restritos de grupos ativos; restritos só com `can_view_restricted` no grupo |
 | GET `/tickets/{id}/` | Detalhe autorizado, prioridade calculada, área histórica e versão |
 | GET `/tickets/{id}/comments/` | Comentários visíveis, incluindo correções por acréscimo |
 | GET `/tickets/{id}/events/` | Timeline visível, ator, instante, transição e correlação |
 | GET `/categories/` | Categorias ativas para abertura; admin também vê inativas |
+| GET/PATCH `/notifications/`, POST `/notifications/clear/` | Sino do portal: até 20 eventos de outras pessoas em chamados que o usuário abriu, assumiu ou participa (técnicos também recebem chamados novos), respeitando notas internas; `muted` deixa o contador cinza; limpar descarta os eventos até agora |
 
 Listas paginadas em 25 itens. Filtros da fila: `state`, `priority`, `department`,
 `group`, `assignee`, `number`, `search`; `ordering` aceita `created_at`,
@@ -84,12 +88,16 @@ obtida no último detalhe. O recibo retorna `ticket_id`, `number`, `event_id`,
 |---|---|---|
 | Abrir para si | `/tickets/` | `category`, `subject`, `description`, `impact`, `urgency`; `related_ticket` opcional; sem expected_version |
 | Assumir | `/tickets/{id}/claim/` | Nenhum; exige Novo e técnico autorizado |
+| Participar | `/tickets/{id}/join/` | Nenhum; técnico entra como participante em Em atendimento/Aguardando |
 | Comentar | `/tickets/{id}/comments/` | `body`, `visibility` (`public`/`internal`), `corrects` opcional |
 | Transição | `/tickets/{id}/transitions/` | `action`, `message` quando exigida, campos específicos abaixo |
 | Transferir | `/tickets/{id}/transfer/` | `group`, `assignee`, `message` público obrigatório |
 
 Transições:
 
+- Participantes agem como o técnico atribuído nas transições abaixo; transferir e
+  cancelar continuam exigindo vínculo ao grupo com `can_transfer`/`can_cancel`.
+  Devolver à fila remove os participantes.
 - `request_information` / `request_test`: técnico atribuído, Em atendimento,
   `message` público com pergunta/instruções.
 - Resposta pública do solicitante pelo endpoint comments retoma Em atendimento
@@ -98,6 +106,9 @@ Transições:
 - `resolve`: técnico atribuído, Em atendimento, `message` público com solução e
   `resolution_class` obrigatórios.
 - `confirm`: solicitante, Resolvido → Fechado.
+- `close`: solicitante encerra a qualquer momento após o atendimento começar
+  (Em atendimento, Aguardando ou Resolvido) → Fechado; `message` obrigatório.
+  Em Novo, o solicitante usa `cancel`.
 - `reopen`: motivo em `message`; solicitante em Resolvido ou, junto ao gestor,
   em Fechado dentro da janela congelada. Gestor pode informar `assignee` válido
   ao regularizar atribuição na reabertura de Fechado.
@@ -123,3 +134,16 @@ pertencem à etapa 4; SMTP/Chat, retries e painel operacional à etapa 5; SLA à
 etapa 6. Políticas de retenção/eliminação e suas roles privilegiadas serão definidas
 na etapa 7. A proteção append-only não impede alterações por administradores do
 banco e não substitui backup/arquivo protegido de auditoria.
+
+## SLA e relatórios
+
+| Operação | Rota | Quem |
+|---|---|---|
+| Listar/criar versão de política de SLA | GET/POST `/settings/sla-policies/` | Administrador; versões são imutáveis |
+| Resumo do período | GET `/reports/summary/?start=AAAA-MM-DD&end=AAAA-MM-DD` | Gestor (grupos de que é membro); administrador e privacidade por concessão de leitura |
+| Gerar CSV | POST `/reports/exports/` com `start` e `end` | Mesmos perfis; auditado |
+| Baixar CSV | GET `/reports/exports/<id>/` | Só o autor, por 15 minutos |
+
+Cada chamado congela a política vigente na abertura. As definições de primeira
+resposta, pausas, reabertura, coorte do período e denominadores estão em
+`docs/validacoes/etapa-06.md`. A quebra por técnico só aparece para gestores.

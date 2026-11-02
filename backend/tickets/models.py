@@ -1,7 +1,8 @@
 import uuid
 
 from django.conf import settings
-from django.db import models
+from django.db import connection, models
+from django.db.models import Max
 from django.utils import timezone
 
 
@@ -33,6 +34,56 @@ class ReopenPolicy(models.Model):
     reason = models.CharField(max_length=300)
 
 
+class SlaPolicy(models.Model):
+    """Append-only version; each ticket freezes the version in force when it was opened."""
+
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    reason = models.CharField(max_length=300)
+    timezone = models.CharField(max_length=64, default="America/Sao_Paulo")
+    # Monday is 0, as in date.weekday().
+    weekdays = models.CharField(max_length=13, default="0,1,2,3,4")
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    holidays = models.TextField(blank=True)
+    p1_response = models.PositiveIntegerField()
+    p1_resolution = models.PositiveIntegerField()
+    p2_response = models.PositiveIntegerField()
+    p2_resolution = models.PositiveIntegerField()
+    p3_response = models.PositiveIntegerField()
+    p3_resolution = models.PositiveIntegerField()
+    p4_response = models.PositiveIntegerField()
+    p4_resolution = models.PositiveIntegerField()
+
+
+class ReportExport(models.Model):
+    """Short-lived CSV kept only until its download link expires."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    expires_at = models.DateTimeField(db_index=True)
+    start = models.DateField()
+    end = models.DateField()
+    rows = models.PositiveIntegerField()
+    content = models.TextField()
+
+
+def next_number():
+    """YYYYMM followed by a six-digit monthly sequence, e.g. 202611000001."""
+    period = int(timezone.localtime().strftime("%Y%m"))
+    with connection.cursor() as cursor:
+        # Serializes numbering per month until the caller's transaction ends.
+        cursor.execute("SELECT pg_advisory_xact_lock(7219840, %s)", [period])
+    base = period * 1_000_000
+    last = Ticket.objects.filter(number__gt=base, number__lt=base + 1_000_000).aggregate(
+        last=Max("number")
+    )["last"]
+    if last == base + 999_999:
+        raise RuntimeError("Sequência mensal de chamados esgotada.")
+    return (last or base) + 1
+
+
 class Ticket(models.Model):
     class State(models.TextChoices):
         NEW = "new", "Novo"
@@ -43,8 +94,8 @@ class Ticket(models.Model):
         CLOSED = "closed", "Fechado"
         CANCELLED = "cancelled", "Cancelado"
 
-    # The sequence can have gaps. Neither this number nor the UUID grants access.
-    number = models.BigAutoField(primary_key=True)
+    # Neither this number nor the UUID grants access.
+    number = models.BigIntegerField(primary_key=True, default=next_number, editable=False)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     requester = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="requested_tickets"
@@ -64,6 +115,10 @@ class Ticket(models.Model):
         on_delete=models.PROTECT,
         related_name="assigned_tickets",
     )
+    # Other technicians working alongside the assignee; they may act as the assignee does.
+    participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="participating_tickets"
+    )
     state = models.CharField(max_length=24, choices=State, default=State.NEW)
     restricted = models.BooleanField(default=False)
     version = models.PositiveIntegerField(default=1)
@@ -73,6 +128,7 @@ class Ticket(models.Model):
     closed_at = models.DateTimeField(null=True)
     resolution_class = models.CharField(max_length=80, blank=True)
     reopen_policy = models.ForeignKey(ReopenPolicy, null=True, on_delete=models.PROTECT)
+    sla_policy = models.ForeignKey(SlaPolicy, null=True, on_delete=models.PROTECT)
     related_ticket = models.ForeignKey("self", null=True, on_delete=models.PROTECT)
 
     class Meta:
@@ -181,6 +237,60 @@ class NotificationOutbox(models.Model):
     audience = models.CharField(max_length=24)
     payload = models.JSONField()
     status = models.CharField(max_length=16, default="pending")
+    available_at = models.DateTimeField(default=timezone.now, db_index=True)
+    lease_token = models.UUIDField(null=True, editable=False)
+    lease_until = models.DateTimeField(null=True, db_index=True)
+    completed_at = models.DateTimeField(null=True)
+
+
+class NotificationDelivery(models.Model):
+    class Channel(models.TextChoices):
+        EMAIL = "email", "E-mail"
+        CHAT = "chat", "Google Chat"
+
+    outbox = models.ForeignKey(
+        NotificationOutbox, on_delete=models.PROTECT, related_name="deliveries"
+    )
+    channel = models.CharField(max_length=8, choices=Channel)
+    recipient_key = models.CharField(max_length=320)
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT)
+    status = models.CharField(max_length=16, default="pending")
+    attempts = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now, db_index=True)
+    last_attempt_at = models.DateTimeField(null=True)
+    sent_at = models.DateTimeField(null=True)
+    provider_id = models.CharField(max_length=200, blank=True)
+    last_error_code = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["outbox", "channel", "recipient_key"],
+                name="notification_delivery_unique",
+            )
+        ]
+        indexes = [models.Index(fields=["status", "next_attempt_at"])]
+
+
+class NotificationAttempt(models.Model):
+    delivery = models.ForeignKey(
+        NotificationDelivery, on_delete=models.PROTECT, related_name="history"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    outcome = models.CharField(max_length=16)
+    error_code = models.CharField(max_length=80, blank=True)
+    provider_id = models.CharField(max_length=200, blank=True)
+
+
+class IntegrationCheck(models.Model):
+    """Controlled test queued by the API; only the worker has network egress."""
+
+    channel = models.CharField(max_length=8, choices=NotificationDelivery.Channel)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    status = models.CharField(max_length=16, default="pending")
+    completed_at = models.DateTimeField(null=True)
+    error_code = models.CharField(max_length=80, blank=True)
 
 
 class IdempotencyRecord(models.Model):

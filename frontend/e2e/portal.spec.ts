@@ -177,17 +177,6 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
   await audit(owner);
   await owner.setViewportSize({ width: 390, height: 844 });
   await audit(owner);
-  await owner.getByRole("button", { name: "Abrir menu", exact: true }).click();
-  await expect(owner.locator(".sidebar")).toHaveClass(/open/);
-  await audit(owner);
-  await owner.screenshot({
-    path: "../work/pulse-style-sidebar-mobile.png",
-    fullPage: true,
-  });
-  await owner
-    .getByRole("button", { name: "Fechar menu", exact: true })
-    .last()
-    .click();
   expect(
     await owner.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -215,14 +204,6 @@ test("administração básica, configuração auditada e layout", async ({
   page,
 }) => {
   await login(page, "admin");
-  await page
-    .getByRole("button", { name: "Recolher menu", exact: true })
-    .click();
-  await expect(page.locator(".app-shell")).toHaveClass(/sidebar-collapsed/);
-  await page
-    .getByRole("button", { name: "Expandir menu", exact: true })
-    .click();
-  await expect(page.locator(".app-shell")).not.toHaveClass(/sidebar-collapsed/);
   await page.locator("summary[aria-label^='Abrir menu de']").click();
   await page
     .locator(".user-menu-popover")
@@ -232,9 +213,16 @@ test("administração básica, configuração auditada e layout", async ({
     .getByLabel("Nome", { exact: true })
     .fill("Área criada no navegador");
   await page.getByRole("button", { name: "Salvar configuração" }).click();
-  await expect(page.getByText(/Área criada no navegador/)).toBeVisible();
+  const area = page.locator(".admin-list li", {
+    hasText: "Área criada no navegador",
+  });
+  await expect(area.locator("strong")).toHaveText("Área criada no navegador");
   await audit(page);
   await page.screenshot({ path: "../work/etapa-04-admin.png", fullPage: true });
+  page.once("dialog", (dialog) => dialog.accept());
+  await area.getByRole("button", { name: "Remover" }).click();
+  await expect(page.getByRole("status")).toHaveText("Registro removido.");
+  await expect(area).toHaveCount(0);
   await page.getByRole("button", { name: "SMTP", exact: true }).click();
   await page.getByLabel("Servidor SMTP (nome DNS)").fill("smtp.company.test");
   await page.getByLabel("Usuário SMTP").fill("service@company.test");
@@ -254,6 +242,73 @@ test("administração básica, configuração auditada e layout", async ({
     path: "../work/configuracao-smtp.png",
     fullPage: true,
   });
+  // Tab colour transitions would otherwise be sampled mid-animation by axe.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "Google Chat", exact: true }).click();
+  await page
+    .getByLabel("Webhook do espaço")
+    .fill(
+      "https://chat.googleapis.com/v1/spaces/SYNTHETIC/messages?key=k&token=t",
+    );
+  await page
+    .getByLabel("Justificativa da alteração")
+    .fill("Webhook sintético, envio desativado");
+  await page.getByRole("button", { name: "Salvar Google Chat" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Configuração do Google Chat salva",
+  );
+  await expect(page.getByLabel("Webhook do espaço")).toHaveValue("");
+  await expect(page.getByText(/Webhook protegido e cadastrado/)).toBeVisible();
+  await audit(page);
+  await page.getByRole("button", { name: "Entregas", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Diagnóstico de notificações" }),
+  ).toBeVisible();
+  await audit(page);
+  await page
+    .getByRole("button", { name: "Política de SLA", exact: true })
+    .click();
+  await expect(page.getByLabel("Fuso horário (IANA)")).toHaveValue(
+    "America/Sao_Paulo",
+  );
+  for (let p = 1; p <= 4; p++) {
+    await page
+      .getByLabel(`P${p} · 1ª resposta (min úteis)`)
+      .fill(String(60 * p));
+    await page
+      .getByLabel(`P${p} · resolução (min úteis)`)
+      .fill(String(240 * p));
+  }
+  await page
+    .getByLabel("Feriados (AAAA-MM-DD, separados por espaço)")
+    .fill("2026-12-25");
+  await page
+    .getByLabel("Justificativa", { exact: true })
+    .fill("Política sintética de SLA");
+  await page.getByRole("button", { name: "Salvar configuração" }).click();
+  await expect(page.getByText(/SLA · Política sintética de SLA/)).toBeVisible();
+  await audit(page);
+  await page
+    .getByRole("button", { name: "Contas e perfis", exact: true })
+    .click();
+  await page.getByLabel("Nome", { exact: true }).fill("Conta Convidada");
+  await page.getByLabel("E-mail corporativo").fill("invited@company.test");
+  await page
+    .getByLabel("Justificativa", { exact: true })
+    .fill("Admissão sintética");
+  await page.getByRole("button", { name: "Salvar configuração" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Conta criada como Colaborador",
+  );
+  const invited = page.locator(".admin-list li", {
+    hasText: "Conta Convidada · invited@company.test",
+  });
+  await expect(invited).toContainText("Papel: Colaborador");
+  page.once("dialog", (dialog) => dialog.accept("Desligamento sintético"));
+  await invited.getByRole("button", { name: "Desativar" }).click();
+  await expect(page.getByRole("status")).toHaveText("Registro desativado.");
+  await expect(invited.getByRole("button", { name: "Reativar" })).toBeVisible();
+  await audit(page);
   await page
     .getByRole("button", { name: "Domínios de confiança", exact: true })
     .click();
@@ -264,7 +319,15 @@ test("administração básica, configuração auditada e layout", async ({
     .getByLabel("Justificativa", { exact: true })
     .fill("Domínio de teste aprovado");
   await page.getByRole("button", { name: "Salvar configuração" }).click();
-  await expect(page.getByText(/#.*approved.company.test/)).toBeVisible();
+  await expect(
+    page.getByText("approved.company.test", { exact: true }),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept("Domínio de teste encerrado"));
+  await page.getByRole("button", { name: "Remover" }).last().click();
+  await expect(page.getByRole("status")).toHaveText("Registro removido.");
+  await expect(
+    page.getByText("approved.company.test", { exact: true }),
+  ).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await audit(page);
   expect(
@@ -373,7 +436,18 @@ test("QR Code válido e dispositivo lembrado após reabrir o navegador", async (
 test("cadastro e recuperação conduzem às confirmações contextuais", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+  // Footer sits at the bottom of a short page without creating a scrollbar.
+  expect(
+    await page.evaluate(() => ({
+      scroll: document.documentElement.scrollHeight <= innerHeight,
+      footer: Math.round(
+        document.querySelector("footer")!.getBoundingClientRect().bottom,
+      ),
+    })),
+  ).toEqual({ scroll: true, footer: 900 });
   await expect(
     page.getByRole("button", { name: "Confirmar cadastro", exact: true }),
   ).toHaveCount(0);
@@ -415,42 +489,76 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
   ).toBeVisible();
 });
 
-test("confirmação do novo e-mail fica na conta autenticada", async ({
-  page,
-}) => {
+test("perfil altera foto e nome, mas não o e-mail", async ({ page }) => {
   await login(page, "owner");
   await expect(page.locator(".avatar")).toHaveText("A");
-  await page.locator("summary[aria-label^='Abrir menu de']").click();
+  const menu = page.locator("summary[aria-label^='Abrir menu de']");
+  await menu.click();
   await expect(
     page.getByRole("button", { name: "Administração", exact: true }),
   ).toHaveCount(0);
-  await page
-    .locator(".user-menu-popover")
-    .getByRole("button", { name: "Alterar senha", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Alterar senha" }),
-  ).toBeVisible();
-  await page.locator("summary[aria-label^='Abrir menu de']").click();
+  await page.getByRole("heading", { name: "Meus chamados" }).click();
+  await expect(page.locator(".user-menu-popover")).toBeHidden();
+  await menu.click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".user-menu-popover")).toBeHidden();
+  await menu.click();
   await page
     .locator(".user-menu-popover")
     .getByRole("button", { name: "Perfil", exact: true })
     .click();
+  await expect(page.getByLabel("E-mail corporativo")).toHaveAttribute(
+    "readonly",
+  );
+  await expect(page.getByLabel("Novo e-mail corporativo")).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "Alterar e-mail" }),
+    page.getByRole("heading", { name: "Alterar senha" }),
   ).toBeVisible();
+  await page.getByLabel("Escolher imagem").setInputFiles({
+    name: "foto.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await expect(page.getByRole("img", { name: "Sua foto" })).toBeVisible();
+  await page.getByLabel("Nome").fill("Ana Perfil");
   await page
-    .getByLabel("Novo e-mail corporativo")
-    .fill("owner-updated@company.test");
-  await page.getByLabel("Senha atual").fill(fixture.password);
-  await page
-    .getByRole("button", { name: "Enviar código de confirmação", exact: true })
+    .getByRole("button", { name: "Salvar perfil", exact: true })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Confirmar novo e-mail" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/Enviamos um código ao novo e-mail/),
-  ).toBeVisible();
+  await expect(page.getByText("Perfil atualizado.")).toBeVisible();
+  await expect(menu).toHaveAttribute("aria-label", "Abrir menu de Ana Perfil");
+  await expect(page.locator("summary img.avatar")).toHaveAttribute(
+    "src",
+    /^data:image\/jpeg;base64,/,
+  );
   await audit(page);
+});
+
+test("gestor consulta relatórios e exporta CSV com prazo", async ({ page }) => {
+  await login(page, "manager");
+  await page.getByRole("button", { name: "Relatórios", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Relatórios e SLA" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Abertos no período", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Abertos agora por técnico" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Exportar CSV", exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Baixar CSV" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^chamados-.*\.csv$/);
+  const content = readFileSync(await download.path(), "utf8");
+  expect(content).toContain("numero,aberto_em,estado");
+  await audit(page);
+  await page.screenshot({
+    path: "../work/etapa-06-relatorios.png",
+    fullPage: true,
+  });
 });

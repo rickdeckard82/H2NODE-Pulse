@@ -21,6 +21,7 @@ for name, role in [
     ("peer", "collaborator"),
     ("tech", "technician"),
     ("admin", "admin"),
+    ("manager", "manager"),
     ("enroll", "technician"),
 ]:
     user = User.objects.create_user(
@@ -32,6 +33,7 @@ for name, role in [
             "peer": "Beatriz",
             "tech": "Lucas",
             "admin": "Administração",
+            "manager": "Marina",
         }[name],
         password=config["password"],
         role=role,
@@ -42,6 +44,6 @@ for name, role in [
         user.mfa_enabled = True
         user.mfa_secret = cipher().encrypt(config["mfa"][name].encode()).decode()
         user.save()
-    if role == "technician":
+    if role in {"technician", "manager"}:
         Membership.objects.create(user=user, group=group, can_transfer=True)
 print("Synthetic E2E identities created; no credentials printed.")

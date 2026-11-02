@@ -92,12 +92,28 @@ export function TicketDetail({
   const owner = ticket.requester === user.id;
   const support = !owner && ["technician", "manager"].includes(user.role);
   const terminal = ["closed", "cancelled"].includes(ticket.state);
+  const working =
+    ticket.assignee === user.id ||
+    ticket.participants.some((p) => p.id === user.id);
   const available = [
     ...(support && ticket.state === "new" ? ["claim"] : []),
-    ...(support && ticket.assignee === user.id && ticket.state === "in_progress"
+    ...(support &&
+    !working &&
+    ["in_progress", "waiting_information", "waiting_test"].includes(
+      ticket.state,
+    )
+      ? ["join"]
+      : []),
+    ...(support && working && ticket.state === "in_progress"
       ? ["request_information", "request_test", "resolve"]
       : []),
     ...(owner && ticket.state === "resolved" ? ["confirm", "reopen"] : []),
+    ...(owner &&
+    ["in_progress", "waiting_information", "waiting_test", "resolved"].includes(
+      ticket.state,
+    )
+      ? ["close"]
+      : []),
     ...((owner || user.role === "manager") && ticket.state === "closed"
       ? ["reopen"]
       : []),
@@ -121,7 +137,9 @@ export function TicketDetail({
             {ticket.restricted ? " · ACESSO RESTRITO" : ""}
           </p>
           <h1>{ticket.subject}</h1>
-          <span className="badge">{states[ticket.state]}</span>
+          <span className={`badge state-${ticket.state}`}>
+            {states[ticket.state]}
+          </span>
         </div>
         <button
           className="secondary"
@@ -176,6 +194,7 @@ export function TicketDetail({
                         "comment.added": "Comentário",
                         "requester.replied": "Resposta do solicitante",
                         "comment.corrected": "Correção",
+                        "sla.breached": "Alerta de SLA",
                       } as Record<string, string>
                     )[e.action] ||
                     e.action}
@@ -316,6 +335,12 @@ export function TicketDetail({
             <dl>
               <dt>Responsável</dt>
               <dd>{ticket.assignee_name || "Aguardando atribuição"}</dd>
+              {ticket.participants.length > 0 && (
+                <>
+                  <dt>Participantes</dt>
+                  <dd>{ticket.participants.map((p) => p.name).join(", ")}</dd>
+                </>
+              )}
               <dt>Prioridade</dt>
               <dd>P{ticket.priority}</dd>
               <dt>Área na abertura</dt>
@@ -369,19 +394,19 @@ export function TicketDetail({
                           group: Number(target[0]),
                           assignee: Number(target[1]),
                         }
-                      : action === "claim"
+                      : ["claim", "join"].includes(action)
                         ? {}
                         : { action }),
                   };
                   void send(
-                    action === "claim" || action === "transfer"
+                    ["claim", "join", "transfer"].includes(action)
                       ? action
                       : "transitions",
                     payload,
                   );
                 }}
               >
-                {!["claim", "confirm"].includes(action) && (
+                {!["claim", "join", "confirm"].includes(action) && (
                   <label>
                     Mensagem pública
                     <textarea name="message" required maxLength={8000} />

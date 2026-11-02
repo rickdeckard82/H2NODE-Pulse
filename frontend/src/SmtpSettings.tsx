@@ -30,8 +30,7 @@ export function SmtpSettings() {
     <section className="panel narrow">
       <h2>Servidor SMTP</h2>
       <p>
-        Configure o envio de códigos de confirmação e recuperação de conta. As
-        notificações de chamados ainda não estão habilitadas.
+        Configure o envio de códigos de identidade e notificações de chamados.
       </p>
       {error && (
         <p role="alert" className="error">
@@ -169,7 +168,7 @@ export function SmtpSettings() {
               type="checkbox"
               defaultChecked={config.enabled}
             />
-            Ativar envio de e-mails de confirmação e recuperação
+            Ativar envio de e-mails de identidade e chamados
           </label>
           <label>
             Justificativa da alteração

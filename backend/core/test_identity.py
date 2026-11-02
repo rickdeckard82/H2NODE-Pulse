@@ -3,6 +3,7 @@
 No corporate mailbox is contacted. All fixture identities use reserved .test domains.
 """
 
+import base64
 import secrets
 import socketserver
 import threading
@@ -303,40 +304,37 @@ class IdentityTests(HTTPHelpers, TestCase):
             403,
         )
 
-    def test_email_change_requires_password_possession_and_revokes_sessions(self):
+    def test_profile_updates_name_and_avatar_but_never_email(self):
         client = self.login(self.alice)
-        self.assertEqual(
-            self.post(
-                client,
-                "/api/v1/auth/email/",
-                {
-                    "email": "changed@company.test",
-                    "password": "wrong",
-                },
-            ).status_code,
-            403,
+        photo = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8\xff\xe0fake").decode()
+        response = self.patch(
+            client, "/api/v1/auth/me/", {"first_name": "Alice B", "avatar": photo}
         )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["avatar"], photo)
+        self.assertEqual(client.get("/api/v1/auth/me/").json()["first_name"], "Alice B")
+        self.assertNotIn(
+            "avatar", self.login(self.admin).get("/api/v1/users/").json()["results"][0]
+        )
+        for data in [
+            {"email": "changed@company.test"},
+            {"avatar": "data:image/svg+xml;base64,PHN2Zz4="},
+            {"avatar": "data:image/jpeg;base64," + base64.b64encode(b"<svg>").decode()},
+            {"avatar": "data:image/jpeg;base64,!!!"},
+            {"first_name": ""},
+        ]:
+            self.assertEqual(self.patch(client, "/api/v1/auth/me/", data).status_code, 400, data)
+        self.assertEqual(self.post(client, "/api/v1/auth/email/", {}).status_code, 404)
         self.assertEqual(
-            self.post(
-                client,
-                "/api/v1/auth/email/",
-                {
-                    "email": "changed@company.test",
-                    "password": PASSWORD,
-                },
-            ).status_code,
-            200,
+            self.patch(client, "/api/v1/auth/me/", {"avatar": ""}).json()["avatar"], ""
         )
         self.alice.refresh_from_db()
         self.assertEqual(self.alice.email, "alice@company.test")
-        _, raw = self.latest_token(self.alice, "email")
-        self.assertEqual(
-            self.post(client, "/api/v1/auth/confirm-email/", {"token": raw}).status_code, 200
+        self.assertTrue(
+            IdentityEvent.objects.filter(
+                action="account.profile_updated", actor=self.alice
+            ).exists()
         )
-        self.assertEqual(client.get("/api/v1/auth/me/").status_code, 403)
-        self.alice.refresh_from_db()
-        self.assertEqual(self.alice.email, "changed@company.test")
-        self.login(self.alice)
 
     def test_csrf_login_register_logout_and_hostile_origin(self):
         data = {"email": self.alice.email, "password": PASSWORD}
@@ -495,33 +493,6 @@ class IdentityTests(HTTPHelpers, TestCase):
                 "/api/v1/auth/mfa/verify/",
                 {
                     "code": "invalid",
-                },
-            ).status_code,
-            429,
-        )
-
-    @override_settings(IDENTITY_RATE_LIMIT=2)
-    def test_email_password_attempts_are_not_rolled_back(self):
-        client = self.login(self.alice)
-        for _ in range(2):
-            self.assertEqual(
-                self.post(
-                    client,
-                    "/api/v1/auth/email/",
-                    {
-                        "email": "new@company.test",
-                        "password": "invalid",
-                    },
-                ).status_code,
-                403,
-            )
-        self.assertEqual(
-            self.post(
-                client,
-                "/api/v1/auth/email/",
-                {
-                    "email": "new@company.test",
-                    "password": PASSWORD,
                 },
             ).status_code,
             429,
@@ -697,6 +668,82 @@ class IdentityTests(HTTPHelpers, TestCase):
         )
         self.alice.refresh_from_db()
         self.assertFalse(self.alice.is_active)
+
+    def test_admin_creates_collaborator_who_sets_password_through_invite(self):
+        admin, alice = self.login(self.admin), self.login(self.alice)
+        data = {"email": "Nova@company.test", "first_name": "Nova", "reason": "Admissão"}
+        self.assertEqual(self.post(alice, "/api/v1/users/", data).status_code, 403)
+        for bad in [{"email": "x@other.test"}, {"email": self.alice.email}, {"role": "admin"}]:
+            self.assertEqual(
+                self.post(admin, "/api/v1/users/", {**data, **bad}).status_code, 400, bad
+            )
+        response = self.post(admin, "/api/v1/users/", data)
+        self.assertEqual(response.status_code, 201, response.content)
+        user = User.objects.get(email="nova@company.test")
+        self.assertEqual(user.role, User.Role.COLLABORATOR)
+        self.assertIsNone(user.email_verified_at)
+        self.assertFalse(user.has_usable_password())
+        token, raw = self.latest_token(user, "invite")
+        self.assertGreater(token.expires_at, timezone.now() + timedelta(hours=71))
+        # Forgot-password on a never-activated account re-sends the invite, not a reset.
+        self.post(self.client, "/api/v1/auth/forgot/", {"email": user.email})
+        token, raw = self.latest_token(user, "invite")
+        self.assertFalse(IdentityToken.objects.filter(user=user, purpose="reset").exists())
+        reset = {"token": raw, "password": NEW_PASSWORD}
+        self.assertEqual(self.post(self.client, "/api/v1/auth/reset/", reset).status_code, 200)
+        user.refresh_from_db()
+        self.assertIsNotNone(user.email_verified_at)
+        self.login(user, password=NEW_PASSWORD)
+        self.assertTrue(IdentityEvent.objects.filter(action="account.created").exists())
+
+    def test_area_change_keeps_pending_code_but_role_change_revokes_it(self):
+        data = {"email": "late@company.test", "name": "Pessoa", "password": PASSWORD}
+        self.assertEqual(self.post(self.client, "/api/v1/auth/register/", data).status_code, 200)
+        user = User.objects.get(email="late@company.test")
+        _, raw = self.latest_token(user, "verify")
+        admin = self.login(self.admin)
+        path = f"/api/v1/users/{user.pk}/"
+        # Signing up again before confirming resends a code and voids the previous one.
+        self.assertEqual(self.post(self.client, "/api/v1/auth/register/", data).status_code, 200)
+        old = raw
+        _, raw = self.latest_token(user, "verify")
+        self.assertNotEqual(old, raw)
+        self.assertEqual(
+            self.post(self.client, "/api/v1/auth/confirm/", {"token": old}).status_code, 400
+        )
+        update = {"department": self.department.pk, "reason": "Área"}
+        self.assertEqual(self.patch(admin, path, update).status_code, 200)
+        self.assertEqual(
+            self.post(self.client, "/api/v1/auth/confirm/", {"token": raw}).status_code, 200
+        )
+        user.refresh_from_db()
+        self.assertIsNotNone(user.email_verified_at)
+        client = self.login(user)
+        self.patch(admin, path, {"role": "technician", "reason": "Promoção"})
+        self.assertEqual(client.get("/api/v1/auth/me/").status_code, 403)
+
+    def test_domain_deletion_requires_reason_admin_and_disables_accounts(self):
+        admin, client = self.login(self.admin), self.login(self.alice)
+        path = f"/api/v1/settings/domains/{self.domain.pk}/"
+
+        def delete(who, data):
+            csrf = who.get("/api/v1/auth/csrf/").json()["csrfToken"]
+            return who.delete(path, data, content_type="application/json", HTTP_X_CSRFTOKEN=csrf)
+
+        self.assertEqual(delete(client, {"reason": "Sem permissão"}).status_code, 403)
+        self.assertEqual(delete(admin, {}).status_code, 400)
+        # The only administrator belongs to this domain, so removal is refused.
+        self.assertEqual(delete(admin, {"reason": "Encerrado"}).status_code, 400)
+        AllowedDomain.objects.create(domain="admins.test")
+        self.admin.email = "admin@admins.test"
+        self.admin.save()
+        admin = self.login(self.admin)
+        self.assertEqual(delete(admin, {"reason": "Encerrado"}).status_code, 204)
+        self.assertFalse(AllowedDomain.objects.filter(pk=self.domain.pk).exists())
+        self.alice.refresh_from_db()
+        self.assertFalse(self.alice.is_active)
+        self.assertEqual(client.get("/api/v1/auth/me/").status_code, 403)
+        self.assertTrue(IdentityEvent.objects.filter(action="domain.deleted").exists())
 
     def test_group_membership_separate_from_department_and_collaborator_rejected(self):
         admin = self.login(self.admin)
@@ -933,7 +980,8 @@ class ConcurrencyTests(HTTPHelpers, TransactionTestCase):
 
         self.assertEqual(self.parallel([register, register]), [200, 200])
         self.assertEqual(User.objects.filter(email="new@company.test").count(), 1)
-        self.assertEqual(IdentityMail.objects.count(), 1)
+        # The second sign-up resends the confirmation, voiding the first code: one usable code.
+        self.assertEqual(IdentityToken.objects.filter(used_at=None).count(), 1)
 
     def test_concurrent_admin_deactivation_preserves_one_admin(self):
         admins = []

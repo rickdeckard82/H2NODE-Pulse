@@ -27,7 +27,10 @@ export function Auth({
   return (
     <div className="auth-layout">
       <section className="welcome">
-        <p className="eyebrow">PULSE SERVICES · SUPORTE INTERNO</p>
+        <p className="eyebrow pulse-eyebrow">
+          <span className="pulse-status-dot" aria-hidden="true" />
+          PULSE SERVICES · SUPORTE INTERNO
+        </p>
         <h1>
           Seu suporte.
           <br />
@@ -222,8 +225,17 @@ export function Auth({
                       }
                       required
                       maxLength={256}
+                      aria-describedby={
+                        mode === "login" ? undefined : "password-hint"
+                      }
                     />
                   </label>
+                )}
+                {["register", "reset"].includes(mode) && (
+                  <small id="password-hint" className="field-hint">
+                    Use pelo menos 8 caracteres e evite senhas comuns, somente
+                    números ou parecidas com seu nome ou e-mail.
+                  </small>
                 )}
               </>
             )}

@@ -14,12 +14,18 @@ type Category = { id: number; name: string; restricted: boolean };
 export function Portal({
   user,
   onExpired,
+  open,
 }: {
   user: User;
   onExpired: () => void;
+  open?: string;
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(open ?? null);
   const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("pulse:page-change"));
+  }, [selected]);
   const [page, setPage] = useState<Page<Ticket> | null>(null);
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -258,7 +264,9 @@ export function Portal({
                       {t.requester_name} · {date(t.created_at)}
                     </small>
                   </span>
-                  <span className="badge">{states[t.state]}</span>
+                  <span className={`badge state-${t.state}`}>
+                    {states[t.state]}
+                  </span>
                   <span>P{t.priority}</span>
                   <span className="row-assignee">
                     {t.assignee_name || "Sem responsável"} →

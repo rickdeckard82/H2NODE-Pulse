@@ -25,6 +25,7 @@ from tickets.models import (
     Comment,
     IdempotencyRecord,
     NotificationOutbox,
+    ReadGrant,
     ReopenPolicy,
     Ticket,
     TicketEvent,
@@ -166,6 +167,54 @@ class TicketTests(TicketHelpers, TestCase):
         with connection.cursor() as cursor:
             cursor.execute("SET LOCAL ROLE pulse_runtime")
 
+    def test_admin_removes_only_unused_records_and_edits_access(self):
+        admin = self.client_as(self.admin)
+
+        def delete(client, path):
+            csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+            return client.delete(path, HTTP_X_CSRFTOKEN=csrf)
+
+        self.create()
+        spare_department = Department.objects.create(name="Área sem uso")
+        spare_group = SupportGroup.objects.create(name="Grupo sem uso")
+        spare_category = Category.objects.create(name="Sem uso", group=spare_group)
+        self.assertEqual(
+            delete(
+                self.client_as(self.tech), f"/api/v1/departments/{spare_department.pk}/"
+            ).status_code,
+            403,
+        )
+        in_use = [
+            f"/api/v1/departments/{self.department.pk}/",
+            f"/api/v1/groups/{self.group.pk}/",
+            f"/api/v1/categories/{self.category.pk}/",
+        ]
+        for path in in_use:
+            self.assertEqual(delete(admin, path).status_code, 400, path)
+        self.assertTrue(Category.objects.filter(pk=self.category.pk).exists())
+        for path in [
+            f"/api/v1/categories/{spare_category.pk}/",
+            f"/api/v1/groups/{spare_group.pk}/",
+            f"/api/v1/departments/{spare_department.pk}/",
+        ]:
+            self.assertEqual(delete(admin, path).status_code, 204, path)
+        self.assertFalse(SupportGroup.objects.filter(pk=spare_group.pk).exists())
+
+        member = Membership.objects.get(user=self.tech2, group=self.group)
+        path = f"/api/v1/memberships/{member.pk}/"
+        self.assertEqual(self.patch(admin, path, {"can_view_restricted": True}).status_code, 200)
+        member.refresh_from_db()
+        self.assertTrue(member.can_view_restricted)
+        # Management cancellation stays reserved to managers when editing too.
+        self.assertEqual(self.patch(admin, path, {"can_cancel": True}).status_code, 400)
+        grant = ReadGrant.objects.create(user=self.privacy, group=self.group)
+        response = self.patch(
+            admin, f"/api/v1/settings/ticket-access/{grant.pk}/", {"internal": True}
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        grant.refresh_from_db()
+        self.assertTrue(grant.internal)
+
     def test_transfer_options_are_scoped_to_authorized_groups(self):
         ticket = self.create(category=self.restricted_category.pk)
         for actor, expected in [(self.owner, 403), (self.tech2, 404), (self.peer, 404)]:
@@ -225,7 +274,9 @@ class TicketTests(TicketHelpers, TestCase):
 
     def test_no_cross_user_or_implicit_admin_access_in_any_read_path(self):
         ticket = self.create()
-        for user in [self.peer, self.outsider, self.admin, self.privacy]:
+        # A technician outside the group still sees the shared queue.
+        self.assertEqual(self.read(ticket, self.outsider).status_code, 200)
+        for user in [self.peer, self.admin, self.privacy]:
             for suffix in ["", "comments/", "events/"]:
                 self.assertEqual(self.read(ticket, user, suffix).status_code, 404)
             response = self.client_as(user).get(
@@ -292,6 +343,62 @@ class TicketTests(TicketHelpers, TestCase):
             204,
         )
         self.assertEqual(self.read(ticket, self.privacy).status_code, 404)
+
+    def test_notification_inbox_scope_mute_and_clear(self):
+        ticket = self.create()
+        self.claim(ticket)
+        self.mutate(ticket, self.tech, "comments", {"body": "Nota", "visibility": "internal"})
+        owner = self.client_as(self.owner)
+        actions = [n["action"] for n in owner.get("/api/v1/notifications/").json()["results"]]
+        self.assertEqual(actions, ["claimed"])
+        tech2 = [
+            n["action"]
+            for n in self.client_as(self.tech2).get("/api/v1/notifications/").json()["results"]
+        ]
+        self.assertEqual(tech2, ["created"])
+        peer = self.client_as(self.peer).get("/api/v1/notifications/").json()
+        self.assertEqual(peer["results"], [])
+        self.assertTrue(
+            self.patch(owner, "/api/v1/notifications/", {"muted": True}).json()["muted"]
+        )
+        csrf = owner.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        cleared = owner.post("/api/v1/notifications/clear/", HTTP_X_CSRFTOKEN=csrf).json()
+        self.assertEqual(cleared, {"muted": True, "results": []})
+
+    def test_number_is_year_month_and_monthly_sequence(self):
+        first, second = self.create(), self.create()
+        prefix = int(timezone.localtime().strftime("%Y%m")) * 1_000_000
+        self.assertEqual(first.number, prefix + 1)
+        self.assertEqual(second.number, prefix + 2)
+
+    def test_any_technician_claims_others_join_and_requester_closes(self):
+        ticket = self.create()
+        self.assertEqual(self.mutate(ticket, self.outsider, "claim").status_code, 200)
+        self.assertEqual(self.mutate(ticket, self.outsider, "join").status_code, 409)
+        self.assertEqual(self.mutate(ticket, self.owner, "join").status_code, 403)
+        self.assertEqual(self.mutate(ticket, self.tech2, "join").status_code, 200)
+        names = [p["name"] for p in self.read(ticket, self.owner).json()["participants"]]
+        self.assertEqual(names, ["tech2"])
+        # A participant acts like the assignee.
+        self.assertEqual(
+            self.mutate(
+                ticket, self.tech2, "transitions", {"action": "request_test", "message": "Teste"}
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.mutate(
+                ticket, self.tech, "transitions", {"action": "close", "message": "x"}
+            ).status_code,
+            403,
+        )
+        response = self.mutate(
+            ticket, self.owner, "transitions", {"action": "close", "message": "Resolvido por mim"}
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.state, "closed")
+        self.assertIsNotNone(ticket.closed_at)
 
     def test_requester_who_is_technician_cannot_self_claim_or_see_notes(self):
         ticket = self.create(user=self.tech)
@@ -430,7 +537,7 @@ class TicketTests(TicketHelpers, TestCase):
         path = f"/api/v1/tickets/{ticket.uuid}/claim/"
         self.assertEqual(self.send(self.tech, path, data, key).status_code, 200)
         with owner_role():
-            Membership.objects.filter(user=self.tech, group=self.group).delete()
+            SupportGroup.objects.filter(pk=self.group.pk).update(is_active=False)
         self.assertEqual(self.send(self.tech, path, data, key).status_code, 404)
 
     def test_correction_appends_and_cannot_change_author_or_visibility(self):
@@ -493,7 +600,8 @@ class TicketTests(TicketHelpers, TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         ticket.refresh_from_db()
         self.assertEqual(ticket.assignee_id, self.outsider.pk)
-        self.assertEqual(self.read(ticket, self.tech2).status_code, 404)
+        # The queue is shared, so the previous group still sees the ticket.
+        self.assertEqual(self.read(ticket, self.tech2).status_code, 200)
         self.transition(ticket, self.manager, "return_queue", message="Retorno à fila")
         self.assertEqual(ticket.state, Ticket.State.NEW)
         self.assertIsNone(ticket.assignee_id)

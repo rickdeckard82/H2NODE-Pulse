@@ -15,6 +15,7 @@ REVOKE ALL ON django_migrations FROM pulse_runtime;
 GRANT SELECT ON django_migrations TO pulse_runtime;
 REVOKE UPDATE, DELETE, TRUNCATE ON
     core_identityevent, tickets_auditevent, tickets_ticketevent, tickets_comment,
-    tickets_reopenpolicy, tickets_attachmentscan, tickets_idempotencyrecord
+    tickets_reopenpolicy, tickets_attachmentscan, tickets_idempotencyrecord,
+    tickets_notificationattempt, tickets_slapolicy
 FROM pulse_runtime;
 COMMIT;

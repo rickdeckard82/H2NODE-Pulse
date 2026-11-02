@@ -1,7 +1,12 @@
+import base64
+import binascii
+
 from rest_framework import serializers
 
 from core.identity import normalize_email
 from core.models import AllowedDomain, Department, Membership, SupportGroup, User
+
+AVATAR_MAX_BYTES = 100 * 1024
 
 
 class StrictSerializer(serializers.Serializer):
@@ -66,6 +71,50 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "email", "first_name", "role", "department", "is_active", "mfa_enabled"]
         read_only_fields = fields
+
+
+class ProfileSerializer(UserSerializer):
+    class Meta(UserSerializer.Meta):
+        fields = [*UserSerializer.Meta.fields, "avatar"]
+        read_only_fields = fields
+
+
+class ProfileInput(StrictSerializer):
+    """E-mail is deliberately absent: it identifies the corporate account and cannot change."""
+
+    first_name = serializers.CharField(max_length=150, required=False)
+    avatar = serializers.CharField(
+        max_length=AVATAR_MAX_BYTES * 4 // 3 + 64, required=False, allow_blank=True
+    )
+
+    def validate_avatar(self, value):
+        if not value:
+            return value
+        prefix = "data:image/jpeg;base64,"
+        try:
+            raw = base64.b64decode(value.removeprefix(prefix), validate=True)
+        except binascii.Error:
+            raw = b""
+        # The browser re-encodes the photo to JPEG, which also drops EXIF metadata.
+        if (
+            not value.startswith(prefix)
+            or not raw.startswith(b"\xff\xd8\xff")
+            or len(raw) > AVATAR_MAX_BYTES
+        ):
+            raise serializers.ValidationError("Envie uma imagem JPEG de até 100 KB.")
+        return value
+
+
+class ReasonInput(StrictSerializer):
+    reason = serializers.CharField(max_length=300)
+
+
+class UserCreateInput(EmailInput):
+    first_name = serializers.CharField(max_length=150)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(is_active=True), allow_null=True, required=False
+    )
+    reason = serializers.CharField(max_length=300)
 
 
 class UserUpdateInput(StrictSerializer):
@@ -133,8 +182,16 @@ class MembershipSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate(self, attrs):
-        user, group = attrs["user"], attrs["group"]
-        if attrs.get("can_cancel") and user.role != User.Role.MANAGER:
+        current = self.instance
+        user = attrs.get("user", current.user if current else None)
+        group = attrs.get("group", current.group if current else None)
+        if user is None or group is None:
+            raise serializers.ValidationError("Usuário e grupo são obrigatórios.")
+        if "can_cancel" not in attrs and current:
+            attrs_can_cancel = current.can_cancel
+        else:
+            attrs_can_cancel = attrs.get("can_cancel")
+        if attrs_can_cancel and user.role != User.Role.MANAGER:
             raise serializers.ValidationError("Cancelamento de gestão exige papel de gestor.")
         if (
             user.role not in {User.Role.TECHNICIAN, User.Role.MANAGER}

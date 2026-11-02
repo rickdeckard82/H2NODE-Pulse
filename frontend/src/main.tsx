@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState, type ReactNode } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api, type User } from "./api";
 import { Auth } from "./Auth";
@@ -6,6 +6,9 @@ import { Portal } from "./Portal";
 import { Admin } from "./Admin";
 import { Account } from "./Account";
 import { PasswordChange } from "./PasswordChange";
+import { Reports } from "./Reports";
+import { PulseIntro } from "./PulseIntro";
+import { Notifications } from "./Notifications";
 import "./style.css";
 
 const roleLabels: Record<string, string> = {
@@ -16,57 +19,18 @@ const roleLabels: Record<string, string> = {
   privacy: "Responsável por privacidade",
 };
 
-type IconName = "ticket" | "admin" | "profile" | "password";
-
-function Icon({ name }: { name: IconName }) {
-  const paths: Record<IconName, ReactNode> = {
-    ticket: (
-      <>
-        <path d="M4 5h16v14H4z" />
-        <path d="M8 9h8M8 13h5" />
-      </>
-    ),
-    admin: (
-      <>
-        <circle cx="12" cy="8" r="3" />
-        <path d="M6 20v-2a6 6 0 0 1 12 0v2M19 5v6M16 8h6" />
-      </>
-    ),
-    profile: (
-      <>
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21a8 8 0 0 1 16 0" />
-      </>
-    ),
-    password: (
-      <>
-        <rect x="4" y="10" width="16" height="11" rx="2" />
-        <path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2" />
-      </>
-    ),
-  };
-  return (
-    <svg
-      className="nav-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name]}
-    </svg>
-  );
-}
-
 function Waves() {
   return (
     <div className="waves" aria-hidden="true">
-      <span />
-      <span />
-      <span />
+      <svg viewBox="0 0 2880 320" preserveAspectRatio="none">
+        <path d="M0,160 C240,220 480,100 720,160 C960,220 1200,100 1440,160 C1680,220 1920,100 2160,160 C2400,220 2640,100 2880,160 L2880,320 L0,320 Z" />
+      </svg>
+      <svg viewBox="0 0 2880 320" preserveAspectRatio="none">
+        <path d="M0,180 C240,120 480,240 720,180 C960,120 1200,240 1440,180 C1680,120 1920,240 2160,180 C2400,120 2640,240 2880,180 L2880,320 L0,320 Z" />
+      </svg>
+      <svg viewBox="0 0 2880 320" preserveAspectRatio="none">
+        <path d="M0,140 C240,200 480,80 720,140 C960,200 1200,80 1440,140 C1680,200 1920,80 2160,140 C2400,200 2640,80 2880,140 L2880,320 L0,320 Z" />
+      </svg>
     </div>
   );
 }
@@ -77,250 +41,232 @@ function App() {
   const [view, setView] = useState("portal");
   const [error, setError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem("pulse_services_sidebar_collapsed") === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [logoPulseKey, setLogoPulseKey] = useState(0);
+
+  useEffect(() => {
+    setLogoPulseKey((k) => k + 1);
+  }, [view, user]);
+
+  useEffect(() => {
+    const onPageChange = () => setLogoPulseKey((k) => k + 1);
+    window.addEventListener("pulse:page-change", onPageChange);
+    return () => window.removeEventListener("pulse:page-change", onPageChange);
+  }, []);
 
   const load = () => {
     setLoading(true);
     api<User>("auth/me/")
-      .then((value) => {
-        setUser(value);
-        setAuthNotice("");
-      })
+      .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   };
-
   useEffect(load, []);
+  const menu = useRef<HTMLDetailsElement>(null);
+  const bell = useRef<HTMLDetailsElement>(null);
+  const [opened, setOpened] = useState({ id: "", n: 0 });
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "pulse_services_sidebar_collapsed",
-        sidebarCollapsed ? "1" : "0",
-      );
-    } catch {
-      // Preferência visual opcional; modo privado pode impedir persistência.
-    }
-  }, [sidebarCollapsed]);
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
+    const close = (event: Event) => {
+      for (const ref of [menu, bell])
+        if (
+          (event instanceof KeyboardEvent
+            ? event.key === "Escape"
+            : !ref.current?.contains(event.target as Node)) &&
+          ref.current?.open
+        )
+          ref.current.open = false;
     };
-  }, [sidebarOpen]);
-
-  const navigate = (next: string) => {
-    setView(next);
-    setSidebarOpen(false);
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
+  const passwordChanged = () => {
+    setAuthNotice("Senha alterada. Entre novamente com a nova senha.");
+    setUser(null);
+    setView("portal");
   };
-
-  if (loading)
-    return (
-      <div className="auth-screen">
-        <Waves />
-        <p className="loading-card" role="status">
-          Carregando seu portal…
-        </p>
-      </div>
-    );
-
-  if (!user)
-    return (
-      <div className="auth-screen">
-        <Waves />
-        <a className="skip" href="#main">
-          Ir para o conteúdo
-        </a>
-        <main id="main" className="auth-main">
-          <Auth onLogin={load} initialNotice={authNotice} />
-        </main>
-        <footer>
-          Pulse Services · Horários de Brasília (America/Sao_Paulo)
-        </footer>
-      </div>
-    );
-
   return (
-    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <>
+      <PulseIntro />
       <a className="skip" href="#main">
         Ir para o conteúdo
       </a>
-      {sidebarOpen && (
-        <button
-          className="sidebar-backdrop"
-          aria-label="Fechar menu"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-brand">
-          <span className="logo-mark" aria-hidden="true">
-            P
+      <header className="topbar">
+        <a
+          key={logoPulseKey}
+          className="brand brand-animated"
+          href="/"
+          aria-label="Pulse Services"
+          onClick={(e) => {
+            e.preventDefault();
+            if (view !== "portal") setView("portal");
+            setLogoPulseKey((k) => k + 1);
+          }}
+        >
+          <span className="brand-icon-wrap" aria-hidden="true">
+            <span className="brand-icon-ripple" />
+            <span className="brand-icon">
+              <svg viewBox="0 0 32 32" width="32" height="32">
+                <rect width="32" height="32" rx="9" fill="#174dcc" />
+                <path
+                  className="brand-icon-ecg"
+                  d="M5 17 h6 l2 4.5 l3.5 -11.5 l3 9 l2 -3.5 h5.5"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
           </span>
-          <span className="logo-name">
-            Pulse <small>Services</small>
+          <span className="brand-text">
+            <span className="brand-pulse">pulse</span>
+            <span className="brand-services">services</span>
           </span>
-          <button
-            className="sidebar-close"
-            aria-label="Fechar menu"
-            onClick={() => setSidebarOpen(false)}
-          >
-            ×
-          </button>
-          <button
-            className="sidebar-collapse"
-            aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
-            title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
-            onClick={() => setSidebarCollapsed((value) => !value)}
-          >
-            ‹‹
-          </button>
-        </div>
-        <nav className="sidebar-nav" aria-label="Navegação principal">
-          <button
-            className={view === "portal" ? "active" : ""}
-            onClick={() => navigate("portal")}
-            title="Chamados"
-          >
-            <Icon name="ticket" />
-            <span>Chamados</span>
-          </button>
-          {user.role === "admin" && (
-            <button
-              className={view === "admin" ? "active" : ""}
-              onClick={() => navigate("admin")}
-              title="Administração"
-            >
-              <Icon name="admin" />
-              <span>Administração</span>
-            </button>
-          )}
-          <p className="sidebar-section">
-            <span>Conta</span>
-          </p>
-          <button
-            className={view === "account" ? "active" : ""}
-            onClick={() => navigate("account")}
-            title="Perfil"
-          >
-            <Icon name="profile" />
-            <span>Perfil</span>
-          </button>
-          <button
-            className={view === "password" ? "active" : ""}
-            onClick={() => navigate("password")}
-            title="Alterar senha"
-          >
-            <Icon name="password" />
-            <span>Alterar senha</span>
-          </button>
-        </nav>
-        <div className="sidebar-footer">
-          <span>Pulse Services</span>
-          <small>Portal de atendimento</small>
-        </div>
-      </aside>
-
-      <div className="workspace">
-        <header className="topbar">
-          <Waves />
-          <button
-            className="menu-toggle"
-            aria-label="Abrir menu"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-          <details className="user-menu">
-            <summary aria-label={`Abrir menu de ${user.first_name}`}>
-              <span className="avatar" aria-hidden="true">
-                {user.first_name.trim().charAt(0).toUpperCase() || "U"}
-              </span>
-              <span className="user-identity">
-                <strong>{user.first_name}</strong>
-                <small>{roleLabels[user.role] || user.role}</small>
-              </span>
-              <span className="menu-chevron" aria-hidden="true">
-                ⌄
-              </span>
-            </summary>
-            <div
-              className="user-menu-popover"
-              onClick={(event) => {
-                if ((event.target as HTMLElement).closest("button"))
-                  event.currentTarget.parentElement?.removeAttribute("open");
-              }}
-            >
-              <p>
-                <small>CONTA</small>
-                <strong>{user.first_name}</strong>
-              </p>
-              <button onClick={() => navigate("password")}>
-                Alterar senha
-              </button>
-              <button onClick={() => navigate("account")}>Perfil</button>
-              {user.role === "admin" && (
-                <button onClick={() => navigate("admin")}>Administração</button>
-              )}
+        </a>
+        {user && (
+          <>
+            <nav aria-label="Navegação principal">
               <button
-                onClick={async () => {
-                  try {
-                    await api("auth/logout/", {});
-                    setUser(null);
-                    setView("portal");
-                  } catch (err) {
-                    setError((err as Error).message);
-                  }
+                className="selected"
+                aria-current={view === "portal" ? "page" : undefined}
+                onClick={() => {
+                  setView("portal");
+                  setLogoPulseKey((k) => k + 1);
                 }}
               >
-                Sair
+                Chamados
               </button>
-            </div>
-          </details>
-        </header>
-        <main id="main" className="content">
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          {view === "admin" ? (
-            <Admin />
-          ) : view === "account" ? (
-            <Account user={user} onChanged={load} />
-          ) : view === "password" ? (
-            <PasswordChange
-              onCompleted={() => {
-                setAuthNotice(
-                  "Senha alterada. Entre novamente com a nova senha.",
-                );
-                setUser(null);
+              {["manager", "admin", "privacy"].includes(user.role) && (
+                <button
+                  className="selected"
+                  aria-current={view === "reports" ? "page" : undefined}
+                  onClick={() => {
+                    setView("reports");
+                    setLogoPulseKey((k) => k + 1);
+                  }}
+                >
+                  Relatórios
+                </button>
+              )}
+            </nav>
+            <Notifications
+              ref={bell}
+              onOpen={(id) => {
                 setView("portal");
+                setOpened((o) => ({ id, n: o.n + 1 }));
               }}
             />
-          ) : (
-            <Portal user={user} onExpired={load} />
-          )}
-        </main>
-        <footer className="app-footer">
-          <Waves />
-          <span>Pulse Services · Horários de Brasília (America/Sao_Paulo)</span>
-        </footer>
-      </div>
-    </div>
+            <details className="user-menu" ref={menu}>
+              <summary aria-label={`Abrir menu de ${user.first_name}`}>
+                {user.avatar ? (
+                  <img className="avatar" src={user.avatar} alt="" />
+                ) : (
+                  <span className="avatar" aria-hidden="true">
+                    {user.first_name.trim().charAt(0).toUpperCase() || "U"}
+                  </span>
+                )}
+                <span className="user-identity">
+                  <strong>{user.first_name}</strong>
+                  <small>{roleLabels[user.role] || user.role}</small>
+                </span>
+              </summary>
+              <div
+                className="user-menu-popover"
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button"))
+                    event.currentTarget.parentElement?.removeAttribute("open");
+                }}
+              >
+                <p>
+                  <small>CONTA</small>
+                  <strong>{user.first_name}</strong>
+                </p>
+                <button
+                  onClick={() => {
+                    setView("password");
+                    setLogoPulseKey((k) => k + 1);
+                  }}
+                >
+                  Alterar senha
+                </button>
+                <button
+                  onClick={() => {
+                    setView("account");
+                    setLogoPulseKey((k) => k + 1);
+                  }}
+                >
+                  Perfil
+                </button>
+                {user.role === "admin" && (
+                  <button
+                    onClick={() => {
+                      setView("admin");
+                      setLogoPulseKey((k) => k + 1);
+                    }}
+                  >
+                    Administração
+                  </button>
+                )}
+                <button
+                  onClick={async () => {
+                    try {
+                      await api("auth/logout/", {});
+                      setUser(null);
+                      setView("portal");
+                    } catch (err) {
+                      setError((err as Error).message);
+                    }
+                  }}
+                >
+                  Sair
+                </button>
+              </div>
+            </details>
+          </>
+        )}
+      </header>
+      <main id="main">
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        {loading ? (
+          <p role="status">Carregando seu portal…</p>
+        ) : !user ? (
+          <Auth onLogin={load} initialNotice={authNotice} />
+        ) : view === "reports" ? (
+          <Reports />
+        ) : view === "admin" ? (
+          <Admin />
+        ) : view === "account" ? (
+          <Account
+            user={user}
+            onChanged={setUser}
+            onPasswordChanged={passwordChanged}
+          />
+        ) : view === "password" ? (
+          <PasswordChange onCompleted={passwordChanged} />
+        ) : (
+          <Portal
+            key={opened.n}
+            open={opened.id || undefined}
+            user={user}
+            onExpired={load}
+          />
+        )}
+      </main>
+      <footer>
+        <Waves />
+        <span>Pulse Services · Horários de Brasília (America/Sao_Paulo)</span>
+      </footer>
+    </>
   );
 }
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

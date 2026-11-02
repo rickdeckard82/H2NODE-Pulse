@@ -1,22 +1,40 @@
 import { useState } from "react";
 import { api } from "./api";
 
-export function PasswordChange({ onCompleted }: { onCompleted: () => void }) {
+export function PasswordChange({
+  onCompleted,
+  embedded = false,
+}: {
+  onCompleted: () => void;
+  embedded?: boolean;
+}) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">SEGURANÇA</p>
-          <h1>Alterar senha</h1>
-          <p>
-            Ao concluir, suas sessões e dispositivos lembrados serão revogados.
-          </p>
+      {!embedded && (
+        <div className="page-heading">
+          <div>
+            <p className="eyebrow">SEGURANÇA</p>
+            <h1>Alterar senha</h1>
+            <p>
+              Ao concluir, suas sessões e dispositivos lembrados serão
+              revogados.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
       <section className="panel narrow">
+        {embedded && (
+          <>
+            <h2>Alterar senha</h2>
+            <p>
+              Ao concluir, suas sessões e dispositivos lembrados serão
+              revogados.
+            </p>
+          </>
+        )}
         {error && (
           <p role="alert" className="error">
             {error}

@@ -43,6 +43,7 @@ def deliver_one():
     labels = {
         "verify": "Confirmação de cadastro",
         "reset": "Recuperação de senha",
+        "invite": "Convite de acesso",
         "email": "Confirmação de novo e-mail",
     }
     try:
@@ -52,8 +53,14 @@ def deliver_one():
         sender, connection = config
         delivered = send_mail(
             f"Pulse Services — {labels[token.purpose]}",
-            f"Seu código de uso único (válido por 30 minutos):\n{raw}\n\n"
-            "Use-o no portal Pulse Services. Se não fez esta solicitação, ignore a mensagem.",
+            (
+                "Uma conta foi criada para você no Pulse Services. No portal, clique em "
+                "Recuperar senha, informe este e-mail e use o código abaixo para definir "
+                f"sua senha (válido por 72 horas):\n{raw}\n"
+                if token.purpose == "invite"
+                else f"Seu código de uso único (válido por 30 minutos):\n{raw}\n\n"
+                "Use-o no portal Pulse Services. Se não fez esta solicitação, ignore a mensagem."
+            ),
             sender,
             [token.email],
             fail_silently=False,

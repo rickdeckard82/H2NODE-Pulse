@@ -1,14 +1,40 @@
 import { useState } from "react";
 import { api, type User } from "./api";
+import { PasswordChange } from "./PasswordChange";
+
+// Re-encoding on a canvas crops to a square, shrinks the upload and drops EXIF metadata.
+async function toAvatar(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const context = canvas.getContext("2d")!;
+  context.fillStyle = "white";
+  context.fillRect(0, 0, 256, 256);
+  context.drawImage(
+    bitmap,
+    (bitmap.width - side) / 2,
+    (bitmap.height - side) / 2,
+    side,
+    side,
+    0,
+    0,
+    256,
+    256,
+  );
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
 
 export function Account({
   user,
   onChanged,
+  onPasswordChanged,
 }: {
   user: User;
-  onChanged: () => void;
+  onChanged: (user: User) => void;
+  onPasswordChanged: () => void;
 }) {
-  const [pending, setPending] = useState(false);
+  const [avatar, setAvatar] = useState(user.avatar);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,7 +49,7 @@ export function Account({
         </div>
       </div>
       <section className="panel narrow">
-        <h2>{pending ? "Confirmar novo e-mail" : "Alterar e-mail"}</h2>
+        <h2>Foto e nome</h2>
         {error && (
           <p role="alert" className="error">
             {error}
@@ -34,95 +60,88 @@ export function Account({
             {notice}
           </p>
         )}
-        {pending ? (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (busy) return;
-              setBusy(true);
-              setError("");
-              try {
-                await api(
-                  "auth/confirm-email/",
-                  Object.fromEntries(new FormData(e.currentTarget)),
-                );
-                setNotice(
-                  "Novo e-mail confirmado. Entre novamente com o endereço atualizado.",
-                );
-                onChanged();
-              } catch (err) {
-                setError((err as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label>
-              Código recebido no novo e-mail
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setBusy(true);
+            setError("");
+            setNotice("");
+            try {
+              const updated = await api<User>(
+                "auth/me/",
+                {
+                  first_name: new FormData(e.currentTarget).get("first_name"),
+                  avatar,
+                },
+                "PATCH",
+              );
+              setNotice("Perfil atualizado.");
+              onChanged(updated);
+            } catch (err) {
+              setError((err as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <div className="profile-photo">
+            {avatar ? (
+              <img className="avatar large" src={avatar} alt="Sua foto" />
+            ) : (
+              <span className="avatar large" aria-hidden="true">
+                {user.first_name.trim().charAt(0).toUpperCase() || "U"}
+              </span>
+            )}
+            <label className="secondary file-button">
+              Escolher imagem
               <input
-                name="token"
-                required
-                autoComplete="one-time-code"
-                maxLength={128}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={async (e) => {
+                  const file = e.currentTarget.files?.[0];
+                  if (!file) return;
+                  try {
+                    setAvatar(await toAvatar(file));
+                  } catch {
+                    setError("Não foi possível ler essa imagem.");
+                  }
+                }}
               />
             </label>
-            <button disabled={busy}>
-              {busy ? "Confirmando…" : "Confirmar novo e-mail"}
-            </button>
-            <button
-              type="button"
-              className="link"
-              onClick={() => {
-                setPending(false);
-                setError("");
-                setNotice("");
-              }}
-            >
-              Cancelar
-            </button>
-          </form>
-        ) : (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (busy) return;
-              setBusy(true);
-              setError("");
-              try {
-                await api(
-                  "auth/email/",
-                  Object.fromEntries(new FormData(e.currentTarget)),
-                );
-                setPending(true);
-                setNotice(
-                  "Enviamos um código ao novo e-mail, quando o endereço é elegível.",
-                );
-              } catch (err) {
-                setError((err as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label>
-              Novo e-mail corporativo
-              <input name="email" type="email" required autoComplete="email" />
-            </label>
-            <label>
-              Senha atual
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-              />
-            </label>
-            <button disabled={busy}>
-              {busy ? "Enviando…" : "Enviar código de confirmação"}
-            </button>
-          </form>
-        )}
+            {avatar && (
+              <button
+                type="button"
+                className="link"
+                onClick={() => setAvatar("")}
+              >
+                Remover foto
+              </button>
+            )}
+          </div>
+          <label>
+            Nome
+            <input
+              name="first_name"
+              required
+              maxLength={150}
+              defaultValue={user.first_name}
+              autoComplete="name"
+            />
+          </label>
+          <label>
+            E-mail corporativo
+            <input value={user.email} readOnly aria-describedby="email-hint" />
+            <small id="email-hint">
+              O e-mail da conta não pode ser alterado.
+            </small>
+          </label>
+          <button disabled={busy}>
+            {busy ? "Salvando…" : "Salvar perfil"}
+          </button>
+        </form>
       </section>
+      <PasswordChange embedded onCompleted={onPasswordChanged} />
     </>
   );
 }

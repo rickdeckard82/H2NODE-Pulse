@@ -19,6 +19,10 @@ class User(AbstractUser):
     mfa_enabled = models.BooleanField(default=False)
     mfa_last_counter = models.BigIntegerField(default=-1)
     recovery_hashes = models.JSONField(default=list)
+    avatar = models.TextField(blank=True)
+    # In-app bell: events up to this instant are cleared; muted hides the unread badge.
+    notifications_cleared_at = models.DateTimeField(null=True, blank=True)
+    notifications_muted = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -118,3 +122,15 @@ class SmtpConfiguration(models.Model):
 
     class Meta:
         constraints = [models.CheckConstraint(condition=models.Q(id=1), name="smtp_singleton")]
+
+
+class ChatConfiguration(models.Model):
+    """Single Google Chat space webhook; the URL is always encrypted at rest."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    enabled = models.BooleanField(default=False)
+    encrypted_webhook = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="chat_singleton")]

@@ -1,9 +1,11 @@
 import time
+import uuid
 
 import pyotp
 from django.conf import settings
 from django.contrib.auth import logout
 from django.db import transaction
+from django.db.models import ProtectedError
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
@@ -28,10 +30,14 @@ from core.serializers import (
     OrganizationSerializer,
     PasswordChangeInput,
     PasswordInput,
+    ProfileInput,
+    ProfileSerializer,
+    ReasonInput,
     RegisterInput,
     ResetInput,
     StrictSerializer,
     TokenInput,
+    UserCreateInput,
     UserSerializer,
     UserUpdateInput,
 )
@@ -82,8 +88,8 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
             identity.register(data)
         elif self.action in {"resend", "forgot"}:
             identity.request_token(data["email"], "verify" if self.action == "resend" else "reset")
-        elif self.action in {"confirm", "reset", "confirm_email"}:
-            purpose = {"confirm": "verify", "reset": "reset", "confirm_email": "email"}[self.action]
+        elif self.action in {"confirm", "reset"}:
+            purpose = {"confirm": "verify", "reset": "reset"}[self.action]
             identity.redeem_token(data["token"], purpose, data.get("password"))
             result = {"status": "completed"}
         elif self.action == "login":
@@ -117,10 +123,6 @@ class ResetView(AuthActionView):
     action, serializer_class = "reset", ResetInput
 
 
-class ConfirmEmailView(AuthActionView):
-    action, serializer_class = "confirm_email", TokenInput
-
-
 class LoginView(AuthActionView):
     action, serializer_class = "login", LoginInput
 
@@ -134,10 +136,23 @@ class MfaVerifyView(AuthActionView):
 
 
 class MeView(NoStoreMixin, generics.RetrieveAPIView):
-    serializer_class = UserSerializer
+    serializer_class = ProfileSerializer
 
     def get_object(self):
         return self.request.user
+
+    @extend_schema(request=ProfileInput, responses={200: ProfileSerializer})
+    @transaction.atomic
+    def patch(self, request):
+        serializer = ProfileInput(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = locked_actor(request)
+        for field, value in data.items():
+            setattr(user, field, value)
+        user.save(update_fields=list(data))
+        identity.audit(user, "account.profile_updated", user.pk, {"fields": sorted(data)})
+        return Response(ProfileSerializer(user).data)
 
 
 class SessionActionView(NoStoreMixin, generics.GenericAPIView):
@@ -164,32 +179,6 @@ class SessionActionView(NoStoreMixin, generics.GenericAPIView):
         from core.trusted_devices import apply_cookie
 
         return apply_cookie(request, Response({"status": "completed"}))
-
-
-class EmailChangeView(NoStoreMixin, generics.GenericAPIView):
-    serializer_class = LoginInput
-
-    @extend_schema(responses={200: IdentityResult})
-    def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        identity.rate_limit("email_change", str(request.user.pk), settings.IDENTITY_RATE_LIMIT)
-        return self.change_email(request, data)
-
-    @transaction.atomic
-    def change_email(self, request, data):
-        identity.identity_lock()
-        user = locked_actor(request)
-        if not user.check_password(data["password"]):
-            raise PermissionDenied("Credenciais inválidas.")
-        if (
-            identity.domain_allowed(data["email"])
-            and not User.objects.filter(email=data["email"]).exists()
-        ):
-            identity.issue_token(user, "email", data["email"])
-            identity.audit(user, "account.email_change_requested", user.pk)
-        return Response({"detail": "Se o endereço for elegível, enviaremos um código por e-mail."})
 
 
 class PasswordChangeView(NoStoreMixin, generics.GenericAPIView):
@@ -304,6 +293,32 @@ class UserViewSet(
 ):
     serializer_class = UserSerializer
 
+    @extend_schema(request=UserCreateInput, responses={201: UserSerializer})
+    @transaction.atomic
+    def create(self, request):
+        identity.identity_lock()
+        actor = locked_actor(request, admin=True)
+        serializer = UserCreateInput(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if not identity.domain_allowed(data["email"]):
+            raise ValidationError({"email": ["Domínio não autorizado."]})
+        if User.objects.filter(email__iexact=data["email"]).exists():
+            raise ValidationError({"email": ["Já existe uma conta com este e-mail."]})
+        # Always a collaborator without password: privileges only after the invite proves the
+        # mailbox, as with self-registration.
+        user = User(
+            username=uuid.uuid4().hex,
+            email=data["email"],
+            first_name=data["first_name"],
+            department=data.get("department"),
+        )
+        user.set_unusable_password()
+        user.save()
+        identity.issue_token(user, "invite")
+        identity.audit(actor, "account.created", user.pk, {"reason": data["reason"]})
+        return Response(UserSerializer(user).data, status=201)
+
     def get_queryset(self):
         users = User.objects.order_by("id")
         if getattr(self, "swagger_fake_view", False):
@@ -339,6 +354,9 @@ class UserViewSet(
         ):
             raise ValidationError("Não é permitido remover o último administrador ativo.")
         changes = {"reason": data.pop("reason")}
+        # Only privilege or activation changes revoke sessions and pending codes; the area is a
+        # label that grants no access, so it must not invalidate an unconfirmed sign-up.
+        revoke = role != user.role or active != user.is_active
         for field, value in data.items():
             previous = getattr(user, f"{field}_id" if field == "department" else field)
             changes[field] = {
@@ -346,7 +364,8 @@ class UserViewSet(
                 "to": value.pk if field == "department" and value else value,
             }
             setattr(user, field, value)
-        user.session_version += 1
+        if revoke:
+            user.session_version += 1
         user.save()
         if role not in {User.Role.TECHNICIAN, User.Role.MANAGER} or not active:
             Membership.objects.filter(user=user).delete()
@@ -362,7 +381,7 @@ class AdminWriteViewSet(
     mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_permissions(self):
         cls = (
@@ -401,6 +420,21 @@ class AdminWriteViewSet(
         obj = serializer.save()
         identity.audit(self.request.user, f"{obj._meta.model_name}.updated", obj.pk, changes)
 
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        identity.identity_lock()
+        locked_actor(request, admin=True)
+        obj = self.get_object()
+        name = obj._meta.model_name
+        try:
+            # Every reference (accounts, tickets, categories, memberships) is PROTECT.
+            with transaction.atomic():
+                obj.delete()
+        except ProtectedError:
+            raise ValidationError("Registro em uso; desative-o em vez de remover.") from None
+        identity.audit(request.user, f"{name}.deleted", kwargs["pk"])
+        return Response(status=204)
+
 
 class DepartmentViewSet(AdminWriteViewSet):
     serializer_class = OrganizationSerializer
@@ -431,39 +465,66 @@ class DomainViewSet(AdminWriteViewSet):
         obj = serializer.save()
         identity.audit(self.request.user, "domain.created", obj.pk, {"reason": reason})
 
+    http_method_names = [*AdminWriteViewSet.http_method_names, "delete"]
+
+    def disable_accounts(self, domain, reason):
+        affected = User.objects.filter(email__endswith="@" + domain.domain, is_active=True)
+        if (
+            affected.filter(role=User.Role.ADMIN).exists()
+            and not User.objects.filter(role=User.Role.ADMIN, is_active=True)
+            .exclude(pk__in=affected.values("pk"))
+            .exists()
+        ):
+            raise ValidationError("A remoção bloquearia o último administrador ativo.")
+        for user in affected:
+            user.is_active = False
+            user.session_version += 1
+            user.save(update_fields=["is_active", "session_version"])
+            Membership.objects.filter(user=user).delete()
+            identity.audit(
+                self.request.user, "account.domain_disabled", user.pk, {"reason": reason}
+            )
+
     def perform_update(self, serializer):
         reason = serializer.validated_data.pop("reason", "")
         if not reason:
             raise ValidationError({"reason": "Informe o motivo."})
         domain = serializer.instance
-        affected = User.objects.filter(email__endswith="@" + domain.domain, is_active=True)
         if domain.is_active and serializer.validated_data.get("is_active") is False:
-            if (
-                affected.filter(role=User.Role.ADMIN).exists()
-                and not User.objects.filter(role=User.Role.ADMIN, is_active=True)
-                .exclude(pk__in=affected.values("pk"))
-                .exists()
-            ):
-                raise ValidationError("A remoção bloquearia o último administrador ativo.")
-            for user in affected:
-                user.is_active = False
-                user.session_version += 1
-                user.save(update_fields=["is_active", "session_version"])
-                Membership.objects.filter(user=user).delete()
-                identity.audit(
-                    self.request.user, "account.domain_disabled", user.pk, {"reason": reason}
-                )
+            self.disable_accounts(domain, reason)
         obj = serializer.save()
         identity.audit(self.request.user, "domain.updated", obj.pk, {"reason": reason})
+
+    @extend_schema(request=ReasonInput, responses={204: None})
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        identity.identity_lock()
+        locked_actor(request, admin=True)
+        reason = ReasonInput(data=request.data)
+        reason.is_valid(raise_exception=True)
+        domain = self.get_object()
+        # Removing must not leave accounts usable that deactivation would have blocked.
+        if domain.is_active:
+            self.disable_accounts(domain, reason.validated_data["reason"])
+        identity.audit(
+            request.user,
+            "domain.deleted",
+            domain.pk,
+            {"domain": domain.domain, "reason": reason.validated_data["reason"]},
+        )
+        domain.delete()
+        return Response(status=204)
 
 
 class MembershipViewSet(
     NoStoreMixin,
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     permission_classes = [IsIdentityAdmin]
     serializer_class = MembershipSerializer
     queryset = Membership.objects.order_by("id")
@@ -488,6 +549,25 @@ class MembershipViewSet(
             },
         )
         return Response(serializer.data, status=201)
+
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        identity.identity_lock()
+        locked_actor(request, admin=True)
+        return super().partial_update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        changes = {
+            field: {
+                "from": getattr(getattr(serializer.instance, field), "pk", None)
+                if field in {"user", "group"}
+                else getattr(serializer.instance, field),
+                "to": getattr(value, "pk", value),
+            }
+            for field, value in serializer.validated_data.items()
+        }
+        obj = serializer.save()
+        identity.audit(self.request.user, "membership.updated", obj.pk, changes)
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):

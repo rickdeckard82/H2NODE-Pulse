@@ -1,28 +1,66 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { all, api } from "./api";
+import { ChatSettings } from "./ChatSettings";
+import { NotificationDiagnostics } from "./NotificationDiagnostics";
 import { SmtpSettings } from "./SmtpSettings";
-type Field = { key: string; label: string; type?: string; options?: string[] };
+type Field = {
+  key: string;
+  label: string;
+  type?: string;
+  // [value sent to the API, label shown to the administrator]
+  options?: [string, string][];
+  default?: string;
+  optional?: boolean;
+  // Picks a record by name instead of asking the administrator for its numeric id.
+  ref?: "users" | "groups" | "departments";
+  roles?: string[];
+};
 type Resource = {
   label: string;
   path: string;
   fields: Field[];
   editable?: boolean;
   removable?: boolean;
+  removeLabel?: string;
+  removeReason?: boolean;
+  // Creation can ask for different data than editing (e.g. a new account's e-mail).
+  createFields?: Field[];
+  toggleActive?: boolean;
   create?: boolean;
+  note?: string;
+};
+type Ref = {
+  id: number;
+  name?: string;
+  first_name?: string;
+  email?: string;
+  role?: string;
+  is_active?: boolean;
 };
 const name: Field = { key: "name", label: "Nome" };
 const active: Field = { key: "is_active", label: "Ativo", type: "checkbox" };
 const reason: Field = { key: "reason", label: "Justificativa" };
-const group: Field = { key: "group", label: "Grupo (ID)", type: "number" };
-const user: Field = { key: "user", label: "Usuário (ID)", type: "number" };
+const group: Field = { key: "group", label: "Grupo", ref: "groups" };
+const department: Field = {
+  key: "department",
+  label: "Área",
+  ref: "departments",
+  optional: true,
+};
+const versioned =
+  "Cada versão é imutável e auditada; para mudar, salve uma nova versão. Chamados mantêm a versão vigente na abertura.";
 const resources: Resource[] = [
   { label: "SMTP", path: "settings/smtp", fields: [] },
+  { label: "Google Chat", path: "settings/chat", fields: [] },
+  { label: "Entregas", path: "settings/notifications", fields: [] },
   {
     label: "Áreas",
     path: "departments",
     fields: [name, active],
     editable: true,
     create: true,
+    removable: true,
+    toggleActive: true,
   },
   {
     label: "Grupos",
@@ -30,6 +68,8 @@ const resources: Resource[] = [
     fields: [name, active],
     editable: true,
     create: true,
+    removable: true,
+    toggleActive: true,
   },
   {
     label: "Categorias",
@@ -42,6 +82,8 @@ const resources: Resource[] = [
     ],
     editable: true,
     create: true,
+    removable: true,
+    toggleActive: true,
   },
   {
     label: "Contas e perfis",
@@ -50,17 +92,27 @@ const resources: Resource[] = [
       {
         key: "role",
         label: "Papel",
-        options: ["collaborator", "technician", "manager", "admin", "privacy"],
+        options: [
+          ["collaborator", "Colaborador"],
+          ["technician", "Técnico"],
+          ["manager", "Gestor de TI"],
+          ["admin", "Administrador"],
+          ["privacy", "Responsável por privacidade"],
+        ],
       },
-      {
-        key: "department",
-        label: "Área (ID, vazio para remover)",
-        type: "number",
-      },
+      department,
       active,
       reason,
     ],
+    createFields: [
+      { key: "first_name", label: "Nome" },
+      { key: "email", label: "E-mail corporativo", type: "email" },
+      department,
+      reason,
+    ],
     editable: true,
+    create: true,
+    toggleActive: true,
   },
   {
     label: "Domínios de confiança",
@@ -72,12 +124,20 @@ const resources: Resource[] = [
     ],
     editable: true,
     create: true,
+    removable: true,
+    removeReason: true,
+    toggleActive: true,
   },
   {
     label: "Membros dos grupos",
     path: "memberships",
     fields: [
-      user,
+      {
+        key: "user",
+        label: "Técnico ou gestor",
+        ref: "users",
+        roles: ["technician", "manager"],
+      },
       group,
       {
         key: "can_view_restricted",
@@ -87,6 +147,7 @@ const resources: Resource[] = [
       { key: "can_transfer", label: "Pode transferir", type: "checkbox" },
       { key: "can_cancel", label: "Gestor pode cancelar", type: "checkbox" },
     ],
+    editable: true,
     removable: true,
     create: true,
   },
@@ -94,11 +155,17 @@ const resources: Resource[] = [
     label: "Concessões de leitura",
     path: "settings/ticket-access",
     fields: [
-      user,
+      {
+        key: "user",
+        label: "Administrador ou privacidade",
+        ref: "users",
+        roles: ["admin", "privacy"],
+      },
       group,
       { key: "internal", label: "Notas internas", type: "checkbox" },
       { key: "restricted", label: "Restritos", type: "checkbox" },
     ],
+    editable: true,
     removable: true,
     create: true,
   },
@@ -110,21 +177,135 @@ const resources: Resource[] = [
       reason,
     ],
     create: true,
+    note: versioned,
+  },
+  {
+    label: "Política de SLA",
+    path: "settings/sla-policies",
+    fields: [
+      {
+        key: "timezone",
+        label: "Fuso horário (IANA)",
+        default: "America/Sao_Paulo",
+      },
+      {
+        key: "weekdays",
+        label: "Dias úteis (0 = segunda … 6 = domingo)",
+        default: "0,1,2,3,4",
+      },
+      {
+        key: "start_time",
+        label: "Início do expediente",
+        type: "time",
+        default: "08:00",
+      },
+      {
+        key: "end_time",
+        label: "Fim do expediente",
+        type: "time",
+        default: "18:00",
+      },
+      {
+        key: "holidays",
+        label: "Feriados (AAAA-MM-DD, separados por espaço)",
+        optional: true,
+      },
+      {
+        key: "p1_response",
+        label: "P1 · 1ª resposta (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p1_resolution",
+        label: "P1 · resolução (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p2_response",
+        label: "P2 · 1ª resposta (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p2_resolution",
+        label: "P2 · resolução (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p3_response",
+        label: "P3 · 1ª resposta (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p3_resolution",
+        label: "P3 · resolução (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p4_response",
+        label: "P4 · 1ª resposta (min úteis)",
+        type: "number",
+      },
+      {
+        key: "p4_resolution",
+        label: "P4 · resolução (min úteis)",
+        type: "number",
+      },
+      reason,
+    ],
+    create: true,
+    note: versioned,
   },
 ];
 type Row = Record<string, string | number | boolean | null>;
 export function Admin() {
-  const [resource, setResource] = useState(resources[1]);
+  const [resource, setResource] = useState(
+    resources.find((item) => item.path === "departments")!,
+  );
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("pulse:page-change"));
+  }, [resource]);
   const [rows, setRows] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [refs, setRefs] = useState<Record<string, Ref[]>>({});
+  const loadRefs = useCallback(async () => {
+    const [users, groups, departments] = await Promise.all(
+      ["users", "groups", "departments"].map((path) => all<Ref>(path + "/")),
+    );
+    setRefs({ users, groups, departments });
+  }, []);
+  useEffect(() => {
+    loadRefs().catch((err) => setError(err.message));
+  }, [loadRefs]);
+  const refLabel = (ref: Ref) =>
+    ref.name || (ref.first_name ? `${ref.first_name} · ${ref.email}` : "");
+  const refName = (source: string, id: Row[string]) => {
+    const found = refs[source]?.find((ref) => ref.id === id);
+    return found
+      ? found.name || found.first_name || ""
+      : id == null
+        ? "—"
+        : String(id);
+  };
+  const display = (field: Field, value: Row[string]) =>
+    field.ref
+      ? refName(field.ref, value)
+      : typeof value === "boolean"
+        ? value
+          ? "Sim"
+          : "Não"
+        : (field.options?.find(([option]) => option === value)?.[1] ??
+          String(value));
   async function load() {
     setRows(await all<Row>(resource.path + "/"));
+    await loadRefs();
   }
   useEffect(() => {
-    if (resource.path === "settings/smtp") return;
+    if (resource.path.startsWith("settings/") && !resource.fields.length)
+      return;
     let active = true;
     all<Row>(resource.path + "/")
       .then((data) => {
@@ -137,6 +318,42 @@ export function Admin() {
       active = false;
     };
   }, [resource]);
+  const title = (row: Row) =>
+    String(
+      row.name ||
+        (row.first_name ? `${row.first_name} · ${row.email}` : row.email) ||
+        row.domain ||
+        (row.user
+          ? `${refName("users", row.user)} · ${refName("groups", row.group)}`
+          : row.p1_response !== undefined
+            ? `SLA · ${row.reason}`
+            : `${row.hours} horas · ${row.reason}`),
+    );
+  const formFields = editing
+    ? resource.fields
+    : resource.createFields || resource.fields;
+  async function toggle(row: Row) {
+    const verb = row.is_active ? "Desativar" : "Reativar";
+    const body: Record<string, unknown> = { is_active: !row.is_active };
+    if (resource.fields.some((f) => f.key === "reason")) {
+      const reason = window.prompt(
+        `${verb} ${title(row)}? Informe a justificativa.`,
+      );
+      if (!reason?.trim()) return;
+      body.reason = reason;
+    } else if (!window.confirm(`${verb} ${title(row)}?`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`${resource.path}/${row.id}/`, body, "PATCH");
+      await load();
+      setNotice(row.is_active ? "Registro desativado." : "Registro reativado.");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <div className="page-heading">
@@ -177,32 +394,30 @@ export function Admin() {
       )}
       {resource.path === "settings/smtp" ? (
         <SmtpSettings />
+      ) : resource.path === "settings/chat" ? (
+        <ChatSettings />
+      ) : resource.path === "settings/notifications" ? (
+        <NotificationDiagnostics />
       ) : (
         <div className="detail-grid">
           <section className="panel">
             <h2>{resource.label}</h2>
+            {resource.note && <p>{resource.note}</p>}
             {!rows.length && <p>Nenhum registro.</p>}
             <ul className="admin-list">
               {rows.map((row) => (
                 <li key={String(row.id)}>
                   <div>
-                    <strong>
-                      #{row.id} ·{" "}
-                      {String(
-                        row.name ||
-                          row.email ||
-                          row.domain ||
-                          (row.user
-                            ? `Usuário ${row.user} / Grupo ${row.group}`
-                            : `${row.hours} horas`),
-                      )}
-                    </strong>
+                    <strong>{title(row)}</strong>
                     <small>
                       {resource.fields
                         .filter(
-                          (f) => row[f.key] !== undefined && f.key !== "name",
+                          (f) =>
+                            row[f.key] !== undefined &&
+                            f.key !== "name" &&
+                            !(row.user && ["user", "group"].includes(f.key)),
                         )
-                        .map((f) => `${f.label}: ${String(row[f.key])}`)
+                        .map((f) => `${f.label}: ${display(f, row[f.key])}`)
                         .join(" · ")}
                     </small>
                   </div>
@@ -214,7 +429,16 @@ export function Admin() {
                         setError("");
                       }}
                     >
-                      Editar #{row.id}
+                      Editar
+                    </button>
+                  )}
+                  {resource.toggleActive && (
+                    <button
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => toggle(row)}
+                    >
+                      {row.is_active ? "Desativar" : "Reativar"}
                     </button>
                   )}
                   {resource.removable && (
@@ -222,17 +446,25 @@ export function Admin() {
                       className="secondary"
                       disabled={busy}
                       onClick={async () => {
-                        if (!window.confirm(`Revogar acesso #${row.id}?`))
+                        const label = resource.removeLabel || "Remover";
+                        let body = {};
+                        if (resource.removeReason) {
+                          const reason = window.prompt(
+                            `${label} ${title(row)}? Informe a justificativa.`,
+                          );
+                          if (!reason?.trim()) return;
+                          body = { reason };
+                        } else if (!window.confirm(`${label} ${title(row)}?`))
                           return;
                         setBusy(true);
                         try {
                           await api(
                             `${resource.path}/${row.id}/`,
-                            {},
+                            body,
                             "DELETE",
                           );
                           await load();
-                          setNotice("Acesso revogado.");
+                          setNotice("Registro removido.");
                         } catch (err) {
                           setError((err as Error).message);
                         } finally {
@@ -240,7 +472,7 @@ export function Admin() {
                         }
                       }}
                     >
-                      Revogar #{row.id}
+                      {resource.removeLabel || "Remover"}
                     </button>
                   )}
                 </li>
@@ -248,7 +480,7 @@ export function Admin() {
             </ul>
           </section>
           <section className="panel">
-            <h2>{editing ? `Editar #${editing.id}` : "Novo registro"}</h2>
+            <h2>{editing ? `Editar ${title(editing)}` : "Novo registro"}</h2>
             {resource.create || editing ? (
               <form
                 key={`${resource.path}/${editing?.id}`}
@@ -257,13 +489,14 @@ export function Admin() {
                   if (busy) return;
                   setBusy(true);
                   setError("");
-                  const form = new FormData(e.currentTarget);
+                  const element = e.currentTarget;
+                  const form = new FormData(element);
                   const data: Record<string, unknown> = {};
-                  resource.fields.forEach((f) => {
+                  formFields.forEach((f) => {
                     data[f.key] =
                       f.type === "checkbox"
                         ? form.has(f.key)
-                        : f.type === "number"
+                        : f.type === "number" || f.ref
                           ? form.get(f.key)
                             ? Number(form.get(f.key))
                             : null
@@ -276,8 +509,13 @@ export function Admin() {
                       editing ? "PATCH" : "POST",
                     );
                     setEditing(null);
+                    element.reset();
                     await load();
-                    setNotice("Configuração salva.");
+                    setNotice(
+                      resource.createFields && !editing
+                        ? "Conta criada como Colaborador. O convite para definir a senha foi enviado por e-mail."
+                        : "Configuração salva.",
+                    );
                   } catch (err) {
                     setError((err as Error).message);
                   } finally {
@@ -285,7 +523,7 @@ export function Admin() {
                   }
                 }}
               >
-                {resource.fields.map((f) => (
+                {formFields.map((f) => (
                   <label
                     className={f.type === "checkbox" ? "checkbox" : ""}
                     key={f.key}
@@ -305,19 +543,52 @@ export function Admin() {
                     {f.options ? (
                       <select
                         name={f.key}
-                        defaultValue={String(editing?.[f.key] || f.options[0])}
+                        defaultValue={String(
+                          editing?.[f.key] || f.options[0][0],
+                        )}
                       >
-                        {f.options.map((v) => (
-                          <option key={v}>{v}</option>
+                        {f.options.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
                         ))}
+                      </select>
+                    ) : f.ref ? (
+                      <select
+                        name={f.key}
+                        required={!f.optional}
+                        defaultValue={String(editing?.[f.key] ?? "")}
+                      >
+                        <option value="">
+                          {f.optional ? "Nenhuma" : "Selecione…"}
+                        </option>
+                        {(refs[f.ref] || [])
+                          .filter(
+                            (ref) =>
+                              (!f.roles ||
+                                f.roles.includes(String(ref.role))) &&
+                              (ref.is_active !== false ||
+                                ref.id === editing?.[f.key]),
+                          )
+                          .map((ref) => (
+                            <option key={ref.id} value={ref.id}>
+                              {refLabel(ref)}
+                            </option>
+                          ))}
                       </select>
                     ) : f.type !== "checkbox" ? (
                       <input
                         type={f.type || "text"}
                         name={f.key}
-                        min={f.key === "hours" ? 0 : 1}
-                        required={f.key !== "department"}
-                        defaultValue={String(editing?.[f.key] ?? "")}
+                        min={
+                          f.type === "number"
+                            ? Number(f.key !== "hours")
+                            : undefined
+                        }
+                        required={f.key !== "department" && !f.optional}
+                        defaultValue={String(
+                          editing?.[f.key] ?? f.default ?? "",
+                        )}
                       />
                     ) : null}
                   </label>

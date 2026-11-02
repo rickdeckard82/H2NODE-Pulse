@@ -18,6 +18,7 @@ from tickets.models import (
     IdempotencyRecord,
     NotificationOutbox,
     ReopenPolicy,
+    SlaPolicy,
     Ticket,
     TicketEvent,
 )
@@ -37,14 +38,14 @@ def key_from_request(request):
         raise ValidationError({"Idempotency-Key": "Informe uma chave UUID por operação."}) from None
 
 
-def emit(ticket, actor, action, previous, comment=None, changes=None):
+def emit(ticket, actor, action, previous, comment=None, changes=None, visibility=None):
     now = timezone.now()
     event = TicketEvent.objects.create(
         ticket=ticket,
         actor=actor,
         action=action,
         version=ticket.version,
-        visibility=comment.visibility if comment else Comment.Visibility.PUBLIC,
+        visibility=visibility or (comment.visibility if comment else Comment.Visibility.PUBLIC),
         from_state=previous,
         to_state=ticket.state,
         comment=comment,
@@ -169,6 +170,7 @@ def create_ticket(actor, unused, data):
         urgency=data["urgency"],
         priority={6: 1, 5: 2, 4: 3, 3: 4, 2: 4}[score],
         reopen_policy=ReopenPolicy.objects.order_by("-pk").first(),
+        sla_policy=SlaPolicy.objects.order_by("-pk").first(),
         related_ticket=related,
     )
     return emit(
@@ -186,7 +188,11 @@ def create_ticket(actor, unused, data):
 
 def require_support(actor, ticket, assigned=False):
     member = membership(actor, ticket)
-    if not member or (assigned and ticket.assignee_id != actor.pk):
+    if not member or (
+        assigned
+        and ticket.assignee_id != actor.pk
+        and not ticket.participants.filter(pk=actor.pk).exists()
+    ):
         raise PermissionDenied("Ação exige técnico autorizado e, quando aplicável, atribuído.")
     return member
 
@@ -198,8 +204,10 @@ def valid_assignee(user, group, restricted, requester_id):
         or user.role not in {User.Role.TECHNICIAN, User.Role.MANAGER}
     ):
         return False
-    members = Membership.objects.filter(user=user, group=group, group__is_active=True)
-    return members.filter(can_view_restricted=True).exists() if restricted else members.exists()
+    if not group.is_active:
+        return False
+    members = Membership.objects.filter(user=user, group=group, can_view_restricted=True)
+    return members.exists() if restricted else True
 
 
 def check_assignment(ticket):
@@ -217,6 +225,19 @@ def claim(actor, ticket, data):
     ticket.assignee, ticket.state = actor, Ticket.State.ACTIVE
     advance(ticket)
     return emit(ticket, actor, "claimed", before, changes={"assignee": actor.pk})
+
+
+def join(actor, ticket, data):
+    require_support(actor, ticket)
+    if ticket.state not in {Ticket.State.ACTIVE, Ticket.State.INFORMATION, Ticket.State.TEST}:
+        raise Conflict("Só é possível participar de chamados em atendimento.")
+    if ticket.assignee_id == actor.pk or ticket.participants.filter(pk=actor.pk).exists():
+        raise Conflict("Você já participa deste chamado.")
+    ticket.participants.add(actor)
+    advance(ticket)
+    return emit(
+        ticket, actor, "participant.joined", ticket.state, changes={"participant": actor.pk}
+    )
 
 
 def add_comment(actor, ticket, data):
@@ -258,6 +279,7 @@ def transition(actor, ticket, data):
         "reopen",
         "cancel",
         "return_queue",
+        "close",
     }
     if action in text_actions and not body:
         raise ValidationError({"message": "Informe o texto público obrigatório para esta ação."})
@@ -285,6 +307,17 @@ def transition(actor, ticket, data):
             raise PermissionDenied("Somente o solicitante pode confirmar a solução.")
         if before != Ticket.State.RESOLVED:
             raise Conflict("Somente chamados resolvidos podem ser confirmados.")
+        ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
+    elif action == "close":
+        if not owner:
+            raise PermissionDenied("Somente o solicitante pode encerrar o chamado.")
+        if before not in {
+            Ticket.State.ACTIVE,
+            Ticket.State.INFORMATION,
+            Ticket.State.TEST,
+            Ticket.State.RESOLVED,
+        }:
+            raise Conflict("Chamado novo deve ser cancelado; encerrados não mudam.")
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "reopen":
         if not owner and not (manager and before == Ticket.State.CLOSED):
@@ -320,6 +353,7 @@ def transition(actor, ticket, data):
         if before in {Ticket.State.NEW, Ticket.State.CLOSED, Ticket.State.CANCELLED}:
             raise Conflict("Não é possível devolver este estado à fila.")
         ticket.state, ticket.assignee = Ticket.State.NEW, None
+        ticket.participants.clear()
     else:
         raise ValidationError({"action": "Ação desconhecida."})
     comment = (

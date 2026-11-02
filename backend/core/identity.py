@@ -92,6 +92,9 @@ def rate_limit(scope, identity, limit=10):
         bucket.save()
 
 
+INVITE_VALIDITY = timedelta(hours=72)
+
+
 def issue_token(user, purpose, email=None):
     raw = secrets.token_urlsafe(32)
     now = timezone.now()
@@ -102,7 +105,7 @@ def issue_token(user, purpose, email=None):
         purpose=purpose,
         email=email or user.email,
         version=user.session_version,
-        expires_at=now + timedelta(minutes=30),
+        expires_at=now + INVITE_VALIDITY if purpose == "invite" else now + timedelta(minutes=30),
     )
     # Asynchronous delivery avoids disclosing mailbox existence through SMTP latency.
     # Only this encrypted, expiring queue can recover the token for delivery.
@@ -118,7 +121,16 @@ def register(data):
     identity_lock()
     email = normalize_email(data["email"])
     hashed = password_hash(data["password"], User(email=email, first_name=data["name"]))
-    if not domain_allowed(email) or User.objects.filter(email__iexact=email).exists():
+    existing = User.objects.filter(email__iexact=email).first()
+    if not domain_allowed(email) or existing:
+        # Same generic answer either way; repeating sign-up only resends a pending confirmation.
+        if (
+            existing
+            and domain_allowed(email)
+            and existing.is_active
+            and not existing.email_verified_at
+        ):
+            issue_token(existing, "verify")
         return
     user = User.objects.create(
         username=uuid.uuid4().hex,
@@ -139,6 +151,9 @@ def request_token(email, purpose):
             issue_token(user, purpose)
         elif purpose == "reset" and user.email_verified_at:
             issue_token(user, purpose)
+        elif purpose == "reset" and not user.has_usable_password():
+            # Account created by an administrator that never set a password: resend the invite.
+            issue_token(user, "invite")
 
 
 @transaction.atomic
@@ -146,12 +161,14 @@ def redeem_token(raw, purpose, password=None):
     identity_lock()
     token = (
         IdentityToken.objects.select_for_update()
-        .filter(digest=digest(raw), purpose=purpose)
+        .filter(
+            digest=digest(raw), purpose__in=["reset", "invite"] if purpose == "reset" else [purpose]
+        )
         .first()
     )
     now = timezone.now()
     if not token or token.used_at or token.expires_at <= now:
-        raise ValidationError("Código inválido ou expirado.")
+        raise ValidationError("Código inválido ou expirado. Solicite um novo código.")
     user = User.objects.select_for_update().get(pk=token.user_id)
     if (
         not user.is_active
@@ -159,21 +176,19 @@ def redeem_token(raw, purpose, password=None):
         or not domain_allowed(token.email)
         or not domain_allowed(user.email)
     ):
-        raise ValidationError("Código inválido ou expirado.")
+        raise ValidationError("Código inválido ou expirado. Solicite um novo código.")
     if purpose == "reset":
         user.password = password_hash(password, user)
-    elif purpose == "email":
-        if User.objects.exclude(pk=user.pk).filter(email__iexact=token.email).exists():
-            raise ValidationError("Código inválido ou expirado.")
-        user.email = token.email
-        user.email_verified_at = now
+        if token.purpose == "invite":
+            # Redeeming the mailed invite proves possession of the address.
+            user.email_verified_at = now
     else:
         user.email_verified_at = now
     user.session_version += 1
     user.save()
     token.used_at = now
     token.save(update_fields=["used_at"])
-    audit(user, f"account.{purpose}", user.pk)
+    audit(user, f"account.{token.purpose}", user.pk)
 
 
 def start_session(request, user, fresh_mfa=True):

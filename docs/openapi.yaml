@@ -48,82 +48,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/IdentityResult'
           description: ''
-  /api/v1/auth/confirm-email/:
-    post:
-      operationId: auth_confirm_email_create
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenInputRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TokenInputRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenInputRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-        '429':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
   /api/v1/auth/csrf/:
     get:
       operationId: auth_csrf_retrieve
       tags:
       - auth
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-  /api/v1/auth/email/:
-    post:
-      operationId: auth_email_create
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginInputRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/LoginInputRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/LoginInputRequest'
-        required: true
-      security:
-      - cookieAuth: []
       responses:
         '200':
           content:
@@ -261,7 +190,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    patch:
+      operationId: auth_me_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
           description: ''
   /api/v1/auth/mfa/replace/:
     post:
@@ -670,6 +623,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Category'
           description: ''
+    delete:
+      operationId: categories_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este category.
+        required: true
+      tags:
+      - categories
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/departments/:
     get:
       operationId: departments_list
@@ -768,6 +737,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Organization'
           description: ''
+    delete:
+      operationId: departments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este department.
+        required: true
+      tags:
+      - departments
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/groups/:
     get:
       operationId: groups_list
@@ -866,6 +851,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Group'
           description: ''
+    delete:
+      operationId: groups_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este support group.
+        required: true
+      tags:
+      - groups
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/health/live/:
     get:
       operationId: health_live_retrieve
@@ -943,6 +944,37 @@ paths:
                 $ref: '#/components/schemas/Membership'
           description: ''
   /api/v1/memberships/{id}/:
+    patch:
+      operationId: memberships_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este membership.
+        required: true
+      tags:
+      - memberships
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMembershipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMembershipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMembershipRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+          description: ''
     delete:
       operationId: memberships_destroy
       parameters:
@@ -959,6 +991,174 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/notifications/:
+    get:
+      operationId: notifications_retrieve
+      description: Events by others on tickets the user requested or works on; support
+        also sees new tickets.
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxOutput'
+          description: ''
+    patch:
+      operationId: notifications_partial_update
+      description: Events by others on tickets the user requested or works on; support
+        also sees new tickets.
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInboxInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInboxInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInboxInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxOutput'
+          description: ''
+  /api/v1/notifications/clear/:
+    post:
+      operationId: notifications_clear_create
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxOutput'
+          description: ''
+  /api/v1/reports/exports/:
+    post:
+      operationId: reports_exports_create
+      tags:
+      - reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PeriodInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PeriodInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PeriodInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportOutput'
+          description: ''
+  /api/v1/reports/exports/{export_id}/:
+    get:
+      operationId: reports_exports_retrieve
+      parameters:
+      - in: path
+        name: export_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+          description: ''
+  /api/v1/reports/summary/:
+    get:
+      operationId: reports_summary_retrieve
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryOutput'
+          description: ''
+  /api/v1/settings/chat/:
+    get:
+      operationId: settings_chat_retrieve
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatOutput'
+          description: ''
+    patch:
+      operationId: settings_chat_partial_update
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedChatInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedChatInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedChatInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatOutput'
+          description: ''
   /api/v1/settings/domains/:
     get:
       operationId: settings_domains_list
@@ -1057,6 +1257,111 @@ paths:
               schema:
                 $ref: '#/components/schemas/Domain'
           description: ''
+    delete:
+      operationId: settings_domains_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este allowed domain.
+        required: true
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/settings/notifications/:
+    get:
+      operationId: settings_notifications_list
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeliveryOutput'
+          description: ''
+  /api/v1/settings/notifications/{delivery_id}/retry/:
+    post:
+      operationId: settings_notifications_retry_create
+      parameters:
+      - in: path
+        name: delivery_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RetryInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RetryInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryOutput'
+          description: ''
+  /api/v1/settings/notifications/test/:
+    get:
+      operationId: settings_notifications_test_list
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IntegrationCheckOutput'
+          description: ''
+    post:
+      operationId: settings_notifications_test_create
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationTestInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationTestInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationTestInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationCheckOutput'
+          description: ''
   /api/v1/settings/reopen-policies/:
     get:
       operationId: settings_reopen_policies_list
@@ -1102,6 +1407,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReopenPolicy'
+          description: ''
+  /api/v1/settings/sla-policies/:
+    get:
+      operationId: settings_sla_policies_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSlaPolicyList'
+          description: ''
+    post:
+      operationId: settings_sla_policies_create
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlaPolicyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SlaPolicyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SlaPolicyRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlaPolicy'
           description: ''
   /api/v1/settings/smtp/:
     get:
@@ -1188,6 +1539,37 @@ paths:
                 $ref: '#/components/schemas/ReadGrant'
           description: ''
   /api/v1/settings/ticket-access/{id}/:
+    patch:
+      operationId: settings_ticket_access_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este read grant.
+        required: true
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReadGrantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReadGrantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReadGrantRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadGrant'
+          description: ''
     delete:
       operationId: settings_ticket_access_destroy
       parameters:
@@ -1583,6 +1965,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedEventList'
           description: ''
+  /api/v1/tickets/{uuid}/join/:
+    post:
+      operationId: tickets_join_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+          format: uuid
+        description: Chave única por usuário/operação. Reuso com payload diferente
+          retorna 409.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VersionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VersionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/tickets/{uuid}/transfer/:
     post:
       operationId: tickets_transfer_create
@@ -1727,6 +2157,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedUserList'
           description: ''
+    post:
+      operationId: users_create
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreateInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
   /api/v1/users/{id}/:
     get:
       operationId: users_retrieve
@@ -1787,6 +2242,7 @@ components:
       - request_test
       - resolve
       - confirm
+      - close
       - reopen
       - cancel
       - return_queue
@@ -1796,6 +2252,7 @@ components:
         * `request_test` - request_test
         * `resolve` - resolve
         * `confirm` - confirm
+        * `close` - close
         * `reopen` - reopen
         * `cancel` - cancel
         * `return_queue` - return_queue
@@ -1899,6 +2356,47 @@ components:
       required:
       - group
       - name
+    ChannelEnum:
+      enum:
+      - email
+      - chat
+      type: string
+      description: |-
+        * `email` - E-mail
+        * `chat` - Google Chat
+    ChatOutput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        webhook_configured:
+          type: boolean
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - updated_at
+      - webhook_configured
+    ClockSummary:
+      type: object
+      properties:
+        met:
+          type: integer
+        breached:
+          type: integer
+        pending:
+          type: integer
+        average_minutes:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - average_minutes
+      - breached
+      - met
+      - pending
     CodeInputRequest:
       type: object
       properties:
@@ -2004,6 +2502,53 @@ components:
       - impact
       - subject
       - urgency
+    DeliveryOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticket_number:
+          type: integer
+          readOnly: true
+        event_action:
+          type: string
+          readOnly: true
+        channel:
+          $ref: '#/components/schemas/ChannelEnum'
+        recipient:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          maxLength: 16
+        attempts:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        next_attempt_at:
+          type: string
+          format: date-time
+        last_attempt_at:
+          type: string
+          format: date-time
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        provider_id:
+          type: string
+          maxLength: 200
+        last_error_code:
+          type: string
+          maxLength: 80
+      required:
+      - channel
+      - event_action
+      - id
+      - recipient
+      - ticket_number
     Domain:
       type: object
       properties:
@@ -2102,6 +2647,37 @@ components:
       - to_state
       - version
       - visibility
+    ExportOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        rows:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - created_at
+      - end
+      - expires_at
+      - id
+      - rows
+      - start
     Group:
       type: object
       properties:
@@ -2152,6 +2728,91 @@ components:
           type: array
           items:
             type: string
+    InboxItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        ticket_id:
+          type: string
+          format: uuid
+          readOnly: true
+        number:
+          type: integer
+          readOnly: true
+        subject:
+          type: string
+          readOnly: true
+        action:
+          type: string
+          maxLength: 40
+        actor_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - actor_name
+      - created_at
+      - id
+      - number
+      - subject
+      - ticket_id
+    InboxOutput:
+      type: object
+      properties:
+        muted:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InboxItem'
+      required:
+      - muted
+      - results
+    IntegrationCheckOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        channel:
+          $ref: '#/components/schemas/ChannelEnum'
+        status:
+          type: string
+          maxLength: 16
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_code:
+          type: string
+          maxLength: 80
+      required:
+      - channel
+      - created_at
+      - id
+    IntegrationTestInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+        channel:
+          $ref: '#/components/schemas/ChannelEnum'
+      required:
+      - channel
+      - reason
     LoginInputRequest:
       type: object
       properties:
@@ -2515,6 +3176,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReopenPolicy'
+    PaginatedSlaPolicyList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlaPolicy'
     PaginatedTicketList:
       type: object
       required:
@@ -2623,6 +3307,23 @@ components:
           type: boolean
         is_active:
           type: boolean
+    PatchedChatInputRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        webhook:
+          type: string
+          writeOnly: true
+          maxLength: 2048
+        clear_webhook:
+          type: boolean
+          writeOnly: true
+          default: false
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
     PatchedDomainRequest:
       type: object
       properties:
@@ -2646,6 +3347,24 @@ components:
           maxLength: 120
         is_active:
           type: boolean
+    PatchedInboxInputRequest:
+      type: object
+      properties:
+        muted:
+          type: boolean
+    PatchedMembershipRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+        group:
+          type: integer
+        can_view_restricted:
+          type: boolean
+        can_transfer:
+          type: boolean
+        can_cancel:
+          type: boolean
     PatchedOrganizationRequest:
       type: object
       properties:
@@ -2654,6 +3373,29 @@ components:
           minLength: 1
           maxLength: 120
         is_active:
+          type: boolean
+    PatchedProfileInputRequest:
+      type: object
+      description: 'E-mail is deliberately absent: it identifies the corporate account
+        and cannot change.'
+      properties:
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        avatar:
+          type: string
+          maxLength: 136597
+    PatchedReadGrantRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+        group:
+          type: integer
+        internal:
+          type: boolean
+        restricted:
           type: boolean
     PatchedSmtpInputRequest:
       type: object
@@ -2702,6 +3444,18 @@ components:
           type: string
           minLength: 1
           maxLength: 300
+    PeriodInputRequest:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+      required:
+      - end
+      - start
     PortEnum:
       enum:
       - 25
@@ -2714,6 +3468,50 @@ components:
         * `465` - 465
         * `587` - 587
         * `2525` - 2525
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Endereço de email
+        first_name:
+          type: string
+          readOnly: true
+          title: Primeiro nome
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRoleEnum'
+          readOnly: true
+        department:
+          type: integer
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Ativo
+          description: Indica que o usuário será tratado como ativo. Ao invés de excluir
+            contas de usuário, desmarque isso.
+        mfa_enabled:
+          type: boolean
+          readOnly: true
+        avatar:
+          type: string
+          readOnly: true
+      required:
+      - avatar
+      - department
+      - email
+      - first_name
+      - id
+      - is_active
+      - mfa_enabled
+      - role
     ReadGrant:
       type: object
       properties:
@@ -2823,6 +3621,159 @@ components:
       required:
       - password
       - token
+    RetryInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
+    SlaPolicy:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reason:
+          type: string
+          maxLength: 300
+        timezone:
+          type: string
+          maxLength: 64
+        weekdays:
+          type: string
+          maxLength: 13
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        holidays:
+          type: string
+        p1_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p1_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p2_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p2_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p3_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p3_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p4_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p4_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+      required:
+      - actor
+      - created_at
+      - end_time
+      - id
+      - p1_resolution
+      - p1_response
+      - p2_resolution
+      - p2_response
+      - p3_resolution
+      - p3_response
+      - p4_resolution
+      - p4_response
+      - reason
+      - start_time
+    SlaPolicyRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        weekdays:
+          type: string
+          minLength: 1
+          maxLength: 13
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        holidays:
+          type: string
+        p1_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p1_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p2_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p2_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p3_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p3_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p4_response:
+          type: integer
+          maximum: 525600
+          minimum: 1
+        p4_resolution:
+          type: integer
+          maximum: 525600
+          minimum: 1
+      required:
+      - end_time
+      - p1_resolution
+      - p1_response
+      - p2_resolution
+      - p2_response
+      - p3_resolution
+      - p3_response
+      - p4_resolution
+      - p4_response
+      - reason
+      - start_time
     SmtpInputSecurityEnum:
       enum:
       - starttls
@@ -2888,6 +3839,70 @@ components:
         * `quarantine` - Quarentena
         * `clean` - Liberado
         * `blocked` - Bloqueado
+    SummaryOutput:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        timezone:
+          type: string
+        created:
+          type: integer
+        resolved:
+          type: integer
+        cancelled:
+          type: integer
+        closed:
+          type: integer
+        has_scope:
+          type: boolean
+        reopened:
+          type: integer
+        backlog_at_end:
+          type: integer
+        without_policy:
+          type: integer
+        response:
+          $ref: '#/components/schemas/ClockSummary'
+        resolution:
+          $ref: '#/components/schemas/ClockSummary'
+        open_by_state:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        open_by_group:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        open_by_assignee:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          nullable: true
+      required:
+      - backlog_at_end
+      - cancelled
+      - closed
+      - created
+      - end
+      - has_scope
+      - open_by_assignee
+      - open_by_group
+      - open_by_state
+      - reopened
+      - resolution
+      - resolved
+      - response
+      - start
+      - timezone
+      - without_policy
     Ticket:
       type: object
       properties:
@@ -2940,6 +3955,12 @@ components:
           type: string
           readOnly: true
           nullable: true
+        participants:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         state:
           allOf:
           - $ref: '#/components/schemas/TicketStateEnum'
@@ -3001,6 +4022,7 @@ components:
       - id
       - impact
       - number
+      - participants
       - priority
       - related_ticket
       - reopen_policy
@@ -3141,6 +4163,29 @@ components:
       - is_active
       - mfa_enabled
       - role
+    UserCreateInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        department:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - email
+      - first_name
+      - reason
     UserRoleEnum:
       enum:
       - collaborator

@@ -3,6 +3,7 @@ export type User = {
   first_name: string;
   email: string;
   role: string;
+  avatar: string;
 };
 export type Page<T> = {
   results: T[];
@@ -23,6 +24,7 @@ export type Ticket = {
   requester_name: string;
   assignee: number | null;
   assignee_name: string | null;
+  participants: { id: number; name: string }[];
   department_name: string;
   group: number;
   version: number;
@@ -55,6 +57,9 @@ export const states: Record<string, string> = {
 };
 export const actions: Record<string, string> = {
   claim: "Assumir chamado",
+  join: "Participar do atendimento",
+  close: "Encerrar chamado",
+  "participant.joined": "Novo participante",
   request_information: "Solicitar informações",
   request_test: "Solicitar teste",
   resolve: "Resolver chamado",
@@ -77,6 +82,19 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+function describe(data: { detail?: string; errors?: object }) {
+  if (!data.errors) return data.detail || "Não foi possível concluir.";
+  const messages = Object.values(data.errors)
+    .flat()
+    .map((m) => (typeof m === "string" ? m : JSON.stringify(m)));
+  const password = ["password", "new_password"].some(
+    (key) => key in data.errors!,
+  );
+  return (
+    (password ? "Escolha uma senha mais forte. " : "Verifique os dados. ") +
+    messages.join(" ")
+  );
 }
 export async function api<T>(
   path: string,
@@ -112,10 +130,7 @@ export async function api<T>(
       response.status,
       response.status === 413
         ? "Arquivo grande demais. Limite: 5 MiB."
-        : [
-            data.detail || "Não foi possível concluir.",
-            data.errors ? JSON.stringify(data.errors) : "",
-          ].join(" "),
+        : describe(data),
     );
   return data as T;
 }
