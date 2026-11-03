@@ -109,7 +109,7 @@ export function TicketDetail({
       : []),
     ...(owner && ticket.state === "resolved" ? ["confirm", "reopen"] : []),
     ...(owner &&
-    ["in_progress", "waiting_information", "waiting_test", "resolved"].includes(
+    ["in_progress", "waiting_information", "waiting_test"].includes(
       ticket.state,
     )
       ? ["close"]

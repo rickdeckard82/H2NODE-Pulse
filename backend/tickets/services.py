@@ -311,13 +311,8 @@ def transition(actor, ticket, data):
     elif action == "close":
         if not owner:
             raise PermissionDenied("Somente o solicitante pode encerrar o chamado.")
-        if before not in {
-            Ticket.State.ACTIVE,
-            Ticket.State.INFORMATION,
-            Ticket.State.TEST,
-            Ticket.State.RESOLVED,
-        }:
-            raise Conflict("Chamado novo deve ser cancelado; encerrados não mudam.")
+        if before not in {Ticket.State.ACTIVE, Ticket.State.INFORMATION, Ticket.State.TEST}:
+            raise Conflict("Use cancelar em chamado novo e confirmar solução em resolvido.")
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "reopen":
         if not owner and not (manager and before == Ticket.State.CLOSED):

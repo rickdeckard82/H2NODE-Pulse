@@ -1,4 +1,5 @@
 import uuid
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.db import connection, models
@@ -71,7 +72,7 @@ class ReportExport(models.Model):
 
 def next_number():
     """YYYYMM followed by a six-digit monthly sequence, e.g. 202611000001."""
-    period = int(timezone.localtime().strftime("%Y%m"))
+    period = int(timezone.localtime(timezone=ZoneInfo("America/Sao_Paulo")).strftime("%Y%m"))
     with connection.cursor() as cursor:
         # Serializes numbering per month until the caller's transaction ends.
         cursor.execute("SELECT pg_advisory_xact_lock(7219840, %s)", [period])

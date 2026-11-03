@@ -39,7 +39,13 @@ export const Notifications = forwardRef<
   const [error, setError] = useState("");
   const load = useCallback(
     (request: Promise<Inbox>) =>
-      request.then(setInbox, (err) => setError((err as Error).message)),
+      request.then(
+        (data) => {
+          setError("");
+          setInbox(data);
+        },
+        (err) => setError((err as Error).message),
+      ),
     [],
   );
   useEffect(() => {

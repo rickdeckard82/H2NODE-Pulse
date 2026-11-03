@@ -107,8 +107,8 @@ Transições:
   `resolution_class` obrigatórios.
 - `confirm`: solicitante, Resolvido → Fechado.
 - `close`: solicitante encerra a qualquer momento após o atendimento começar
-  (Em atendimento, Aguardando ou Resolvido) → Fechado; `message` obrigatório.
-  Em Novo, o solicitante usa `cancel`.
+  (Em atendimento ou Aguardando) → Fechado; `message` obrigatório.
+  Em Novo, o solicitante usa `cancel`; em Resolvido, `confirm`.
 - `reopen`: motivo em `message`; solicitante em Resolvido ou, junto ao gestor,
   em Fechado dentro da janela congelada. Gestor pode informar `assignee` válido
   ao regularizar atribuição na reabertura de Fechado.
@@ -140,7 +140,7 @@ banco e não substitui backup/arquivo protegido de auditoria.
 | Operação | Rota | Quem |
 |---|---|---|
 | Listar/criar versão de política de SLA | GET/POST `/settings/sla-policies/` | Administrador; versões são imutáveis |
-| Resumo do período | GET `/reports/summary/?start=AAAA-MM-DD&end=AAAA-MM-DD` | Gestor (grupos de que é membro); administrador e privacidade por concessão de leitura |
+| Resumo do período | GET `/reports/summary/?start=AAAA-MM-DD&end=AAAA-MM-DD` | Gestor: todos os chamados não restritos e os restritos dos grupos em que pode ver restritos; administrador e privacidade por concessão de leitura |
 | Gerar CSV | POST `/reports/exports/` com `start` e `end` | Mesmos perfis; auditado |
 | Baixar CSV | GET `/reports/exports/<id>/` | Só o autor, por 15 minutos |
 

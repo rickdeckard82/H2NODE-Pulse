@@ -4,9 +4,10 @@ import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import psycopg
 import pyotp
@@ -29,6 +30,7 @@ from tickets.models import (
     ReopenPolicy,
     Ticket,
     TicketEvent,
+    next_number,
 )
 from tickets.permissions import outbox_projection
 
@@ -367,9 +369,14 @@ class TicketTests(TicketHelpers, TestCase):
 
     def test_number_is_year_month_and_monthly_sequence(self):
         first, second = self.create(), self.create()
-        prefix = int(timezone.localtime().strftime("%Y%m")) * 1_000_000
+        zone = ZoneInfo("America/Sao_Paulo")
+        prefix = int(timezone.localtime(timezone=zone).strftime("%Y%m")) * 1_000_000
         self.assertEqual(first.number, prefix + 1)
         self.assertEqual(second.number, prefix + 2)
+        # 31/10 22:00 in Brasília is already November in UTC.
+        late = datetime(2026, 11, 1, 1, 0, tzinfo=UTC)
+        with patch("django.utils.timezone.now", return_value=late):
+            self.assertEqual(next_number(), 202610000001)
 
     def test_any_technician_claims_others_join_and_requester_closes(self):
         ticket = self.create()
@@ -835,6 +842,21 @@ class ConcurrentTicketTests(TicketHelpers, TransactionTestCase):
 
         with ThreadPoolExecutor(max_workers=len(functions)) as executor:
             return list(executor.map(run, functions))
+
+    def test_parallel_creations_get_distinct_consecutive_numbers(self):
+        data = {
+            "category": self.category.pk,
+            "subject": "Paralelo",
+            "description": "Abertura simultânea",
+            "impact": 2,
+            "urgency": 3,
+        }
+
+        def create():
+            return self.send(self.owner, "/api/v1/tickets/", data).json()["number"]
+
+        numbers = sorted(self.parallel([create, create]))
+        self.assertEqual(numbers[1], numbers[0] + 1)
 
     def test_two_claims_have_one_winner_and_one_atomic_event(self):
         ticket = self.create()

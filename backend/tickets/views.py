@@ -52,7 +52,7 @@ class TicketViewSet(
             return Ticket.objects.none()
         queryset = (
             visible_tickets(self.request.user)
-            .select_related("requester", "assignee", "related_ticket")
+            .select_related("requester", "assignee", "related_ticket", "group")
             .prefetch_related("participants")
         )
         if self.action != "list":
