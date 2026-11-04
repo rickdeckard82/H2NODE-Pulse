@@ -145,4 +145,4 @@ CLAMAV_HOST = os.environ.get("CLAMAV_HOST", "antimalware")
 CLAMAV_PORT = int(os.environ.get("CLAMAV_PORT", "3310"))
 
 SMTP_ALLOWED_HOSTS = csv("SMTP_ALLOWED_HOSTS")
-APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8080")
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8086")
