@@ -124,6 +124,7 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
           </li>
           <li>Prioridades com nome e sugestões de prazo na política de SLA.</li>
           <li>Avisos individuais no Google Chat, com instalação do app.</li>
+          <li>Cadastro da empresa, com logo e nome na barra superior.</li>
           <li>Termos de uso e aviso de privacidade no rodapé.</li>
           <li>
             Papéis simplificados: colaborador, técnico, gestor e administrador.

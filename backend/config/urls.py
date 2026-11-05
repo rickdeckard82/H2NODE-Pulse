@@ -5,6 +5,7 @@ from rest_framework.routers import SimpleRouter
 from core import identity_views as identity
 from core.chat_events import ChatEventsView
 from core.chat_settings import ChatSettingsView
+from core.company_settings import CompanySettingsView
 from core.smtp_settings import SmtpSettingsView
 from core.views import LiveView, ReadyView
 from tickets import reports
@@ -32,6 +33,7 @@ router.register("settings/sla-policies", reports.SlaPolicyViewSet, basename="sla
 urlpatterns = [
     path("api/v1/integrations/google-chat/events/", ChatEventsView.as_view()),
     path("api/v1/settings/chat/", ChatSettingsView.as_view()),
+    path("api/v1/settings/company/", CompanySettingsView.as_view()),
     path("api/v1/settings/smtp/", SmtpSettingsView.as_view()),
     path("api/v1/settings/notifications/", NotificationDiagnosticsView.as_view()),
     path("api/v1/notifications/", InboxView.as_view()),

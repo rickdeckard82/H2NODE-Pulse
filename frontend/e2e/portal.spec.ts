@@ -262,6 +262,29 @@ test("administração básica, configuração auditada e layout", async ({
   await expect(page.getByLabel("Webhook do espaço")).toHaveValue("");
   await expect(page.getByText(/Webhook protegido e cadastrado/)).toBeVisible();
   await audit(page);
+  await page.getByRole("button", { name: "Empresa", exact: true }).click();
+  await page.getByLabel("Nome da empresa").fill("Empresa Sintética");
+  await page.getByLabel("CNPJ").fill("11.222.333/0001-81");
+  await page.getByLabel("Responsável pelas informações").fill("Pessoa Teste");
+  await page.getByLabel(/^Logo/).setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await expect(page.getByAltText("Prévia do logo")).toBeVisible();
+  await page
+    .getByLabel("Justificativa da alteração")
+    .fill("Identificação sintética");
+  await page.getByRole("button", { name: "Salvar empresa" }).click();
+  await expect(page.getByText("Dados da empresa salvos.")).toBeVisible();
+  await expect(page.locator(".company-badge")).toContainText(
+    "Empresa Sintética",
+  );
+  await expect(page.locator(".company-badge img")).toBeVisible();
+  await audit(page);
   await page.getByRole("button", { name: "Entregas", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Diagnóstico de notificações" }),

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { all, api, priorities } from "./api";
 import { ChatSettings } from "./ChatSettings";
+import { CompanySettings } from "./CompanySettings";
 import { NotificationDiagnostics } from "./NotificationDiagnostics";
 import { SmtpSettings } from "./SmtpSettings";
 type Field = {
@@ -77,6 +78,7 @@ const department: Field = {
 const versioned =
   "Cada versão é imutável e auditada; para mudar, salve uma nova versão. Chamados mantêm a versão vigente na abertura.";
 const resources: Resource[] = [
+  { label: "Empresa", path: "settings/company", fields: [] },
   { label: "SMTP", path: "settings/smtp", fields: [] },
   { label: "Google Chat", path: "settings/chat", fields: [] },
   { label: "Entregas", path: "settings/notifications", fields: [] },
@@ -369,7 +371,9 @@ export function Admin() {
           {notice}
         </p>
       )}
-      {resource.path === "settings/smtp" ? (
+      {resource.path === "settings/company" ? (
+        <CompanySettings />
+      ) : resource.path === "settings/smtp" ? (
         <SmtpSettings />
       ) : resource.path === "settings/chat" ? (
         <ChatSettings />

@@ -122,8 +122,8 @@ export function PulseIntro({ onFinish }: { onFinish?: () => void }) {
 
         {/* Brand name */}
         <div className="pulse-intro-brand">
-          <span className="pulse-intro-title-pulse">pulse</span>
-          <span className="pulse-intro-title-services">services</span>
+          <span className="pulse-intro-title-pulse">Pulse</span>
+          <span className="pulse-intro-title-services">Services</span>
         </div>
 
         {/* Dynamic heartbeat ECG track below name */}

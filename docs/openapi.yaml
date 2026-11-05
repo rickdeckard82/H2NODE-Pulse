@@ -1188,6 +1188,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatOutput'
           description: ''
+  /api/v1/settings/company/:
+    get:
+      operationId: settings_company_retrieve
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyOutput'
+          description: ''
+    patch:
+      operationId: settings_company_partial_update
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCompanyInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCompanyInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCompanyInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyOutput'
+          description: ''
   /api/v1/settings/domains/:
     get:
       operationId: settings_domains_list
@@ -2427,6 +2465,26 @@ components:
       description: |-
         * `public` - Resposta pública
         * `internal` - Nota interna
+    CompanyOutput:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        cnpj:
+          type: string
+          maxLength: 14
+        responsible:
+          type: string
+          maxLength: 120
+        logo:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - updated_at
     CreateInputRequest:
       type: object
       properties:
@@ -3265,6 +3323,28 @@ components:
           type: boolean
           writeOnly: true
           default: false
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+    PatchedCompanyInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        cnpj:
+          type: string
+          minLength: 1
+          maxLength: 18
+        responsible:
+          type: string
+          minLength: 1
+          maxLength: 120
+        logo:
+          type: string
+          maxLength: 524288
         reason:
           type: string
           minLength: 1

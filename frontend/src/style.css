@@ -303,6 +303,42 @@ textarea:focus-visible {
   margin-left: auto;
   position: relative;
 }
+.company-badge {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 240px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: #536078;
+  text-align: center;
+}
+.company-badge img {
+  max-height: 36px;
+  max-width: 120px;
+  object-fit: contain;
+}
+.company-badge span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.company-badge + .notify-menu {
+  margin-left: 0;
+}
+.company-logo-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.company-logo-preview img {
+  max-height: 56px;
+  max-width: 180px;
+  object-fit: contain;
+}
 .notify-menu summary {
   list-style: none;
   position: relative;

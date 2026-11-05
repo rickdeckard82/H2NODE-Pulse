@@ -4,6 +4,12 @@ export const priorities: [string, string][] = [
   ["3", "Média (P3)"],
   ["4", "Baixa (P4)"],
 ];
+export type Company = {
+  name: string;
+  cnpj: string;
+  responsible: string;
+  logo: string;
+};
 export type User = {
   id: number;
   first_name: string;

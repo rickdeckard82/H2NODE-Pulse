@@ -1,5 +1,6 @@
 """Operator bootstrap and authenticated configuration on real PostgreSQL."""
 
+import base64
 import ipaddress
 import os
 import socket
@@ -24,9 +25,17 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from core.company_settings import PNG_SIGNATURE, valid_cnpj
 from core.identity import cipher, issue_token
 from core.identity_mail import deliver_one
-from core.models import AllowedDomain, IdentityEvent, IdentityMail, SmtpConfiguration, User
+from core.models import (
+    AllowedDomain,
+    CompanyProfile,
+    IdentityEvent,
+    IdentityMail,
+    SmtpConfiguration,
+    User,
+)
 from core.smtp_settings import check_destination, delivery_configuration, validate_host
 from core.test_identity import PASSWORD, HTTPHelpers
 
@@ -118,6 +127,53 @@ class ConfigurationTests(HTTPHelpers, TestCase):
     def setUp(self):
         with connection.cursor() as cursor:
             cursor.execute("SET LOCAL ROLE pulse_runtime")
+
+    def test_cnpj_accepts_numeric_and_alphanumeric_check_digits(self):
+        for value in ["11222333000181", "12ABC34501DE35"]:
+            self.assertTrue(valid_cnpj(value), value)
+        for value in [
+            "11222333000182",
+            "11111111111111",
+            "12ABC34501DE36",
+            "123",
+            "1122233300018A",
+        ]:
+            self.assertFalse(valid_cnpj(value), value)
+
+    def test_company_settings_are_validated_audited_and_scoped(self):
+        path = "/api/v1/settings/company/"
+        logo = "data:image/png;base64," + base64.b64encode(PNG_SIGNATURE + b"x").decode()
+        data = {
+            "name": "Empresa Sintética",
+            "cnpj": "11.222.333/0001-81",
+            "responsible": "Pessoa Teste",
+            "logo": logo,
+            "reason": "Cadastro",
+        }
+        admin, user = self.login(self.admin), self.login(self.user)
+        self.assertEqual(self.patch(user, path, data).status_code, 403)
+        self.assertEqual(self.client_for_test().get(path).status_code, 403)
+        for bad in [
+            {"cnpj": "11.222.333/0001-82"},
+            {"logo": "data:image/svg+xml;base64,PHN2Zz4="},
+            {"logo": "data:image/png;base64,PHN2Zz4="},
+            {"logo": "data:image/png;base64,###"},
+            {"logo": "data:image/png;base64," + base64.b64encode(PNG_SIGNATURE * 40000).decode()},
+        ]:
+            self.assertEqual(self.patch(admin, path, {**data, **bad}).status_code, 400, bad)
+        response = self.patch(admin, path, data)
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(CompanyProfile.objects.get().cnpj, "11222333000181")
+        event = IdentityEvent.objects.get(action="company.updated")
+        self.assertTrue(event.changes["logo_changed"])
+        self.assertNotIn("base64", str(event.changes))
+        visible = user.get(path).json()
+        self.assertEqual((visible["name"], visible["logo"]), (data["name"], logo))
+        self.assertEqual((visible["cnpj"], visible["responsible"]), ("", ""))
+        self.assertEqual(admin.get(path).json()["responsible"], "Pessoa Teste")
+        kept = {key: value for key, value in data.items() if key != "logo"}
+        self.assertEqual(self.patch(admin, path, kept).json()["logo"], logo)
+        self.assertEqual(self.patch(admin, path, {**data, "logo": ""}).json()["logo"], "")
 
     def test_admin_only_csrf_and_secret_never_returned(self):
         user_client = self.login(self.user)

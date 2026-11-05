@@ -92,6 +92,14 @@ bloquear o último administrador ativo.
 O SMTP também envia notificações de chamados (etapa 5). Homologação com
 provedores reais e produção continuam pendentes.
 
+## Empresa
+
+Em **Administração → Empresa**, informe nome, CNPJ, responsável pelas informações
+e logo em PNG de até 256 KB. O CNPJ aceita o formato numérico e o alfanumérico, e
+os dígitos verificadores são conferidos. O nome e o logo aparecem na barra
+superior para todos os usuários logados. CNPJ e responsável ficam visíveis só a
+administradores. API: `GET/PATCH /api/v1/settings/company/`.
+
 ## Google Chat e diagnóstico de entregas
 
 Em **Administração → Google Chat**, cole o webhook do espaço da TI

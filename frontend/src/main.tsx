@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AboutDialog, version, type AboutDoc } from "./About";
-import { api, type User } from "./api";
+import { api, type Company, type User } from "./api";
 import { Auth } from "./Auth";
 import { Portal } from "./Portal";
 import { Admin } from "./Admin";
@@ -43,6 +43,7 @@ function App() {
   const [authNotice, setAuthNotice] = useState("");
   const [logoPulseKey, setLogoPulseKey] = useState(0);
   const [about, setAbout] = useState<AboutDoc | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
 
   useEffect(() => {
     setLogoPulseKey((k) => k + 1);
@@ -62,6 +63,17 @@ function App() {
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
+  useEffect(() => {
+    if (!user) return;
+    const refresh = () => {
+      api<Company>("settings/company/")
+        .then(setCompany)
+        .catch(() => setCompany(null));
+    };
+    refresh();
+    window.addEventListener("pulse:company-change", refresh);
+    return () => window.removeEventListener("pulse:company-change", refresh);
+  }, [user]);
   const menu = useRef<HTMLDetailsElement>(null);
   const bell = useRef<HTMLDetailsElement>(null);
   const [opened, setOpened] = useState({ id: "", n: 0 });
@@ -124,8 +136,8 @@ function App() {
             </span>
           </span>
           <span className="brand-text">
-            <span className="brand-pulse">pulse</span>
-            <span className="brand-services">services</span>
+            <span className="brand-pulse">Pulse</span>
+            <span className="brand-services">Services</span>
           </span>
         </a>
         {user && (
@@ -154,6 +166,12 @@ function App() {
                 </button>
               )}
             </nav>
+            {company?.name && (
+              <div className="company-badge" title={company.name}>
+                {company.logo && <img src={company.logo} alt="" />}
+                <span>{company.name}</span>
+              </div>
+            )}
             <Notifications
               ref={bell}
               onOpen={(id) => {

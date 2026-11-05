@@ -125,6 +125,20 @@ class SmtpConfiguration(models.Model):
         constraints = [models.CheckConstraint(condition=models.Q(id=1), name="smtp_singleton")]
 
 
+class CompanyProfile(models.Model):
+    """Single company using this installation; the logo is a validated PNG data URL."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    name = models.CharField(max_length=120, blank=True)
+    cnpj = models.CharField(max_length=14, blank=True)
+    responsible = models.CharField(max_length=120, blank=True)
+    logo = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="company_singleton")]
+
+
 class ChatConfiguration(models.Model):
     """Single Google Chat space webhook; the URL is always encrypted at rest."""
 
