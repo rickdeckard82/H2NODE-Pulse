@@ -96,4 +96,4 @@ class Command(BaseCommand):
         )
         if not trust:
             issue_token(user, "verify")
-        self.stdout.write("Initial administrator provisioned. MFA remains required.")
+        self.stdout.write("Initial administrator provisioned. Enable MFA in the profile.")

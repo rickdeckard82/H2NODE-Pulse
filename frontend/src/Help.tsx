@@ -20,10 +20,11 @@ const sections: {
     body: (
       <>
         <p>
-          Entre com seu e-mail corporativo e senha. Técnicos, gestores e
-          administradores configuram a verificação em duas etapas no primeiro
-          acesso, com um aplicativo autenticador. Guarde os códigos de
-          recuperação em local seguro.
+          Entre com seu e-mail corporativo e senha. Para proteger melhor a
+          conta, ative a <b>Verificação em duas etapas</b> em <b>Perfil</b>, com
+          um aplicativo autenticador, e guarde os códigos de recuperação em
+          local seguro. Se perder o acesso ao autenticador, peça a um
+          administrador para desativar a verificação.
         </p>
         <p>
           No menu com seu nome, você altera a senha e, em <b>Perfil</b>, a foto
@@ -171,7 +172,9 @@ const sections: {
         <h3>6. Contas e perfis</h3>
         <p>
           Crie as contas: a pessoa recebe um convite por e-mail e começa como
-          Colaborador. Use <b>Editar</b> para definir o papel.
+          Colaborador. Use <b>Editar</b> para definir o papel. A verificação em
+          duas etapas de outra pessoa pode ser desativada aqui, conta por conta;
+          a sua é desativada em <b>Perfil</b>.
         </p>
         <Shot file="contas.jpg" alt="Tela de contas e perfis" />
         <table>

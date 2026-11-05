@@ -290,7 +290,7 @@ function App() {
         ) : view === "reports" ? (
           <Reports />
         ) : view === "admin" ? (
-          <Admin />
+          <Admin userId={user.id} />
         ) : view === "account" ? (
           <Account
             user={user}

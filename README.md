@@ -43,8 +43,8 @@ Frontend em `http://localhost:5173`, API pelo proxy do Vite. Não use o override
 ## Administrador inicial e configurações
 
 O startup pode provisionar o primeiro administrador via `BOOTSTRAP_ADMIN_*` no
-`.env`, sem senha padrão e sem redefinir a senha em reinícios. Depois do MFA,
-acesse **Administração → SMTP** e **Domínios de confiança**. Consulte
+`.env`, sem senha padrão e sem redefinir a senha em reinícios. Depois de entrar,
+ative o MFA em **Perfil** e acesse **Administração → SMTP** e **Domínios de confiança**. Consulte
 [as instruções de configuração](docs/CONFIGURACOES.md) e
 [a validação incremental](docs/validacoes/ajuste-bootstrap-smtp.md).
 

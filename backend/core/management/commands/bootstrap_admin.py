@@ -10,7 +10,7 @@ from core.serializers import DomainSerializer, EmailInput
 
 
 class Command(BaseCommand):
-    help = "Cria o primeiro administrador; requer confirmação do e-mail e MFA antes do acesso."
+    help = "Cria o primeiro administrador; requer confirmação do e-mail antes do acesso."
 
     def add_arguments(self, parser):
         parser.add_argument("--email", required=True)
@@ -43,6 +43,4 @@ class Command(BaseCommand):
         user.save()
         issue_token(user, "verify")
         audit(None, "bootstrap.admin_created", user.pk, {"actor": "operator"})
-        self.stdout.write(
-            "Administrador criado. Confirme o e-mail e configure MFA no primeiro login."
-        )
+        self.stdout.write("Administrador criado. Confirme o e-mail e ative o MFA no Perfil.")

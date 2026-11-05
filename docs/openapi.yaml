@@ -216,6 +216,90 @@ paths:
               schema:
                 $ref: '#/components/schemas/Profile'
           description: ''
+  /api/v1/auth/mfa/disable/:
+    post:
+      operationId: auth_mfa_disable_create
+      description: Both factors are required, so a stolen open session cannot remove
+        the protection.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaDisableInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MfaDisableInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MfaDisableInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/mfa/enable/:
+    post:
+      operationId: auth_mfa_enable_create
+      description: 'Opt in from the profile: password first, then a code from the
+        new authenticator.'
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
+  /api/v1/auth/mfa/enable/confirm/:
+    post:
+      operationId: auth_mfa_enable_confirm_create
+      description: 'Opt in from the profile: password first, then a code from the
+        new authenticator.'
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CodeInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CodeInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResult'
+          description: ''
   /api/v1/auth/mfa/replace/:
     post:
       operationId: auth_mfa_replace_create
@@ -267,39 +351,6 @@ paths:
       - cookieAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-  /api/v1/auth/mfa/setup/:
-    post:
-      operationId: auth_mfa_setup_create
-      tags:
-      - auth
-      security:
-      - cookieAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityResult'
-          description: ''
-        '429':
           content:
             application/json:
               schema:
@@ -2280,6 +2331,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/v1/users/{id}/disable-mfa/:
+    post:
+      operationId: users_disable_mfa_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReasonInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReasonInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
 components:
   schemas:
     ActionEnum:
@@ -2993,6 +3077,22 @@ components:
       required:
       - group
       - user
+    MfaDisableInputRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 256
+        code:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 64
+      required:
+      - code
+      - password
     MfaVerifyInputRequest:
       type: object
       properties:
@@ -3741,6 +3841,15 @@ components:
       - is_active
       - mfa_enabled
       - role
+    ReasonInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     RegisterInputRequest:
       type: object
       properties:
@@ -4480,5 +4589,5 @@ components:
       type: apiKey
       in: cookie
       name: sessionid
-      description: Sessão verificada; MFA obrigatório para perfis privilegiados. Mutações
+      description: Sessão verificada; MFA exigido em contas que o ativaram. Mutações
         exigem cookie CSRF e cabeçalho X-CSRFToken, inclusive login/cadastro.

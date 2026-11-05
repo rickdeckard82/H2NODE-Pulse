@@ -23,12 +23,14 @@ for name, role in [
     ("admin", "admin"),
     ("manager", "manager"),
     ("enroll", "technician"),
+    ("reset", "collaborator"),
 ]:
     user = User.objects.create_user(
         username=name,
         email=f"{name}@company.test",
         first_name={
             "enroll": "Cadastro MFA",
+            "reset": "Conta MFA",
             "owner": "Ana",
             "peer": "Beatriz",
             "tech": "Lucas",
@@ -40,7 +42,7 @@ for name, role in [
         department=department,
         email_verified_at=timezone.now(),
     )
-    if role != "collaborator" and name != "enroll":
+    if name in config["mfa"]:
         user.mfa_enabled = True
         user.mfa_secret = cipher().encrypt(config["mfa"][name].encode()).decode()
         user.save()

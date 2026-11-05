@@ -17,7 +17,7 @@ fixture.write_text(
             "password": secrets.token_urlsafe(32),
             "mfa": {
                 name: base64.b32encode(secrets.token_bytes(20)).decode()
-                for name in ["tech", "admin", "manager"]
+                for name in ["tech", "admin", "manager", "reset"]
             },
         }
     )

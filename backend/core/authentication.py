@@ -15,10 +15,7 @@ class VerifiedSessionAuthentication(SessionAuthentication):
         if (
             not eligible(user)
             or request.session.get("identity_version") != user.session_version
-            or (
-                user.privileged
-                and (not user.mfa_enabled or not request.session.get("mfa_verified"))
-            )
+            or (user.mfa_enabled and not request.session.get("mfa_verified"))
         ):
             logout(request._request)
             return None
@@ -39,6 +36,6 @@ class VerifiedSessionScheme(OpenApiAuthenticationExtension):
             "type": "apiKey",
             "in": "cookie",
             "name": "sessionid",
-            "description": "Sessão verificada; MFA obrigatório para perfis privilegiados. "
+            "description": "Sessão verificada; MFA exigido em contas que o ativaram. "
             "Mutações exigem cookie CSRF e cabeçalho X-CSRFToken, inclusive login/cadastro.",
         }

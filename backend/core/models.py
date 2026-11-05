@@ -34,10 +34,6 @@ class User(AbstractUser):
             ),
         ]
 
-    @property
-    def privileged(self):
-        return self.role != self.Role.COLLABORATOR
-
 
 class Department(models.Model):
     name = models.CharField(max_length=120, unique=True)

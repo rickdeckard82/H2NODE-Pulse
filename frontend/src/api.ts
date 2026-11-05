@@ -18,6 +18,7 @@ export type User = {
   email: string;
   role: string;
   avatar: string;
+  mfa_enabled: boolean;
 };
 export type Page<T> = {
   results: T[];

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type User } from "./api";
+import { MfaSettings } from "./MfaSettings";
 import { PasswordChange } from "./PasswordChange";
 
 // Re-encoding on a canvas crops to a square, shrinks the upload and drops EXIF metadata.
@@ -142,6 +143,7 @@ export function Account({
         </form>
       </section>
       <PasswordChange embedded onCompleted={onPasswordChanged} />
+      <MfaSettings user={user} onChanged={onChanged} />
     </>
   );
 }

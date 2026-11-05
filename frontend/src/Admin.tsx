@@ -240,7 +240,7 @@ const resources: Resource[] = [
   },
 ];
 type Row = Record<string, string | number | boolean | null>;
-export function Admin() {
+export function Admin({ userId }: { userId: number }) {
   const [resource, setResource] = useState(
     resources.find((item) => item.path === "departments")!,
   );
@@ -337,6 +337,23 @@ export function Admin() {
       setBusy(false);
     }
   }
+  async function disableMfa(row: Row) {
+    const reason = window.prompt(
+      `Desativar a verificação em duas etapas de ${title(row)}? Informe a justificativa.`,
+    );
+    if (!reason?.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`users/${row.id}/disable-mfa/`, { reason });
+      await load();
+      setNotice("Verificação em duas etapas desativada.");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <div className="page-heading">
@@ -407,6 +424,11 @@ export function Admin() {
                             !(row.user && ["user", "group"].includes(f.key)),
                         )
                         .map((f) => `${f.label}: ${display(f, row[f.key])}`)
+                        .concat(
+                          resource.path === "users"
+                            ? `Duas etapas: ${row.mfa_enabled ? "Ativa" : "Inativa"}`
+                            : [],
+                        )
                         .join(" · ")}
                     </small>
                   </div>
@@ -430,6 +452,17 @@ export function Admin() {
                       {row.is_active ? "Desativar" : "Reativar"}
                     </button>
                   )}
+                  {resource.path === "users" &&
+                    row.mfa_enabled &&
+                    row.id !== userId && (
+                      <button
+                        className="secondary"
+                        disabled={busy}
+                        onClick={() => disableMfa(row)}
+                      >
+                        Desativar duas etapas
+                      </button>
+                    )}
                   {resource.removable && (
                     <button
                       className="secondary"

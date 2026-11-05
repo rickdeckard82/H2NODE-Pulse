@@ -128,6 +128,9 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
           <li>Log do sistema com filtros por usuário e data.</li>
           <li>Política de retenção com remoção definitiva de dados.</li>
           <li>Página de ajuda com o passo a passo do sistema.</li>
+          <li>
+            Verificação em duas etapas opcional, ativada e desativada no perfil.
+          </li>
           <li>Termos de uso e aviso de privacidade no rodapé.</li>
           <li>
             Papéis simplificados: colaborador, técnico, gestor e administrador.

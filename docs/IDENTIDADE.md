@@ -47,7 +47,7 @@ SMTP sintético em loopback; não comprova TLS/aceite do provedor corporativo.
 O comando solicita a senha duas vezes sem eco, cadastra o domínio inicial e
 recusa execução se já existe administrador. Não cria senha padrão, não marca
 e-mail como verificado e não imprime tokens. O código vai à caixa autorizada;
-confirmar pelo endpoint e configurar MFA no primeiro login. Se expirar antes
+confirmar pelo endpoint e ativar o MFA em Perfil. Se expirar antes
 da configuração de SMTP, solicitar novo código em `/auth/resend/`.
 
 ## Uso da API
@@ -63,9 +63,8 @@ persistir senha, tokens ou segredo MFA em localStorage. Respostas privadas têm
 | Cadastro | POST `/auth/register/` | `name`, `email`, `password`; resposta genérica |
 | Confirmar cadastro | POST `/auth/confirm/` | `token` do e-mail, uso único |
 | Reenviar confirmação | POST `/auth/resend/` | `email`; invalida código anterior |
-| Login | POST `/auth/login/` | `email`, `password`; status `authenticated`, `mfa_required` ou `mfa_setup_required` |
-| Iniciar MFA | POST `/auth/mfa/setup/` | `{}`; segredo/URI somente após senha validada |
-| Confirmar MFA ou recuperar | POST `/auth/mfa/verify/` | `code` TOTP ou código de recuperação e `remember_device` opcional (false por padrão); primeira configuração retorna oito códigos |
+| Login | POST `/auth/login/` | `email`, `password`; status `authenticated` ou `mfa_required` |
+| Confirmar MFA ou recuperar | POST `/auth/mfa/verify/` | `code` TOTP ou código de recuperação e `remember_device` opcional (false por padrão) |
 | Esqueci a senha | POST `/auth/forgot/` | `email`; resposta genérica |
 | Redefinir senha | POST `/auth/reset/` | `token`, `password`; revoga sessões, preserva MFA |
 | Perfil atual | GET `/auth/me/` | Dados próprios e foto, sem material de autenticação |
@@ -73,6 +72,9 @@ persistir senha, tokens ou segredo MFA em localStorage. Respostas privadas têm
 | Logout | POST `/auth/logout/` | `{}`; encerra sessão atual |
 | Revogar todas | POST `/auth/revoke/` | `{}`; encerra todas as sessões da conta |
 | Alterar senha autenticado | POST `/auth/password/` | `current_password`, `new_password`; revoga sessões e dispositivos lembrados |
+| Ativar MFA | POST `/auth/mfa/enable/` | `password`; retorna segredo e URI |
+| Confirmar ativação | POST `/auth/mfa/enable/confirm/` | `code` do autenticador; revoga outras sessões e retorna oito códigos de recuperação |
+| Desativar MFA | POST `/auth/mfa/disable/` | `password` e `code` TOTP ou de recuperação; revoga outras sessões e dispositivos lembrados |
 | Substituir MFA | POST `/auth/mfa/replace/` | `password`; exige login MFA há menos de cinco minutos |
 | Confirmar substituição | POST `/auth/mfa/replace/confirm/` | `code` do novo dispositivo; revoga sessões antigas e retorna novos códigos de recuperação |
 
@@ -103,6 +105,9 @@ própria conta para colaboradores, técnicos e gestores; administrador
 pode consultar todas. `GET /users/{id}/` segue o mesmo escopo. O único PATCH de
 usuário é administrativo: `role`, `department`, `is_active`, sempre com `reason`.
 Não há DELETE, criação privilegiada pública ou edição genérica de senha/MFA.
+O administrador desativa o MFA de outra conta em `POST /users/{id}/disable-mfa/`
+(`reason`). O MFA é opcional; ver
+[ADR 0008](decisoes/0008-mfa-opcional.md).
 Para cadastrar técnicos, confirmar a conta de colaborador e depois promovê-la.
 
 `/departments/`: leitura por autenticados; criação/alteração apenas pelo admin.

@@ -29,6 +29,7 @@ from core.models import (
     IdentityEvent,
     IdentityMail,
     IdentityToken,
+    TrustedDevice,
     User,
 )
 
@@ -209,7 +210,7 @@ def password_login(request, email, password):
     if not valid or not eligible(user):
         raise PermissionDenied("Credenciais inválidas ou conta indisponível.")
     request.session.flush()
-    if user.privileged or user.mfa_enabled:
+    if user.mfa_enabled:
         from core.trusted_devices import consume
 
         expiry = consume(request, user)
@@ -226,7 +227,7 @@ def password_login(request, email, password):
             "at": time.time(),
         }
         request.session.set_expiry(300)
-        return {"status": "mfa_required" if user.mfa_enabled else "mfa_setup_required"}
+        return {"status": "mfa_required"}
     start_session(request, user)
     audit(user, "session.login", user.pk)
     return {"status": "authenticated"}
@@ -252,26 +253,8 @@ def pending_user(request):
     return user
 
 
-@transaction.atomic
-def setup_mfa(request):
-    user = pending_user(request)
-    if user.mfa_enabled:
-        raise PermissionDenied("MFA já configurado.")
-    raw = pyotp.random_base32()
-    user.mfa_secret = cipher().encrypt(raw.encode()).decode()
-    user.save(update_fields=["mfa_secret"])
-    audit(user, "mfa.setup_started", user.pk)
-    return {
-        "secret": raw,
-        "uri": pyotp.TOTP(raw).provisioning_uri(user.email, issuer_name="Pulse Services"),
-    }
-
-
-@transaction.atomic
-def verify_mfa(request, code, remember_device=False):
-    user = pending_user(request)
-    if not user.mfa_secret:
-        raise ValidationError("Configure o autenticador primeiro.")
+def check_factor(user, code):
+    """Accepts a fresh TOTP or spends a recovery code; the caller saves the user."""
     totp = pyotp.TOTP(cipher().decrypt(user.mfa_secret.encode()).decode())
     counter = int(time.time()) // 30
     matched = next(
@@ -285,17 +268,17 @@ def verify_mfa(request, code, remember_device=False):
     recovery = digest(code)
     if matched is not None:
         user.mfa_last_counter = matched
-    elif user.mfa_enabled and recovery in user.recovery_hashes:
+    elif recovery in user.recovery_hashes:
         user.recovery_hashes.remove(recovery)
         audit(user, "mfa.recovery_used", user.pk)
     else:
         raise PermissionDenied("Código inválido ou já utilizado.")
-    result = {"status": "authenticated"}
-    if not user.mfa_enabled:
-        codes = recovery_codes(user)
-        user.mfa_enabled = True
-        result["recovery_codes"] = codes
-        audit(user, "mfa.enrolled", user.pk)
+
+
+@transaction.atomic
+def verify_mfa(request, code, remember_device=False):
+    user = pending_user(request)
+    check_factor(user, code)
     user.save()
     request.session.flush()
     start_session(request, user)
@@ -305,7 +288,24 @@ def verify_mfa(request, code, remember_device=False):
         issue(request, user)
         audit(user, "device.remembered", user.pk, {"days": 30})
     audit(user, "session.login_mfa", user.pk)
-    return result
+    return {"status": "authenticated"}
+
+
+def clear_mfa(user):
+    """Caller holds the user lock. Ends every session, as other MFA changes do."""
+    user.mfa_enabled, user.mfa_secret = False, ""
+    user.mfa_last_counter, user.recovery_hashes = -1, []
+    user.session_version += 1
+    user.save(
+        update_fields=[
+            "mfa_enabled",
+            "mfa_secret",
+            "mfa_last_counter",
+            "recovery_hashes",
+            "session_version",
+        ]
+    )
+    TrustedDevice.objects.filter(user=user).delete()
 
 
 def recovery_codes(user):

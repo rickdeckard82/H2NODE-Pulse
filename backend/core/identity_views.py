@@ -11,6 +11,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -26,6 +27,7 @@ from core.serializers import (
     IdentityResult,
     LoginInput,
     MembershipSerializer,
+    MfaDisableInput,
     MfaVerifyInput,
     OrganizationSerializer,
     PasswordChangeInput,
@@ -98,8 +100,6 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
             except PermissionDenied:
                 identity.login_failed(email=data["email"])
                 raise
-        elif self.action == "mfa_setup":
-            result = identity.setup_mfa(request)
         elif self.action == "mfa_verify":
             pending = request.session.get("pending_identity", {}).get("id")
             try:
@@ -135,10 +135,6 @@ class ResetView(AuthActionView):
 
 class LoginView(AuthActionView):
     action, serializer_class = "login", LoginInput
-
-
-class MfaSetupView(AuthActionView):
-    action = "mfa_setup"
 
 
 class MfaVerifyView(AuthActionView):
@@ -237,6 +233,7 @@ class MfaReplaceView(NoStoreMixin, generics.GenericAPIView):
     """Replace a lost authenticator after login with a single-use recovery code."""
 
     serializer_class = PasswordInput
+    enabling = False
 
     @extend_schema(responses={200: IdentityResult})
     def post(self, request):
@@ -249,7 +246,10 @@ class MfaReplaceView(NoStoreMixin, generics.GenericAPIView):
     def replace(self, request, data):
         identity.identity_lock()
         user = locked_actor(request)
-        if (
+        if self.enabling:
+            if user.mfa_enabled:
+                raise PermissionDenied("MFA já configurado.")
+        elif (
             not user.mfa_enabled
             or not request.session.get("mfa_verified")
             or time.time() - request.session.get("mfa_at", 0) > 300
@@ -284,11 +284,11 @@ class MfaReplaceView(NoStoreMixin, generics.GenericAPIView):
         )
         if matched is None:
             raise PermissionDenied("Código inválido.")
-        user.mfa_secret, user.mfa_last_counter = encrypted, matched
+        user.mfa_secret, user.mfa_last_counter, user.mfa_enabled = encrypted, matched, True
         codes = identity.recovery_codes(user)
         user.session_version += 1
         user.save()
-        identity.audit(user, "mfa.replaced", user.pk)
+        identity.audit(user, "mfa.enrolled" if self.enabling else "mfa.replaced", user.pk)
         request.session.flush()
         identity.start_session(request, user)
         return Response({"status": "completed", "recovery_codes": codes})
@@ -296,6 +296,45 @@ class MfaReplaceView(NoStoreMixin, generics.GenericAPIView):
 
 class MfaReplaceConfirmView(MfaReplaceView):
     serializer_class = CodeInput
+
+
+class MfaEnableView(MfaReplaceView):
+    """Opt in from the profile: password first, then a code from the new authenticator."""
+
+    enabling = True
+
+
+class MfaEnableConfirmView(MfaEnableView):
+    serializer_class = CodeInput
+
+
+class MfaDisableView(NoStoreMixin, generics.GenericAPIView):
+    """Both factors are required, so a stolen open session cannot remove the protection."""
+
+    serializer_class = MfaDisableInput
+
+    @extend_schema(responses={200: IdentityResult})
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        identity.rate_limit("mfa_disable", str(request.user.pk), settings.IDENTITY_RATE_LIMIT)
+        return self.disable(request, serializer.validated_data)
+
+    @transaction.atomic
+    def disable(self, request, data):
+        identity.identity_lock()
+        user = locked_actor(request)
+        if not user.mfa_enabled or not user.check_password(data["password"]):
+            raise PermissionDenied("Credenciais inválidas.")
+        identity.check_factor(user, data["code"])
+        identity.clear_mfa(user)
+        identity.audit(user, "mfa.disabled", user.pk)
+        from core.trusted_devices import apply_cookie, forget
+
+        forget(request, user)
+        request.session.flush()
+        identity.start_session(request, user)
+        return apply_cookie(request, Response({"status": "completed"}))
 
 
 class UserViewSet(
@@ -380,6 +419,24 @@ class UserViewSet(
         if role not in {User.Role.TECHNICIAN, User.Role.MANAGER} or not active:
             Membership.objects.filter(user=user).delete()
         identity.audit(actor, "account.updated", user.pk, changes)
+        return Response(UserSerializer(user).data)
+
+    @extend_schema(request=ReasonInput, responses=UserSerializer)
+    @action(detail=True, methods=["post"], url_path="disable-mfa")
+    @transaction.atomic
+    def disable_mfa(self, request, pk=None):
+        identity.identity_lock()
+        actor = locked_actor(request, admin=True)
+        serializer = ReasonInput(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = User.objects.select_for_update().get(pk=self.get_object().pk)
+        # The profile asks for password and code; this route must not bypass them.
+        if user.pk == actor.pk:
+            raise ValidationError("Desative a sua verificação em Perfil.")
+        if not user.mfa_enabled:
+            raise ValidationError("A verificação em duas etapas já está desativada.")
+        identity.clear_mfa(user)
+        identity.audit(actor, "mfa.disabled_by_admin", user.pk, serializer.validated_data)
         return Response(UserSerializer(user).data)
 
 

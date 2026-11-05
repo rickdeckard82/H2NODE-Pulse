@@ -51,6 +51,10 @@ class PasswordInput(StrictSerializer):
     password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
 
 
+class MfaDisableInput(PasswordInput, CodeInput):
+    pass
+
+
 class PasswordChangeInput(StrictSerializer):
     current_password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
     new_password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)

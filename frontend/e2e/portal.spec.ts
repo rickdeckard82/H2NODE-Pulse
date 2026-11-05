@@ -374,6 +374,23 @@ test("administração básica, configuração auditada e layout", async ({
   await expect(page.getByRole("status")).toHaveText("Registro desativado.");
   await expect(invited.getByRole("button", { name: "Reativar" })).toBeVisible();
   await audit(page);
+  const reset = page.locator(".admin-list li", {
+    hasText: "reset@company.test",
+  });
+  const disableMfa = { name: "Desativar duas etapas", exact: true };
+  await expect(reset).toContainText("Duas etapas: Ativa");
+  await expect(
+    page
+      .locator(".admin-list li", { hasText: "admin@company.test" })
+      .getByRole("button", disableMfa),
+  ).toHaveCount(0);
+  page.once("dialog", (dialog) => dialog.accept("Celular perdido sintético"));
+  await reset.getByRole("button", disableMfa).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Verificação em duas etapas desativada.",
+  );
+  await expect(reset).toContainText("Duas etapas: Inativa");
+  await expect(reset.getByRole("button", disableMfa)).toHaveCount(0);
   await page
     .getByRole("button", { name: "Domínios de confiança", exact: true })
     .click();
@@ -402,7 +419,7 @@ test("administração básica, configuração auditada e layout", async ({
   ).toBeTruthy();
 });
 
-test("QR Code válido e dispositivo lembrado após reabrir o navegador", async ({
+test("MFA ativado no perfil, dispositivo lembrado e desativação", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -413,6 +430,16 @@ test("QR Code válido e dispositivo lembrado após reabrir o navegador", async (
   await page.getByLabel("E-mail corporativo").fill("enroll@company.test");
   await page.getByLabel("Senha", { exact: true }).fill(fixture.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Fila de chamados" }),
+  ).toBeVisible();
+  await page.locator("summary[aria-label^='Abrir menu de']").click();
+  await page
+    .locator(".user-menu-popover")
+    .getByRole("button", { name: "Perfil", exact: true })
+    .click();
+  await page.getByLabel("Sua senha").fill(fixture.password);
+  await page.getByRole("button", { name: "Ativar verificação" }).click();
   await expect(
     page.getByRole("img", { name: "QR Code para cadastrar o autenticador" }),
   ).toBeVisible();
@@ -440,9 +467,6 @@ test("QR Code válido e dispositivo lembrado após reabrir o navegador", async (
   expect(uri.searchParams.get("issuer")).toBe("Pulse Services");
   const secret = uri.searchParams.get("secret")!;
   expect(secret === (await page.locator(".secret").innerText())).toBeTruthy();
-  await expect(
-    page.getByLabel("Lembrar este dispositivo por 30 dias"),
-  ).not.toBeChecked();
   await audit(page);
   expect(
     await page.evaluate(
@@ -454,14 +478,28 @@ test("QR Code válido e dispositivo lembrado após reabrir o navegador", async (
     fullPage: true,
     mask: [page.locator(".secret")],
   });
+  await page.getByLabel("Código do autenticador").fill(totp(secret));
+  await page.getByRole("button", { name: "Confirmar código" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Verificação em duas etapas ativada.",
+  );
+  const recovery = await page.locator("section li code").allInnerTexts();
+  expect(recovery).toHaveLength(8);
+  await page.getByRole("button", { name: "Guardei os códigos" }).click();
+  await page.locator("summary[aria-label^='Abrir menu de']").click();
+  await page.getByRole("button", { name: "Sair", exact: true }).click();
+  await page.getByLabel("E-mail corporativo").fill("enroll@company.test");
+  await page.getByLabel("Senha", { exact: true }).fill(fixture.password);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(
+    page.getByLabel("Lembrar este dispositivo por 30 dias"),
+  ).not.toBeChecked();
+  // The TOTP above is already spent, so this login uses a recovery code.
   await page
     .getByLabel("Código do autenticador ou de recuperação")
-    .fill(totp(secret));
+    .fill(recovery[0]);
   await page.getByLabel("Lembrar este dispositivo por 30 dias").check();
   await page.getByRole("button", { name: "Verificar código" }).click();
-  await page
-    .getByRole("button", { name: "Guardei os códigos. Continuar" })
-    .click();
   await expect(
     page.getByRole("heading", { name: "Fila de chamados" }),
   ).toBeVisible();
@@ -487,6 +525,30 @@ test("QR Code válido e dispositivo lembrado após reabrir o navegador", async (
       exact: true,
     }),
   ).toHaveCount(0);
+  await next.locator("summary[aria-label^='Abrir menu de']").click();
+  await next.getByRole("button", { name: "Sair", exact: true }).click();
+  await next.getByLabel("E-mail corporativo").fill("enroll@company.test");
+  await next.getByLabel("Senha", { exact: true }).fill(fixture.password);
+  await next.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(
+    next.getByRole("heading", { name: "Fila de chamados" }),
+  ).toBeVisible();
+  await next.locator("summary[aria-label^='Abrir menu de']").click();
+  await next
+    .locator(".user-menu-popover")
+    .getByRole("button", { name: "Perfil", exact: true })
+    .click();
+  await next.getByLabel("Sua senha").fill(fixture.password);
+  await next
+    .getByLabel("Código do autenticador ou de recuperação")
+    .fill(recovery[1]);
+  await next.getByRole("button", { name: "Desativar verificação" }).click();
+  await expect(next.getByRole("status")).toHaveText(
+    "Verificação em duas etapas desativada.",
+  );
+  await expect(
+    next.getByRole("button", { name: "Ativar verificação" }),
+  ).toBeVisible();
   await next.locator("summary[aria-label^='Abrir menu de']").click();
   await next.getByRole("button", { name: "Sair", exact: true }).click();
   await next.getByLabel("E-mail corporativo").fill("enroll@company.test");

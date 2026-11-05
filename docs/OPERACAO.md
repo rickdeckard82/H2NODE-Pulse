@@ -22,7 +22,7 @@ Não passar overrides dev junto de produção. O proxy usa esquema fixo HTTPS em
 
 ## Saúde e logs
 
-`/api/v1/health/live/` verifica processo; `/api/v1/health/ready/` verifica conexão PostgreSQL, retornando 503 sem detalhes sensíveis quando indisponível. As rotas são intencionalmente públicas e mínimas. Migrações são requisito do startup; não são verificadas a cada probe. `/api/v1/schema/` exige sessão verificada de administrador com MFA; contrato estático em docs/openapi.yaml.
+`/api/v1/health/live/` verifica processo; `/api/v1/health/ready/` verifica conexão PostgreSQL, retornando 503 sem detalhes sensíveis quando indisponível. As rotas são intencionalmente públicas e mínimas. Migrações são requisito do startup; não são verificadas a cada probe. `/api/v1/schema/` exige sessão verificada de administrador; contrato estático em docs/openapi.yaml.
 
 `docker compose ps` e `docker compose logs --tail=100 api worker migrate` auxiliam diagnóstico. Não habilitar logs de corpos de requisição, segredos ou cabeçalhos de autenticação. Logs Docker têm rotação de 10 MB × 3 por serviço. O worker processa desafios de identidade quando SMTP está configurado; heartbeat não comprova entrega. Notificações de tickets continuam na etapa 5.
 

@@ -35,6 +35,9 @@ const labels: Record<string, string> = {
   "membership.created": "Adicionou membro a um grupo",
   "membership.deleted": "Removeu membro de um grupo",
   "membership.updated": "Alterou membro de um grupo",
+  "mfa.disabled": "Desativou a verificação em duas etapas",
+  "mfa.disabled_by_admin":
+    "Desativou a verificação em duas etapas de uma conta",
   "mfa.enrolled": "Ativou a verificação em duas etapas",
   "mfa.recovery_used": "Usou um código de recuperação",
   "mfa.replaced": "Trocou a verificação em duas etapas",

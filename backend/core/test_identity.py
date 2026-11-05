@@ -7,6 +7,7 @@ import base64
 import secrets
 import socketserver
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from importlib import import_module
@@ -59,7 +60,7 @@ class HTTPHelpers:
             client, "/api/v1/auth/login/", {"email": user.email, "password": password}
         )
         self.assertEqual(response.status_code, 200, response.content)
-        if user.privileged:
+        if user.mfa_enabled:
             code = pyotp.TOTP(identity.cipher().decrypt(user.mfa_secret.encode()).decode()).now()
             response = self.post(client, "/api/v1/auth/mfa/verify/", {"code": code})
             self.assertEqual(response.status_code, 200, response.content)
@@ -383,25 +384,30 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.assertIn("Retry-After", response)
         self.assertNotIn(self.alice.email, str(list(AuthRateBucket.objects.values())))
 
-    def test_mfa_setup_replay_and_single_use_recovery(self):
+    def test_mfa_enable_replay_and_single_use_recovery(self):
         user = self.make_user("tech", User.Role.TECHNICIAN)
         user.mfa_enabled, user.mfa_secret = False, ""
         user.save()
         response = self.post(
             self.client, "/api/v1/auth/login/", {"email": user.email, "password": PASSWORD}
         )
-        self.assertEqual(response.json()["status"], "mfa_setup_required")
-        self.assertEqual(self.client.get("/api/v1/auth/me/").status_code, 403)
-        setup = self.post(self.client, "/api/v1/auth/mfa/setup/").json()
+        self.assertEqual(response.json()["status"], "authenticated")
+        self.assertEqual(self.client.get("/api/v1/auth/me/").status_code, 200)
+        path = "/api/v1/auth/mfa/enable/"
+        self.assertEqual(self.post(self.client, path, {"password": "errada"}).status_code, 403)
+        setup = self.post(self.client, path, {"password": PASSWORD}).json()
         self.assertIn("otpauth://totp/", setup["uri"])
         user.refresh_from_db()
-        self.assertNotIn(setup["secret"], user.mfa_secret)
+        self.assertFalse(user.mfa_enabled)
         code = pyotp.TOTP(setup["secret"]).now()
-        response = self.post(self.client, "/api/v1/auth/mfa/verify/", {"code": code})
+        response = self.post(self.client, f"{path}confirm/", {"code": code})
         self.assertEqual(response.status_code, 200)
         recovery = response.json()["recovery_codes"][0]
         self.assertEqual(self.client.get("/api/v1/auth/me/").status_code, 200)
+        self.assertEqual(self.post(self.client, path, {"password": PASSWORD}).status_code, 403)
         user.refresh_from_db()
+        self.assertNotIn(setup["secret"], user.mfa_secret)
+        self.assertTrue(IdentityEvent.objects.filter(action="mfa.enrolled", actor=user).exists())
         self.assertNotIn(recovery, user.recovery_hashes)
         self.post(self.client, "/api/v1/auth/login/", {"email": user.email, "password": PASSWORD})
         self.assertEqual(
@@ -414,6 +420,51 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.assertEqual(
             self.post(self.client, "/api/v1/auth/mfa/verify/", {"code": recovery}).status_code, 403
         )
+
+    def test_self_disable_requires_password_and_factor(self):
+        other = self.login(self.admin)
+        User.objects.filter(pk=self.admin.pk).update(mfa_last_counter=-1)
+        session = self.login(self.admin)
+        path = "/api/v1/auth/mfa/disable/"
+        self.admin.refresh_from_db()
+        raw = identity.cipher().decrypt(self.admin.mfa_secret.encode()).decode()
+        code = pyotp.TOTP(raw).at(int(time.time()) + 30)
+        wrong = {"password": "errada", "code": code}
+        self.assertEqual(self.post(session, path, wrong).status_code, 403)
+        wrong = {"password": PASSWORD, "code": "000000"}
+        self.assertEqual(self.post(session, path, wrong).status_code, 403)
+        good = {"password": PASSWORD, "code": code}
+        self.assertEqual(self.post(session, path, good).status_code, 200, "disable")
+        self.assertFalse(session.get("/api/v1/auth/me/").json()["mfa_enabled"])
+        self.assertEqual(other.get("/api/v1/auth/me/").status_code, 403)
+        self.admin.refresh_from_db()
+        self.assertEqual((self.admin.mfa_secret, self.admin.recovery_hashes), ("", []))
+        self.assertTrue(IdentityEvent.objects.filter(action="mfa.disabled").exists())
+        response = self.post(
+            self.client_for_test(),
+            "/api/v1/auth/login/",
+            {"email": self.admin.email, "password": PASSWORD},
+        )
+        self.assertEqual(response.json()["status"], "authenticated")
+
+    def test_admin_disables_mfa_of_another_account(self):
+        tech = self.make_user("tech", User.Role.TECHNICIAN)
+        target, admin = self.login(tech), self.login(self.admin)
+        path = f"/api/v1/users/{tech.pk}/disable-mfa/"
+        reason = {"reason": "Celular perdido, caso sintético"}
+        self.assertEqual(self.post(self.login(self.alice), path, reason).status_code, 403)
+        self.assertEqual(self.post(admin, path, {}).status_code, 400)
+        response = self.post(admin, path, reason)
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(response.json()["mfa_enabled"])
+        self.assertEqual(target.get("/api/v1/auth/me/").status_code, 403)
+        self.assertEqual(self.post(admin, path, reason).status_code, 400)
+        event = IdentityEvent.objects.get(action="mfa.disabled_by_admin")
+        self.assertEqual((event.actor, event.subject_id), (self.admin, str(tech.pk)))
+        own = f"/api/v1/users/{self.admin.pk}/disable-mfa/"
+        self.assertEqual(self.post(admin, own, reason).status_code, 400)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.mfa_enabled)
 
     def test_expired_mfa_challenge_and_inactive_account_fail(self):
         self.post(
@@ -580,7 +631,7 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.assertEqual(admin.get("/api/v1/users/").json()["count"], 5)
         self.assertEqual(admin.get("/api/v1/settings/domains/").status_code, 200)
 
-    def test_promotion_revokes_session_requires_mfa_and_audits(self):
+    def test_promotion_revokes_session_and_audits(self):
         client, admin = self.login(self.alice), self.login(self.admin)
         response = self.patch(
             admin,
@@ -595,7 +646,7 @@ class IdentityTests(HTTPHelpers, TestCase):
         result = self.post(
             client, "/api/v1/auth/login/", {"email": self.alice.email, "password": PASSWORD}
         )
-        self.assertEqual(result.json()["status"], "mfa_setup_required")
+        self.assertEqual(result.json()["status"], "authenticated")
         event = IdentityEvent.objects.get(action="account.updated")
         self.assertEqual(event.actor_id, self.admin.pk)
         self.assertEqual(event.changes["role"], {"from": "collaborator", "to": "technician"})

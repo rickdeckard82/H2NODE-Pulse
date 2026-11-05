@@ -20,9 +20,10 @@ identidade, usa a política normal de senha e registra auditoria.
 
 `BOOTSTRAP_ADMIN_TRUST_EMAIL=true` é uma declaração explícita do operador sobre
 a identidade inicial: permite configurar SMTP após entrar, sem depender de um
-e-mail que ainda não pode ser enviado. **MFA continua obrigatório**: no primeiro
-login, escaneie o QR Code ou cadastre a chave no autenticador, informe o código e guarde os códigos
-de recuperação. Essa opção não confirma cadastros comuns.
+e-mail que ainda não pode ser enviado. O MFA é opcional, mas recomendado ao
+administrador: depois de entrar, ative em **Perfil**, escaneie o QR Code ou cadastre
+a chave no autenticador, informe o código e guarde os códigos de recuperação. Essa
+opção não confirma cadastros comuns.
 
 Com `TRUST_EMAIL=false`, o administrador precisa confirmar o código recebido por
 SMTP. Sem `BOOTSTRAP_ADMIN_ENABLED=true`, o startup não provisiona ninguém.
