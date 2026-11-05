@@ -316,8 +316,8 @@ textarea:focus-visible {
   text-align: center;
 }
 .company-badge img {
-  max-height: 36px;
-  max-width: 120px;
+  max-height: 48px;
+  max-width: 200px;
   object-fit: contain;
 }
 .company-badge span {
@@ -1028,6 +1028,10 @@ button[type="submit"] {
   .topbar nav {
     order: 3;
     width: 100%;
+  }
+  .company-badge img {
+    max-height: 36px;
+    max-width: 130px;
   }
   .user-menu {
     margin-left: auto;

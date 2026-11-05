@@ -100,6 +100,12 @@ os dígitos verificadores são conferidos. O nome e o logo aparecem na barra
 superior para todos os usuários logados. CNPJ e responsável ficam visíveis só a
 administradores. API: `GET/PATCH /api/v1/settings/company/`.
 
+## Quem recebe avisos
+
+E-mail e Chat vão aos membros do grupo do chamado, ao técnico atribuído, aos
+participantes e ao solicitante, quando outra pessoa faz uma ação pública. O autor
+da ação não recebe. Cadastre os membros em **Administração → Membros dos grupos**.
+
 ## Google Chat e diagnóstico de entregas
 
 Em **Administração → Google Chat**, cole o webhook do espaço da TI

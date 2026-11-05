@@ -88,7 +88,10 @@ def _support_recipients(ticket):
 
 def _materialize(outbox):
     event, ticket = outbox.event, outbox.event.ticket
-    recipients = _support_recipients(ticket)
+    # Whoever works on the ticket is told even when outside its group.
+    recipients = _support_recipients(ticket) | User.objects.filter(
+        Q(pk=ticket.assignee_id) | Q(pk__in=ticket.participants.values("pk"))
+    )
     if event.visibility == Comment.Visibility.PUBLIC and event.actor_id != ticket.requester_id:
         recipients = recipients | User.objects.filter(pk=ticket.requester_id)
     recipients = recipients.exclude(pk=event.actor_id).distinct()

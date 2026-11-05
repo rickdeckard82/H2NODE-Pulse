@@ -18,8 +18,9 @@ from google.auth import crypt, jwt
 from core.chat_events import ISSUER
 from core.chat_settings import active_webhook
 from core.identity import cipher
-from core.models import ChatConfiguration
+from core.models import ChatConfiguration, SupportGroup
 from tickets.models import (
+    Category,
     IntegrationCheck,
     NotificationAttempt,
     NotificationDelivery,
@@ -291,6 +292,47 @@ class NotificationTests(TicketHelpers, TestCase):
         self.assertEqual(results["email"]["status"], "sent")
         self.assertEqual(
             (results["chat"]["status"], results["chat"]["error_code"]), ("failed", "chat_x")
+        )
+
+
+class WorkingTechnicianNotificationTests(TicketHelpers, TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.make_fixtures()
+
+    def setUp(self):
+        self.clients = {}
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL ROLE pulse_runtime")
+
+    def notified(self, user):
+        for _ in range(30):
+            if not deliver_one():
+                break
+        return NotificationDelivery.objects.filter(recipient=user).count()
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        EMAIL_HOST="smtp.synthetic.test",
+        DEFAULT_FROM_EMAIL="pulse@company.test",
+        APP_BASE_URL="https://support.company.test",
+    )
+    def test_assignee_and_participant_outside_group_are_notified(self):
+        group = SupportGroup.objects.create(name="Grupo sem os técnicos")
+        category = Category.objects.create(name="Fora do grupo", group=group)
+        ticket = self.create(category=category.pk)
+        self.assertEqual(self.notified(self.outsider), 0)
+        self.claim(ticket, self.outsider)
+        self.assertEqual(self.mutate(ticket, self.tech2, "join").status_code, 200)
+        before = self.notified(self.outsider), self.notified(self.tech2)
+        self.mutate(ticket, self.owner, "comments", {"body": "Resposta", "visibility": "public"})
+        self.assertGreater(self.notified(self.outsider), before[0])
+        self.assertGreater(self.notified(self.tech2), before[1])
+        self.assertEqual(self.notified(self.tech), 0)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(
+                recipient=self.owner, outbox__event__action="comment.added"
+            ).exists()
         )
 
 
