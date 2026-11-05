@@ -23,6 +23,7 @@ Consequências:
 - A mensagem traz tipo do evento, número, estado e link, nunca o texto do
   comentário, porque chamados restritos e notas internas também usam este canal.
 
-Risco aberto: a documentação não confirma que o evento traz `user.email`. Sem esse
-campo o vínculo não acontece e a API registra `chat_event_without_email`;
-seria preciso conectar a conta por código.
+O evento real traz `user.email` (confirmado em 05/11/2026). Se um dia não trouxer,
+o vínculo não acontece e a API registra `chat_event_without_email`.
+
+O proxy na frente do Pulse precisa liberar esta rota para origens externas.
