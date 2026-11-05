@@ -447,6 +447,9 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Versão/ })).toHaveCount(0);
+  const icon = await page.request.get("/pulse-icon.png");
+  expect(icon.headers()["content-type"]).toBe("image/png");
+  await expect(page.locator(".brand-icon-ecg")).toBeVisible();
   for (const name of ["Termos de uso", "Aviso de privacidade"]) {
     await page.getByRole("button", { name, exact: true }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
