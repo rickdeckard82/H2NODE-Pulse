@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { all, api, priorities } from "./api";
+import { AuditLog } from "./AuditLog";
 import { ChatSettings } from "./ChatSettings";
 import { CompanySettings } from "./CompanySettings";
 import { NotificationDiagnostics } from "./NotificationDiagnostics";
@@ -82,6 +83,7 @@ const resources: Resource[] = [
   { label: "SMTP", path: "settings/smtp", fields: [] },
   { label: "Google Chat", path: "settings/chat", fields: [] },
   { label: "Entregas", path: "settings/notifications", fields: [] },
+  { label: "Log do sistema", path: "settings/audit", fields: [] },
   {
     label: "Áreas",
     path: "departments",
@@ -373,6 +375,8 @@ export function Admin() {
       )}
       {resource.path === "settings/company" ? (
         <CompanySettings />
+      ) : resource.path === "settings/audit" ? (
+        <AuditLog />
       ) : resource.path === "settings/smtp" ? (
         <SmtpSettings />
       ) : resource.path === "settings/chat" ? (

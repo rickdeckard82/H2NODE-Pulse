@@ -4,6 +4,7 @@ import base64
 import binascii
 import re
 
+from django.core.validators import URLValidator
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
@@ -39,6 +40,14 @@ class CompanyInput(StrictSerializer):
     name = serializers.CharField(max_length=120)
     cnpj = serializers.CharField(max_length=18)
     responsible = serializers.CharField(max_length=120)
+    responsible_email = serializers.EmailField(max_length=254, required=False, allow_blank=True)
+    # http(s) only: the value becomes a link shown to every user.
+    website = serializers.CharField(
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        validators=[URLValidator(schemes=["http", "https"])],
+    )
     logo = serializers.CharField(
         max_length=LOGO_MAX_BYTES * 2, required=False, allow_blank=True, trim_whitespace=False
     )
@@ -70,7 +79,15 @@ class CompanyInput(StrictSerializer):
 class CompanyOutput(serializers.ModelSerializer):
     class Meta:
         model = CompanyProfile
-        fields = ["name", "cnpj", "responsible", "logo", "updated_at"]
+        fields = [
+            "name",
+            "cnpj",
+            "responsible",
+            "responsible_email",
+            "website",
+            "logo",
+            "updated_at",
+        ]
 
 
 class CompanySettingsView(NoStoreMixin, APIView):
@@ -82,7 +99,7 @@ class CompanySettingsView(NoStoreMixin, APIView):
         data = CompanyOutput(CompanyProfile.objects.first() or CompanyProfile()).data
         # Everyone sees the top bar; the identification stays with administrators.
         if request.user.role != User.Role.ADMIN:
-            data["cnpj"] = data["responsible"] = ""
+            data["cnpj"] = data["responsible"] = data["responsible_email"] = ""
         return Response(data)
 
     @extend_schema(request=CompanyInput, responses=CompanyOutput)
@@ -108,6 +125,8 @@ class CompanySettingsView(NoStoreMixin, APIView):
                 "name": obj.name,
                 "cnpj": obj.cnpj,
                 "responsible": obj.responsible,
+                "responsible_email": obj.responsible_email,
+                "website": obj.website,
                 "logo_changed": logo_changed,
             },
         )

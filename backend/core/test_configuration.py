@@ -140,6 +140,26 @@ class ConfigurationTests(HTTPHelpers, TestCase):
         ]:
             self.assertFalse(valid_cnpj(value), value)
 
+    def test_refused_logins_are_recorded_without_the_typed_address(self):
+        action = "session.login_failed"
+        client = self.client_for_test()
+        path = "/api/v1/auth/login/"
+        wrong = {"email": self.user.email, "password": "senha-incorreta"}
+        self.assertEqual(self.post(client, path, wrong).status_code, 403)
+        event = IdentityEvent.objects.get(action=action)
+        self.assertEqual(event.actor, self.user)
+        unknown = {"email": "ghost@company.test", "password": "senha-incorreta"}
+        self.assertEqual(self.post(client, path, unknown).status_code, 403)
+        event = IdentityEvent.objects.filter(action=action, actor=None).get()
+        self.assertEqual(event.subject_id, "unknown")
+        self.assertNotIn("ghost", str(event.changes))
+        session = self.client_for_test()
+        good = {"email": self.admin.email, "password": PASSWORD}
+        self.assertEqual(self.post(session, path, good).status_code, 200)
+        response = self.post(session, "/api/v1/auth/mfa/verify/", {"code": "000000"})
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(IdentityEvent.objects.filter(action=action, actor=self.admin).exists())
+
     def test_company_settings_are_validated_audited_and_scoped(self):
         path = "/api/v1/settings/company/"
         logo = "data:image/png;base64," + base64.b64encode(PNG_SIGNATURE + b"x").decode()
@@ -147,6 +167,8 @@ class ConfigurationTests(HTTPHelpers, TestCase):
             "name": "Empresa Sintética",
             "cnpj": "11.222.333/0001-81",
             "responsible": "Pessoa Teste",
+            "responsible_email": "pessoa@company.test",
+            "website": "https://empresa.example/",
             "logo": logo,
             "reason": "Cadastro",
         }
@@ -155,6 +177,9 @@ class ConfigurationTests(HTTPHelpers, TestCase):
         self.assertEqual(self.client_for_test().get(path).status_code, 403)
         for bad in [
             {"cnpj": "11.222.333/0001-82"},
+            {"responsible_email": "sem-arroba"},
+            {"website": "javascript:alert(1)"},
+            {"website": "ftp://empresa.example/"},
             {"logo": "data:image/svg+xml;base64,PHN2Zz4="},
             {"logo": "data:image/png;base64,PHN2Zz4="},
             {"logo": "data:image/png;base64,###"},
@@ -170,6 +195,8 @@ class ConfigurationTests(HTTPHelpers, TestCase):
         visible = user.get(path).json()
         self.assertEqual((visible["name"], visible["logo"]), (data["name"], logo))
         self.assertEqual((visible["cnpj"], visible["responsible"]), ("", ""))
+        self.assertEqual(visible["responsible_email"], "")
+        self.assertEqual(visible["website"], "https://empresa.example/")
         self.assertEqual(admin.get(path).json()["responsible"], "Pessoa Teste")
         kept = {key: value for key, value in data.items() if key != "logo"}
         self.assertEqual(self.patch(admin, path, kept).json()["logo"], logo)

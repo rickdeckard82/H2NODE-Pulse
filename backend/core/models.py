@@ -132,6 +132,8 @@ class CompanyProfile(models.Model):
     name = models.CharField(max_length=120, blank=True)
     cnpj = models.CharField(max_length=14, blank=True)
     responsible = models.CharField(max_length=120, blank=True)
+    responsible_email = models.EmailField(blank=True)
+    website = models.URLField(blank=True)
     logo = models.TextField(blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 

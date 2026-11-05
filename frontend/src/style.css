@@ -314,6 +314,7 @@ textarea:focus-visible {
   font-weight: 650;
   color: #536078;
   text-align: center;
+  text-decoration: none;
 }
 .company-badge img {
   max-height: 48px;

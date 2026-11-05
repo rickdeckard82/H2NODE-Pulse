@@ -378,6 +378,32 @@ class TicketTests(TicketHelpers, TestCase):
         self.assertEqual(self.mutate(inside, self.manager, "claim").status_code, 200)
         self.assertEqual(self.read(outside, self.outsider).status_code, 200)
 
+    def test_audit_log_merges_trails_filters_and_is_admin_only(self):
+        ticket = self.create()
+        self.claim(ticket)
+        client = self.client_as(self.admin)
+        path = "/api/v1/settings/audit/"
+        self.assertEqual(self.client_as(self.manager).get(path).status_code, 403)
+        rows = client.get(path).json()["results"]
+        self.assertEqual({"identity", "ticket"}, {row["source"] for row in rows})
+        self.assertEqual(
+            [row["created_at"] for row in rows],
+            sorted((row["created_at"] for row in rows), reverse=True),
+        )
+        claimed = next(row for row in rows if row["action"] == "claimed")
+        self.assertEqual(claimed["subject"], str(ticket.number))
+        self.assertEqual(claimed["actor_email"], self.tech.email)
+        mine = client.get(f"{path}?user={self.tech.pk}").json()["results"]
+        self.assertTrue(mine)
+        self.assertEqual({row["actor_id"] for row in mine}, {self.tech.pk})
+        today = timezone.localtime(timezone=ZoneInfo("America/Sao_Paulo")).date()
+        past = today - timedelta(days=2)
+        self.assertGreater(client.get(f"{path}?start={today}&end={today}").json()["count"], 0)
+        self.assertEqual(client.get(f"{path}?end={past}").json()["count"], 0)
+        self.assertEqual(client.get(f"{path}?start={today}&end={past}").status_code, 400)
+        self.assertEqual(client.get(f"{path}?user=abc").status_code, 400)
+        self.assertEqual(client.get(f"{path}?page=1").status_code, 200)
+
     def test_notification_inbox_scope_mute_and_clear(self):
         ticket = self.create()
         self.claim(ticket)

@@ -232,6 +232,14 @@ def password_login(request, email, password):
     return {"status": "authenticated"}
 
 
+def login_failed(email=None, user_id=None):
+    """Called outside the login transaction, whose rollback would erase this record."""
+    lookup = {"pk": user_id} if user_id else {"email": normalize_email(email)}
+    user = User.objects.filter(**lookup).first()
+    # An unknown address is not stored: people sometimes type a password in that field.
+    audit(user, "session.login_failed", user.pk if user else "unknown")
+
+
 def pending_user(request):
     pending = request.session.get("pending_identity", {})
     user = User.objects.select_for_update().filter(pk=pending.get("id")).first()

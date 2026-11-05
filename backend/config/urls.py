@@ -11,6 +11,7 @@ from core.views import LiveView, ReadyView
 from tickets import reports
 from tickets import views as tickets
 from tickets.attachments import AttachmentView, DownloadView
+from tickets.audit_log import AuditLogView
 from tickets.notification_views import (
     InboxClearView,
     InboxView,
@@ -34,6 +35,7 @@ urlpatterns = [
     path("api/v1/integrations/google-chat/events/", ChatEventsView.as_view()),
     path("api/v1/settings/chat/", ChatSettingsView.as_view()),
     path("api/v1/settings/company/", CompanySettingsView.as_view()),
+    path("api/v1/settings/audit/", AuditLogView.as_view()),
     path("api/v1/settings/smtp/", SmtpSettingsView.as_view()),
     path("api/v1/settings/notifications/", NotificationDiagnosticsView.as_view()),
     path("api/v1/notifications/", InboxView.as_view()),

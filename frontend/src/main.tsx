@@ -35,6 +35,31 @@ function Waves() {
   );
 }
 
+function CompanyBadge({ company }: { company: Company }) {
+  const content = (
+    <>
+      {company.logo && <img src={company.logo} alt="" />}
+      <span>{company.name}</span>
+    </>
+  );
+  return company.website ? (
+    <a
+      className="company-badge"
+      href={company.website}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={company.name}
+      aria-label={`${company.name} (abre em nova aba)`}
+    >
+      {content}
+    </a>
+  ) : (
+    <div className="company-badge" title={company.name}>
+      {content}
+    </div>
+  );
+}
+
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,12 +191,7 @@ function App() {
                 </button>
               )}
             </nav>
-            {company?.name && (
-              <div className="company-badge" title={company.name}>
-                {company.logo && <img src={company.logo} alt="" />}
-                <span>{company.name}</span>
-              </div>
-            )}
+            {company?.name && <CompanyBadge company={company} />}
             <Notifications
               ref={bell}
               onOpen={(id) => {

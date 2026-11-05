@@ -266,6 +266,8 @@ test("administração básica, configuração auditada e layout", async ({
   await page.getByLabel("Nome da empresa").fill("Empresa Sintética");
   await page.getByLabel("CNPJ").fill("11.222.333/0001-81");
   await page.getByLabel("Responsável pelas informações").fill("Pessoa Teste");
+  await page.getByLabel("E-mail do responsável").fill("pessoa@company.test");
+  await page.getByLabel("Site da empresa").fill("https://empresa.example/");
   await page.getByLabel(/^Logo/).setInputFiles({
     name: "logo.png",
     mimeType: "image/png",
@@ -284,6 +286,25 @@ test("administração básica, configuração auditada e layout", async ({
     "Empresa Sintética",
   );
   await expect(page.locator(".company-badge img")).toBeVisible();
+  await expect(page.locator("a.company-badge")).toHaveAttribute(
+    "href",
+    "https://empresa.example/",
+  );
+  await expect(page.locator("a.company-badge")).toHaveAttribute(
+    "target",
+    "_blank",
+  );
+  await audit(page);
+  await page
+    .getByRole("button", { name: "Log do sistema", exact: true })
+    .click();
+  await expect(
+    page.getByText("Alterou os dados da empresa").first(),
+  ).toBeVisible();
+  await page.getByLabel("De", { exact: true }).fill("2020-01-01");
+  await page.getByLabel("Até", { exact: true }).fill("2020-01-02");
+  await page.getByRole("button", { name: "Filtrar", exact: true }).click();
+  await expect(page.getByText("Nenhum registro.")).toBeVisible();
   await audit(page);
   await page.getByRole("button", { name: "Entregas", exact: true }).click();
   await expect(

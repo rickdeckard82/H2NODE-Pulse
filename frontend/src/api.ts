@@ -8,6 +8,8 @@ export type Company = {
   name: string;
   cnpj: string;
   responsible: string;
+  responsible_email: string;
+  website: string;
   logo: string;
 };
 export type User = {

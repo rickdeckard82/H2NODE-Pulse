@@ -94,11 +94,20 @@ provedores reais e produção continuam pendentes.
 
 ## Empresa
 
-Em **Administração → Empresa**, informe nome, CNPJ, responsável pelas informações
-e logo em PNG de até 256 KB. O CNPJ aceita o formato numérico e o alfanumérico, e
+Em **Administração → Empresa**, informe nome, CNPJ, responsável pelas informações,
+e-mail do responsável, site e logo em PNG de até 256 KB. Com site cadastrado, o
+logo da barra superior abre o site em outra aba. O CNPJ aceita o formato numérico e o alfanumérico, e
 os dígitos verificadores são conferidos. O nome e o logo aparecem na barra
-superior para todos os usuários logados. CNPJ e responsável ficam visíveis só a
-administradores. API: `GET/PATCH /api/v1/settings/company/`.
+superior para todos os usuários logados. CNPJ, responsável e e-mail ficam visíveis
+só a administradores. API: `GET/PATCH /api/v1/settings/company/`.
+
+## Log do sistema
+
+Em **Administração → Log do sistema**, veja data e hora, usuário e ação, com filtros
+por usuário e por período. O log junta os registros de identidade e configuração e
+os de chamados, e é somente leitura. Registra entradas, saídas e logins recusados;
+e-mails não cadastrados não são guardados. Consultas a chamados não geram registro.
+API: `GET /api/v1/settings/audit/?user=&start=&end=&page=`.
 
 ## Quem recebe avisos
 

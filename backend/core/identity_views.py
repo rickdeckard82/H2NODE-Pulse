@@ -93,11 +93,21 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
             identity.redeem_token(data["token"], purpose, data.get("password"))
             result = {"status": "completed"}
         elif self.action == "login":
-            result = identity.password_login(request, **data)
+            try:
+                result = identity.password_login(request, **data)
+            except PermissionDenied:
+                identity.login_failed(email=data["email"])
+                raise
         elif self.action == "mfa_setup":
             result = identity.setup_mfa(request)
         elif self.action == "mfa_verify":
-            result = identity.verify_mfa(request, **data)
+            pending = request.session.get("pending_identity", {}).get("id")
+            try:
+                result = identity.verify_mfa(request, **data)
+            except PermissionDenied:
+                if pending:
+                    identity.login_failed(user_id=pending)
+                raise
         from core.trusted_devices import apply_cookie
 
         return apply_cookie(request, Response(result))

@@ -58,6 +58,8 @@ export function CompanySettings() {
                   name: data.get("name"),
                   cnpj: data.get("cnpj"),
                   responsible: data.get("responsible"),
+                  responsible_email: data.get("responsible_email"),
+                  website: data.get("website"),
                   logo,
                   reason: data.get("reason"),
                 },
@@ -100,6 +102,25 @@ export function CompanySettings() {
               required
               maxLength={120}
               defaultValue={company.responsible}
+            />
+          </label>
+          <label>
+            E-mail do responsável
+            <input
+              name="responsible_email"
+              type="email"
+              maxLength={254}
+              defaultValue={company.responsible_email}
+            />
+          </label>
+          <label>
+            Site da empresa
+            <input
+              name="website"
+              type="url"
+              placeholder="https://www.empresa.com.br"
+              maxLength={200}
+              defaultValue={company.website}
             />
           </label>
           <label>
