@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, date } from "./api";
 
+const channelLabels: Record<string, string> = {
+  email: "e-mail",
+  chat: "Google Chat",
+  chat_dm: "Chat individual",
+};
+
 type Delivery = {
   id: number;
   ticket_number: number;
@@ -61,7 +67,7 @@ export function NotificationDiagnostics() {
         </button>
       </div>
       <div className="action-list">
-        {(["email", "chat"] as const).map((channel) => (
+        {(["email", "chat", "chat_dm"] as const).map((channel) => (
           <button
             key={channel}
             className="secondary"
@@ -87,7 +93,7 @@ export function NotificationDiagnostics() {
               }
             }}
           >
-            {channel === "email" ? "Testar e-mail" : "Testar Google Chat"}
+            Testar {channelLabels[channel]}
           </button>
         ))}
       </div>
@@ -107,8 +113,7 @@ export function NotificationDiagnostics() {
             <li key={check.id}>
               <div>
                 <strong>
-                  Teste de{" "}
-                  {check.channel === "email" ? "e-mail" : "Google Chat"} ·{" "}
+                  Teste de {channelLabels[check.channel] || check.channel} ·{" "}
                   {labels[check.status] || check.status}
                 </strong>
                 <small>
@@ -129,7 +134,7 @@ export function NotificationDiagnostics() {
               <div>
                 <strong>
                   #{row.ticket_number} ·{" "}
-                  {row.channel === "email" ? "E-mail" : "Google Chat"} ·{" "}
+                  {channelLabels[row.channel] || row.channel} ·{" "}
                   {labels[row.status] || row.status}
                 </strong>
                 <small>

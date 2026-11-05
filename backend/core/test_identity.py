@@ -9,10 +9,12 @@ import socketserver
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from importlib import import_module
 from io import StringIO
 from unittest.mock import patch
 
 import pyotp
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.management import call_command
@@ -546,8 +548,16 @@ class IdentityTests(HTTPHelpers, TestCase):
         )
         self.assertEqual(client.get("/api/v1/settings/domains/").status_code, 403)
 
+    def test_retired_privacy_role_becomes_collaborator_and_loses_sessions(self):
+        user = self.make_user("retired", "privacy")
+        version = user.session_version
+        import_module("core.migrations.0009_simplify_roles").demote_privacy(apps, None)
+        user.refresh_from_db()
+        self.assertEqual(user.role, User.Role.COLLABORATOR)
+        self.assertEqual(user.session_version, version + 1)
+
     def test_role_matrix_has_no_implicit_administration(self):
-        for role in [User.Role.TECHNICIAN, User.Role.MANAGER, User.Role.PRIVACY]:
+        for role in [User.Role.TECHNICIAN, User.Role.MANAGER]:
             user = self.make_user(role, role)
             client = self.login(user)
             self.assertEqual(client.get("/api/v1/users/").json()["count"], 1)
@@ -567,7 +577,7 @@ class IdentityTests(HTTPHelpers, TestCase):
                 403,
             )
         admin = self.login(self.admin)
-        self.assertEqual(admin.get("/api/v1/users/").json()["count"], 6)
+        self.assertEqual(admin.get("/api/v1/users/").json()["count"], 5)
         self.assertEqual(admin.get("/api/v1/settings/domains/").status_code, 200)
 
     def test_promotion_revokes_session_requires_mfa_and_audits(self):
@@ -777,7 +787,9 @@ class IdentityTests(HTTPHelpers, TestCase):
         technician = self.login(tech)
         self.assertEqual(technician.get("/api/v1/groups/").json()["count"], 1)
         self.assertEqual(self.login(self.alice).get("/api/v1/groups/").json()["count"], 0)
-        self.patch(admin, f"/api/v1/users/{tech.pk}/", {"role": "privacy", "reason": "Mudança"})
+        self.patch(
+            admin, f"/api/v1/users/{tech.pk}/", {"role": "collaborator", "reason": "Mudança"}
+        )
         self.assertFalse(Membership.objects.filter(user=tech).exists())
 
     def test_admin_organization_crud_is_audited_and_no_sensitive_fields_returned(self):

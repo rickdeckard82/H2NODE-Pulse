@@ -12,10 +12,19 @@ class Category(models.Model):
     group = models.ForeignKey("core.SupportGroup", on_delete=models.PROTECT)
     restricted = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    # Suggested at ticket opening; the requester may choose another level.
+    priority = models.PositiveSmallIntegerField(default=3)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(priority__range=(1, 4)), name="category_valid_priority"
+            )
+        ]
 
 
 class ReadGrant(models.Model):
-    """Explicit read-only access for administrators/privacy, never implied by role."""
+    """Retired by ADR 0005: administrators see everything. Table kept, no longer read."""
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     group = models.ForeignKey("core.SupportGroup", on_delete=models.PROTECT)
@@ -106,8 +115,9 @@ class Ticket(models.Model):
     category = models.ForeignKey(Category, on_delete=models.PROTECT)
     subject = models.CharField(max_length=200)
     description = models.TextField()
-    impact = models.PositiveSmallIntegerField()
-    urgency = models.PositiveSmallIntegerField()
+    # Historical only: tickets opened before priority came from the category (ADR 0004).
+    impact = models.PositiveSmallIntegerField(null=True)
+    urgency = models.PositiveSmallIntegerField(null=True)
     priority = models.PositiveSmallIntegerField()
     group = models.ForeignKey("core.SupportGroup", on_delete=models.PROTECT)
     assignee = models.ForeignKey(
@@ -248,6 +258,7 @@ class NotificationDelivery(models.Model):
     class Channel(models.TextChoices):
         EMAIL = "email", "E-mail"
         CHAT = "chat", "Google Chat"
+        CHAT_DM = "chat_dm", "Google Chat individual"
 
     outbox = models.ForeignKey(
         NotificationOutbox, on_delete=models.PROTECT, related_name="deliveries"

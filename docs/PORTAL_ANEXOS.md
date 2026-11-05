@@ -13,7 +13,7 @@ ou validar MFA. Contas sem domínio permitido/confirmado não acessam o portal.
 Em ambiente sem SMTP configurado não há entrega de confirmação; não existe
 senha padrão nem bypass de cadastro. Use o bootstrap operacional da identidade.
 
-No portal, abra um chamado escolhendo categoria, impacto e urgência. Anexos são
+No portal, abra um chamado escolhendo a categoria; a prioridade vem sugerida por ela e pode ser trocada. Anexos são
 incluídos em uma resposta depois da abertura. O colaborador vê seus chamados;
 o técnico vê também os grupos autorizados. Responda ao pedido de informações ou
 teste no próprio chamado. Após a resolução, confirme ou informe a falha.

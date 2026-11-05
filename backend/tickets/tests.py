@@ -18,7 +18,14 @@ from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
 from core.identity import cipher
-from core.models import AllowedDomain, Department, Membership, SupportGroup, User
+from core.models import (
+    AllowedDomain,
+    Department,
+    IdentityEvent,
+    Membership,
+    SupportGroup,
+    User,
+)
 from core.test_identity import PASSWORD, HTTPHelpers
 from tickets.models import (
     AuditEvent,
@@ -26,7 +33,6 @@ from tickets.models import (
     Comment,
     IdempotencyRecord,
     NotificationOutbox,
-    ReadGrant,
     ReopenPolicy,
     Ticket,
     TicketEvent,
@@ -61,7 +67,6 @@ class TicketHelpers(HTTPHelpers):
             ("tech2", "technician"),
             ("manager", "manager"),
             ("admin", "admin"),
-            ("privacy", "privacy"),
             ("outsider", "technician"),
         ]:
             user = User.objects.create(
@@ -117,8 +122,7 @@ class TicketHelpers(HTTPHelpers):
             "category": self.category.pk,
             "subject": "Acesso sintético",
             "description": "Solicitação sintética de acesso",
-            "impact": 2,
-            "urgency": 3,
+            "priority": 2,
             **overrides,
         }
         response = self.send(user or self.owner, "/api/v1/tickets/", data)
@@ -209,13 +213,6 @@ class TicketTests(TicketHelpers, TestCase):
         self.assertTrue(member.can_view_restricted)
         # Management cancellation stays reserved to managers when editing too.
         self.assertEqual(self.patch(admin, path, {"can_cancel": True}).status_code, 400)
-        grant = ReadGrant.objects.create(user=self.privacy, group=self.group)
-        response = self.patch(
-            admin, f"/api/v1/settings/ticket-access/{grant.pk}/", {"internal": True}
-        )
-        self.assertEqual(response.status_code, 200, response.content)
-        grant.refresh_from_db()
-        self.assertTrue(grant.internal)
 
     def test_transfer_options_are_scoped_to_authorized_groups(self):
         ticket = self.create(category=self.restricted_category.pk)
@@ -274,11 +271,11 @@ class TicketTests(TicketHelpers, TestCase):
             self.assertEqual(event.notificationoutbox.status, "pending")
         self.assertEqual(AuditEvent.objects.count(), NotificationOutbox.objects.count())
 
-    def test_no_cross_user_or_implicit_admin_access_in_any_read_path(self):
+    def test_no_cross_user_access_in_any_read_path(self):
         ticket = self.create()
         # A technician outside the group still sees the shared queue.
         self.assertEqual(self.read(ticket, self.outsider).status_code, 200)
-        for user in [self.peer, self.admin, self.privacy]:
+        for user in [self.peer]:
             for suffix in ["", "comments/", "events/"]:
                 self.assertEqual(self.read(ticket, user, suffix).status_code, 404)
             response = self.client_as(user).get(
@@ -322,29 +319,64 @@ class TicketTests(TicketHelpers, TestCase):
         self.assertNotIn("INTERNAL_ONLY", str(item.payload))
         self.assertNotIn("INTERNAL_ONLY", str(item.event.auditevent.changes))
 
-    def test_admin_read_grant_is_explicit_scoped_read_only_and_revocable(self):
-        ticket = self.create()
+    def test_admin_has_full_access_including_restricted_and_internal(self):
+        ticket = self.create(category=self.restricted_category.pk)
+        self.claim(ticket)
         self.mutate(
             ticket, self.tech, "comments", {"body": "Private note", "visibility": "internal"}
         )
-        response = self.send(
-            self.admin,
-            "/api/v1/settings/ticket-access/",
-            {"user": self.privacy.pk, "group": self.group.pk},
+        self.assertEqual(self.read(ticket, self.admin).status_code, 200)
+        self.assertEqual(self.read(ticket, self.admin, "comments/").json()["count"], 1)
+        self.assertTrue(self.read(ticket, self.admin).json()["can_cancel"])
+        response = self.mutate(
+            ticket, self.admin, "transitions", {"action": "close", "message": "Encerrado"}
         )
-        self.assertEqual(response.status_code, 201, response.content)
-        self.assertEqual(self.read(ticket, self.privacy).status_code, 200)
-        self.assertEqual(self.read(ticket, self.privacy, "comments/").json()["count"], 0)
-        self.assertEqual(self.mutate(ticket, self.privacy, "claim").status_code, 403)
-        client = self.client_as(self.admin)
-        csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        self.assertEqual(response.status_code, 200, response.content)
+        unclaimed = self.create(category=self.restricted_category.pk)
+        self.assertEqual(self.mutate(unclaimed, self.admin, "claim").status_code, 200)
+        own = self.create(user=self.admin)
+        self.assertEqual(self.mutate(own, self.admin, "claim").status_code, 403)
+
+    def test_technician_acts_on_unassigned_ticket_closes_and_reopens(self):
+        ticket = self.create()
+        self.claim(ticket)
         self.assertEqual(
-            client.delete(
-                f"/api/v1/settings/ticket-access/{response.json()['id']}/", HTTP_X_CSRFTOKEN=csrf
+            self.mutate(
+                ticket,
+                self.tech2,
+                "transitions",
+                {"action": "resolve", "message": "X", "resolution_class": "Y"},
             ).status_code,
-            204,
+            200,
         )
-        self.assertEqual(self.read(ticket, self.privacy).status_code, 404)
+        for action, state in [("reopen", "in_progress"), ("close", "closed")]:
+            response = self.mutate(
+                ticket, self.outsider, "transitions", {"action": action, "message": "X"}
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+            ticket.refresh_from_db()
+            self.assertEqual(ticket.state, state)
+        response = self.mutate(
+            ticket, self.tech2, "transitions", {"action": "reopen", "message": "X"}
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(
+            self.mutate(
+                ticket, self.peer, "transitions", {"action": "close", "message": "X"}
+            ).status_code,
+            404,
+        )
+
+    def test_manager_only_reaches_tickets_of_own_groups(self):
+        foreign = SupportGroup.objects.create(name="Grupo de outro gestor")
+        category = Category.objects.create(name="Fora do gestor", group=foreign)
+        outside = self.create(category=category.pk)
+        inside = self.create()
+        self.assertEqual(self.read(outside, self.manager).status_code, 404)
+        self.assertEqual(self.mutate(outside, self.manager, "claim").status_code, 404)
+        self.assertEqual(self.read(inside, self.manager).status_code, 200)
+        self.assertEqual(self.mutate(inside, self.manager, "claim").status_code, 200)
+        self.assertEqual(self.read(outside, self.outsider).status_code, 200)
 
     def test_notification_inbox_scope_mute_and_clear(self):
         ticket = self.create()
@@ -393,12 +425,6 @@ class TicketTests(TicketHelpers, TestCase):
             ).status_code,
             200,
         )
-        self.assertEqual(
-            self.mutate(
-                ticket, self.tech, "transitions", {"action": "close", "message": "x"}
-            ).status_code,
-            403,
-        )
         response = self.mutate(
             ticket, self.owner, "transitions", {"action": "close", "message": "Resolvido por mim"}
         )
@@ -444,18 +470,9 @@ class TicketTests(TicketHelpers, TestCase):
             self.mutate(
                 ticket, self.tech, "transitions", {"action": "request_test", "message": "X"}
             ).status_code,
-            403,
+            409,
         )
         self.claim(ticket)
-        self.assertEqual(
-            self.mutate(
-                ticket,
-                self.tech2,
-                "transitions",
-                {"action": "resolve", "message": "X", "resolution_class": "Y"},
-            ).status_code,
-            403,
-        )
         self.assertEqual(
             self.mutate(ticket, self.tech, "transitions", {"action": "request_test"}).status_code,
             400,
@@ -484,17 +501,16 @@ class TicketTests(TicketHelpers, TestCase):
             405,
         )
 
-    def test_server_rejects_forged_owner_priority_dates_and_visibility(self):
+    def test_server_rejects_forged_owner_dates_and_visibility(self):
         data = {
             "category": self.category.pk,
             "subject": "X",
             "description": "Y",
-            "impact": 1,
-            "urgency": 1,
+            "priority": 4,
         }
         for field, value in [
             ("requester", self.peer.pk),
-            ("priority", 1),
+            ("impact", 1),
             ("created_at", "2020-01-01"),
             ("restricted", False),
             ("state", "resolved"),
@@ -504,13 +520,48 @@ class TicketTests(TicketHelpers, TestCase):
             )
         self.assertEqual(Ticket.objects.count(), 0)
 
+    def test_priority_comes_from_category_unless_requester_chooses(self):
+        Category.objects.filter(pk=self.category.pk).update(priority=1)
+        data = {"category": self.category.pk, "subject": "X", "description": "Y"}
+        response = self.send(self.owner, "/api/v1/tickets/", data)
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(Ticket.objects.get(number=response.json()["number"]).priority, 1)
+        self.assertEqual(self.create(priority=4).priority, 4)
+        for invalid in [0, 5]:
+            self.assertEqual(
+                self.send(
+                    self.owner, "/api/v1/tickets/", {**data, "priority": invalid}
+                ).status_code,
+                400,
+            )
+
+    def test_category_priority_defaults_validates_and_is_audited(self):
+        client = self.client_as(self.admin)
+        csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+
+        def patch_priority(value):
+            return client.patch(
+                f"/api/v1/categories/{self.category.pk}/",
+                {"priority": value},
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=csrf,
+            )
+
+        self.assertEqual(self.category.priority, 3)
+        for invalid in [0, 5]:
+            self.assertEqual(patch_priority(invalid).status_code, 400)
+        response = patch_priority(1)
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["priority"], 1)
+        changes = IdentityEvent.objects.filter(action="category.updated").latest("pk").changes
+        self.assertEqual((changes["before"]["priority"], changes["after"]["priority"]), (3, 1))
+
     def test_idempotency_replays_exact_receipt_and_rejects_payload_change(self):
         data = {
             "category": self.category.pk,
             "subject": "X",
             "description": "Y",
-            "impact": 1,
-            "urgency": 1,
+            "priority": 4,
         }
         key = uuid.uuid4()
         first = self.send(self.owner, "/api/v1/tickets/", data, key)
@@ -709,7 +760,7 @@ class TicketTests(TicketHelpers, TestCase):
 
     def test_queue_filters_pagination_and_no_internal_search(self):
         self.create(subject="First")
-        self.create(subject="Second", impact=1, urgency=1)
+        self.create(subject="Second", priority=4)
         self.create(user=self.peer, subject="Other")
         client = self.client_as(self.owner)
         result = client.get("/api/v1/tickets/?ordering=priority").json()
@@ -802,8 +853,7 @@ class TicketTests(TicketHelpers, TestCase):
             "category": self.category.pk,
             "subject": "X",
             "description": "Y",
-            "impact": 1,
-            "urgency": 1,
+            "priority": 4,
         }
         self.assertEqual(
             client.post("/api/v1/tickets/", data, content_type="application/json").status_code, 403
@@ -848,8 +898,7 @@ class ConcurrentTicketTests(TicketHelpers, TransactionTestCase):
             "category": self.category.pk,
             "subject": "Paralelo",
             "description": "Abertura simultânea",
-            "impact": 2,
-            "urgency": 3,
+            "priority": 2,
         }
 
         def create():
@@ -918,8 +967,7 @@ class ConcurrentTicketTests(TicketHelpers, TransactionTestCase):
             "category": self.category.pk,
             "subject": "X",
             "description": "Y",
-            "impact": 1,
-            "urgency": 1,
+            "priority": 4,
         }
 
         def create():

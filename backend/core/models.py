@@ -7,9 +7,8 @@ class User(AbstractUser):
     class Role(models.TextChoices):
         COLLABORATOR = "collaborator", "Colaborador"
         TECHNICIAN = "technician", "Técnico"
-        MANAGER = "manager", "Gestor de TI"
+        MANAGER = "manager", "Gestor"
         ADMIN = "admin", "Administrador"
-        PRIVACY = "privacy", "Responsável por privacidade"
 
     role = models.CharField(max_length=20, choices=Role, default=Role.COLLABORATOR)
     email_verified_at = models.DateTimeField(null=True, blank=True)
@@ -23,6 +22,8 @@ class User(AbstractUser):
     # In-app bell: events up to this instant are cleared; muted hides the unread badge.
     notifications_cleared_at = models.DateTimeField(null=True, blank=True)
     notifications_muted = models.BooleanField(default=False)
+    # Direct message with the Chat app, learned from its installation event.
+    chat_space = models.CharField(max_length=128, blank=True)
 
     class Meta:
         constraints = [
@@ -130,6 +131,11 @@ class ChatConfiguration(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     enabled = models.BooleanField(default=False)
     encrypted_webhook = models.TextField(blank=True)
+    project_number = models.CharField(max_length=32, blank=True)
+    encrypted_service_account = models.TextField(blank=True)
+    # Google's public signing certificates, refreshed by the worker.
+    google_certs = models.JSONField(default=dict)
+    certs_updated_at = models.DateTimeField(null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

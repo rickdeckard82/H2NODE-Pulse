@@ -156,7 +156,6 @@ def create_ticket(actor, unused, data):
             raise ValidationError(
                 "Um chamado vinculado a conteúdo restrito deve continuar restrito."
             )
-    score = data["impact"] + data["urgency"]
     ticket = Ticket.objects.create(
         requester=actor,
         department=actor.department,
@@ -166,9 +165,7 @@ def create_ticket(actor, unused, data):
         restricted=category.restricted,
         subject=data["subject"],
         description=data["description"],
-        impact=data["impact"],
-        urgency=data["urgency"],
-        priority={6: 1, 5: 2, 4: 3, 3: 4, 2: 4}[score],
+        priority=data.get("priority", category.priority),
         reopen_policy=ReopenPolicy.objects.order_by("-pk").first(),
         sla_policy=SlaPolicy.objects.order_by("-pk").first(),
         related_ticket=related,
@@ -186,14 +183,10 @@ def create_ticket(actor, unused, data):
     )
 
 
-def require_support(actor, ticket, assigned=False):
+def require_support(actor, ticket):
     member = membership(actor, ticket)
-    if not member or (
-        assigned
-        and ticket.assignee_id != actor.pk
-        and not ticket.participants.filter(pk=actor.pk).exists()
-    ):
-        raise PermissionDenied("Ação exige técnico autorizado e, quando aplicável, atribuído.")
+    if not member:
+        raise PermissionDenied("Ação exige técnico autorizado.")
     return member
 
 
@@ -201,13 +194,14 @@ def valid_assignee(user, group, restricted, requester_id):
     if (
         not eligible(user)
         or user.pk == requester_id
-        or user.role not in {User.Role.TECHNICIAN, User.Role.MANAGER}
+        or user.role not in {User.Role.TECHNICIAN, User.Role.MANAGER, User.Role.ADMIN}
     ):
         return False
     if not group.is_active:
         return False
-    members = Membership.objects.filter(user=user, group=group, can_view_restricted=True)
-    return members.exists() if restricted else True
+    if user.role == User.Role.ADMIN or not restricted:
+        return True
+    return Membership.objects.filter(user=user, group=group, can_view_restricted=True).exists()
 
 
 def check_assignment(ticket):
@@ -270,7 +264,7 @@ def transition(actor, ticket, data):
     action, before = data["action"], ticket.state
     owner = ticket.requester_id == actor.pk
     member = membership(actor, ticket)
-    manager = bool(member and actor.role == User.Role.MANAGER)
+    manager = bool(member and actor.role in {User.Role.MANAGER, User.Role.ADMIN})
     body = data.get("message", "")
     text_actions = {
         "request_information",
@@ -290,7 +284,7 @@ def transition(actor, ticket, data):
     if data.get("resolution_class") and action != "resolve":
         raise ValidationError({"resolution_class": "Campo exclusivo da resolução."})
     if action in {"request_information", "request_test", "resolve"}:
-        require_support(actor, ticket, assigned=True)
+        require_support(actor, ticket)
         if before != Ticket.State.ACTIVE:
             raise Conflict("Esta ação exige chamado em atendimento.")
         if action == "resolve":
@@ -309,13 +303,16 @@ def transition(actor, ticket, data):
             raise Conflict("Somente chamados resolvidos podem ser confirmados.")
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "close":
-        if not owner:
-            raise PermissionDenied("Somente o solicitante pode encerrar o chamado.")
-        if before not in {Ticket.State.ACTIVE, Ticket.State.INFORMATION, Ticket.State.TEST}:
+        if not owner and not member:
+            raise PermissionDenied("Encerramento não autorizado.")
+        closable = {Ticket.State.ACTIVE, Ticket.State.INFORMATION, Ticket.State.TEST}
+        if member:
+            closable.add(Ticket.State.RESOLVED)
+        if before not in closable:
             raise Conflict("Use cancelar em chamado novo e confirmar solução em resolvido.")
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "reopen":
-        if not owner and not (manager and before == Ticket.State.CLOSED):
+        if not owner and not member:
             raise PermissionDenied("Reabertura não autorizada.")
         if before not in {Ticket.State.RESOLVED, Ticket.State.CLOSED}:
             raise Conflict("O chamado não está resolvido ou fechado.")
@@ -379,7 +376,7 @@ def transfer(actor, ticket, data):
     destination = Membership.objects.filter(user=actor, group=group)
     if ticket.restricted:
         destination = destination.filter(can_view_restricted=True)
-    if not destination.exists():
+    if actor.role != User.Role.ADMIN and not destination.exists():
         raise PermissionDenied("Sem acesso ao grupo de destino.")
     assignee = get_object_or_404(User, pk=data["assignee"])
     if not valid_assignee(assignee, group, ticket.restricted, ticket.requester_id):

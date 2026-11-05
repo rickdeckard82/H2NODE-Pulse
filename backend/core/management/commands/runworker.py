@@ -11,6 +11,7 @@ from core.identity_mail import cleanup, deliver_one
 from tickets.attachments import scan_one
 from tickets.notifications import check_one as integration_check
 from tickets.notifications import deliver_one as deliver_ticket_notification
+from tickets.notifications import refresh_chat_certs
 from tickets.reports import cleanup_exports
 from tickets.sla import alert_breaches
 
@@ -38,6 +39,7 @@ class Command(BaseCommand):
             deliver_one()
             scan_one()
             integration_check()
+            refresh_chat_certs()
             cleanup_exports()
             if time.monotonic() - last_sla >= 60:
                 alert_breaches()

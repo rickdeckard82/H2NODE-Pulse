@@ -46,9 +46,6 @@ conforme `IDENTIDADE.md`:
 4. Quando a empresa definir uma janela, POST `/api/v1/settings/reopen-policies/`
    com `hours` (0–8760) e `reason`. A versão mais recente aplica-se a novas
    aberturas; zero ou ausência de política desabilita reabertura de Fechado.
-5. Se necessário, conceder leitura a administrador/privacidade em
-   `/api/v1/settings/ticket-access/`: `user`, `group`, `internal`, `restricted`.
-   As duas últimas permissões são false por padrão. O acesso é somente leitura.
 
 ## Leituras
 
@@ -59,8 +56,8 @@ gerado sob lock consultivo por mês. Chamados anteriores ao ajuste mantêm o nú
 
 | Endpoint | Conteúdo |
 |---|---|
-| GET `/tickets/` | Chamados próprios e, para técnicos/gestores, a fila completa de chamados não restritos de grupos ativos; restritos só com `can_view_restricted` no grupo |
-| GET `/tickets/{id}/` | Detalhe autorizado, prioridade calculada, área histórica e versão |
+| GET `/tickets/` | Chamados próprios; técnicos veem a fila de chamados não restritos de grupos ativos; gestores, os dos seus grupos; restritos só com `can_view_restricted` no grupo; administrador vê todos |
+| GET `/tickets/{id}/` | Detalhe autorizado, prioridade, área histórica e versão |
 | GET `/tickets/{id}/comments/` | Comentários visíveis, incluindo correções por acréscimo |
 | GET `/tickets/{id}/events/` | Timeline visível, ator, instante, transição e correlação |
 | GET `/categories/` | Categorias ativas para abertura; admin também vê inativas |
@@ -86,7 +83,7 @@ obtida no último detalhe. O recibo retorna `ticket_id`, `number`, `event_id`,
 
 | Ação | Endpoint POST | Campos além de expected_version |
 |---|---|---|
-| Abrir para si | `/tickets/` | `category`, `subject`, `description`, `impact`, `urgency`; `related_ticket` opcional; sem expected_version |
+| Abrir para si | `/tickets/` | `category`, `subject`, `description`; `priority` (1–4) e `related_ticket` opcionais; sem `priority`, vale a da categoria; sem expected_version |
 | Assumir | `/tickets/{id}/claim/` | Nenhum; exige Novo e técnico autorizado |
 | Participar | `/tickets/{id}/join/` | Nenhum; técnico entra como participante em Em atendimento/Aguardando |
 | Comentar | `/tickets/{id}/comments/` | `body`, `visibility` (`public`/`internal`), `corrects` opcional |
@@ -103,15 +100,17 @@ Transições:
 - Resposta pública do solicitante pelo endpoint comments retoma Em atendimento
   quando aguardava informação/teste, mantendo o técnico. Correção de mensagem
   anterior não retoma o atendimento.
-- `resolve`: técnico atribuído, Em atendimento, `message` público com solução e
+- `resolve`: técnico, gestor ou administrador com acesso ao chamado, Em atendimento, `message` público com solução e
   `resolution_class` obrigatórios.
 - `confirm`: solicitante, Resolvido → Fechado.
 - `close`: solicitante encerra a qualquer momento após o atendimento começar
   (Em atendimento ou Aguardando) → Fechado; `message` obrigatório.
-  Em Novo, o solicitante usa `cancel`; em Resolvido, `confirm`.
-- `reopen`: motivo em `message`; solicitante em Resolvido ou, junto ao gestor,
-  em Fechado dentro da janela congelada. Gestor pode informar `assignee` válido
-  ao regularizar atribuição na reabertura de Fechado.
+  Em Novo, o solicitante usa `cancel`; em Resolvido, `confirm`. Técnico, gestor e
+  administrador com acesso ao chamado também encerram, inclusive em Resolvido.
+- `reopen`: motivo em `message`; solicitante, técnico, gestor ou administrador com
+  acesso ao chamado, em Resolvido ou em Fechado dentro da janela congelada.
+  Gestor e administrador podem informar `assignee` válido ao regularizar a
+  atribuição.
 - `cancel`: solicitante apenas em Novo; gestor com `can_cancel` nos estados não
   terminais. `message` obrigatório.
 - `return_queue`: técnico/gestor com `can_transfer`, estado não terminal diferente
@@ -140,10 +139,10 @@ banco e não substitui backup/arquivo protegido de auditoria.
 | Operação | Rota | Quem |
 |---|---|---|
 | Listar/criar versão de política de SLA | GET/POST `/settings/sla-policies/` | Administrador; versões são imutáveis |
-| Resumo do período | GET `/reports/summary/?start=AAAA-MM-DD&end=AAAA-MM-DD` | Gestor: todos os chamados não restritos e os restritos dos grupos em que pode ver restritos; administrador e privacidade por concessão de leitura |
+| Resumo do período | GET `/reports/summary/?start=AAAA-MM-DD&end=AAAA-MM-DD` | Gestor: chamados dos seus grupos, com restritos apenas onde pode vê-los; administrador: todos |
 | Gerar CSV | POST `/reports/exports/` com `start` e `end` | Mesmos perfis; auditado |
 | Baixar CSV | GET `/reports/exports/<id>/` | Só o autor, por 15 minutos |
 
 Cada chamado congela a política vigente na abertura. As definições de primeira
 resposta, pausas, reabertura, coorte do período e denominadores estão em
-`docs/validacoes/etapa-06.md`. A quebra por técnico só aparece para gestores.
+`docs/validacoes/etapa-06.md`. A quebra por técnico aparece para gestores e administradores.

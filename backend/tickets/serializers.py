@@ -2,15 +2,14 @@ from rest_framework import serializers
 
 from core.models import SupportGroup, User
 from core.serializers import StrictSerializer
-from tickets.models import Category, Comment, ReadGrant, ReopenPolicy, Ticket, TicketEvent
+from tickets.models import Category, Comment, ReopenPolicy, Ticket, TicketEvent
 
 
 class CreateInput(StrictSerializer):
     category = serializers.IntegerField(min_value=1)
     subject = serializers.CharField(max_length=200)
     description = serializers.CharField(max_length=10000)
-    impact = serializers.IntegerField(min_value=1, max_value=3)
-    urgency = serializers.IntegerField(min_value=1, max_value=3)
+    priority = serializers.IntegerField(min_value=1, max_value=4, required=False)
     related_ticket = serializers.UUIDField(required=False)
 
 
@@ -72,7 +71,9 @@ class TicketSerializer(serializers.ModelSerializer):
 
         actor = self.context["request"].user
         member = membership(actor, obj)
-        return bool(member and actor.role == User.Role.MANAGER and member.can_cancel)
+        return bool(
+            member and actor.role in {User.Role.MANAGER, User.Role.ADMIN} and member.can_cancel
+        )
 
     id = serializers.UUIDField(source="uuid", read_only=True)
     requester_name = serializers.CharField(source="requester.first_name", read_only=True)
@@ -178,26 +179,11 @@ class StrictModelSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(StrictModelSerializer):
     group = serializers.PrimaryKeyRelatedField(queryset=SupportGroup.objects.filter(is_active=True))
+    priority = serializers.IntegerField(min_value=1, max_value=4, required=False)
 
     class Meta:
         model = Category
-        fields = ["id", "name", "group", "restricted", "is_active"]
-        read_only_fields = ["id"]
-
-
-class ReadGrantSerializer(StrictModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(
-            role__in=[User.Role.ADMIN, User.Role.PRIVACY],
-            is_active=True,
-            email_verified_at__isnull=False,
-        )
-    )
-    group = serializers.PrimaryKeyRelatedField(queryset=SupportGroup.objects.filter(is_active=True))
-
-    class Meta:
-        model = ReadGrant
-        fields = ["id", "user", "group", "internal", "restricted"]
+        fields = ["id", "name", "group", "restricted", "is_active", "priority"]
         read_only_fields = ["id"]
 
 

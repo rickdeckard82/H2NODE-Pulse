@@ -4,13 +4,19 @@ import {
   api,
   ApiError,
   date,
+  priorities,
   states,
   type Page,
   type Ticket,
   type User,
 } from "./api";
 import { TicketDetail } from "./TicketDetail";
-type Category = { id: number; name: string; restricted: boolean };
+type Category = {
+  id: number;
+  name: string;
+  restricted: boolean;
+  priority: number;
+};
 export function Portal({
   user,
   onExpired,
@@ -29,6 +35,7 @@ export function Portal({
   const [page, setPage] = useState<Page<Ticket> | null>(null);
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [priority, setPriority] = useState("3");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const createKey = useRef(crypto.randomUUID());
@@ -108,8 +115,7 @@ export function Portal({
                   {
                     ...data,
                     category: Number(data.category),
-                    impact: Number(data.impact),
-                    urgency: Number(data.urgency),
+                    priority: Number(data.priority),
                   },
                   "POST",
                   createKey.current,
@@ -127,7 +133,17 @@ export function Portal({
           >
             <label>
               Categoria
-              <select name="category" required defaultValue="">
+              <select
+                name="category"
+                required
+                defaultValue=""
+                onChange={(e) => {
+                  const chosen = categories.find(
+                    (c) => c.id === Number(e.target.value),
+                  );
+                  if (chosen) setPriority(String(chosen.priority));
+                }}
+              >
                 <option value="" disabled>
                   Selecione
                 </option>
@@ -158,24 +174,24 @@ export function Portal({
                 rows={5}
               />
             </label>
-            <div className="two-columns">
-              <label>
-                Impacto
-                <select name="impact" defaultValue="1">
-                  <option value="1">Baixo · uma pessoa</option>
-                  <option value="2">Médio · equipe</option>
-                  <option value="3">Alto · organização</option>
-                </select>
-              </label>
-              <label>
-                Urgência
-                <select name="urgency" defaultValue="1">
-                  <option value="1">Baixa</option>
-                  <option value="2">Média</option>
-                  <option value="3">Alta</option>
-                </select>
-              </label>
-            </div>
+            <label>
+              Prioridade
+              <select
+                name="priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                aria-describedby="priority-hint"
+              >
+                {priorities.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <small id="priority-hint" className="field-hint">
+              Sugerida pela categoria. Altere se o caso exigir.
+            </small>
             <button disabled={busy || !categories.length}>
               {busy ? "Enviando…" : "Criar chamado"}
             </button>

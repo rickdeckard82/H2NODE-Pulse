@@ -6,3 +6,6 @@ drf-spectacular>=0.28,<1
 argon2-cffi>=25.1,<26
 pyotp>=2.9,<3
 cryptography>=46,<51
+google-auth[requests]>=2.40,<3
+# Slim images ship no system zoneinfo database.
+tzdata>=2026.1

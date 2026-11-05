@@ -11,7 +11,7 @@ from core.authentication import IsIdentityAdmin
 from core.identity_views import AdminWriteViewSet, NoStoreMixin, locked_actor
 from core.models import Membership, User
 from tickets import services
-from tickets.models import Category, ReadGrant, ReopenPolicy, Ticket
+from tickets.models import Category, ReopenPolicy, Ticket
 from tickets.permissions import visible_history, visible_tickets
 from tickets.serializers import (
     CategorySerializer,
@@ -21,7 +21,6 @@ from tickets.serializers import (
     EventSerializer,
     MutationResult,
     QueueFilters,
-    ReadGrantSerializer,
     ReopenPolicySerializer,
     TicketSerializer,
     TransferInput,
@@ -209,7 +208,12 @@ class CategoryViewSet(AdminWriteViewSet):
             self.request.user,
             "category.created",
             obj.pk,
-            {"name": obj.name, "group": obj.group_id, "restricted": obj.restricted},
+            {
+                "name": obj.name,
+                "group": obj.group_id,
+                "restricted": obj.restricted,
+                "priority": obj.priority,
+            },
         )
 
     def perform_update(self, serializer):
@@ -218,6 +222,7 @@ class CategoryViewSet(AdminWriteViewSet):
             "group": serializer.instance.group_id,
             "restricted": serializer.instance.restricted,
             "is_active": serializer.instance.is_active,
+            "priority": serializer.instance.priority,
         }
         obj = serializer.save()
         identity.audit(
@@ -231,77 +236,10 @@ class CategoryViewSet(AdminWriteViewSet):
                     "group": obj.group_id,
                     "restricted": obj.restricted,
                     "is_active": obj.is_active,
+                    "priority": obj.priority,
                 },
             },
         )
-
-
-class ReadGrantViewSet(
-    NoStoreMixin,
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet,
-):
-    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
-    serializer_class = ReadGrantSerializer
-    permission_classes = [IsIdentityAdmin]
-    queryset = ReadGrant.objects.order_by("pk")
-
-    @transaction.atomic
-    def create(self, request, *args, **kwargs):
-        identity.identity_lock()
-        locked_actor(request, admin=True)
-        return super().create(request, *args, **kwargs)
-
-    def perform_create(self, serializer):
-        obj = serializer.save()
-        identity.audit(
-            self.request.user,
-            "ticket_access.granted",
-            obj.pk,
-            {
-                "user": obj.user_id,
-                "group": obj.group_id,
-                "internal": obj.internal,
-                "restricted": obj.restricted,
-            },
-        )
-
-    @transaction.atomic
-    def partial_update(self, request, *args, **kwargs):
-        identity.identity_lock()
-        locked_actor(request, admin=True)
-        return super().partial_update(request, *args, **kwargs)
-
-    def perform_update(self, serializer):
-        obj = serializer.save()
-        identity.audit(
-            self.request.user,
-            "ticket_access.updated",
-            obj.pk,
-            {
-                "user": obj.user_id,
-                "group": obj.group_id,
-                "internal": obj.internal,
-                "restricted": obj.restricted,
-            },
-        )
-
-    @transaction.atomic
-    def destroy(self, request, *args, **kwargs):
-        identity.identity_lock()
-        locked_actor(request, admin=True)
-        obj = self.get_object()
-        identity.audit(
-            request.user,
-            "ticket_access.revoked",
-            obj.pk,
-            {"user": obj.user_id, "group": obj.group_id},
-        )
-        obj.delete()
-        return Response(status=204)
 
 
 class ReopenPolicyViewSet(

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { all, api } from "./api";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { all, api, priorities } from "./api";
 import { ChatSettings } from "./ChatSettings";
 import { NotificationDiagnostics } from "./NotificationDiagnostics";
 import { SmtpSettings } from "./SmtpSettings";
@@ -11,6 +11,7 @@ type Field = {
   options?: [string, string][];
   default?: string;
   optional?: boolean;
+  hint?: string;
   // Picks a record by name instead of asking the administrator for its numeric id.
   ref?: "users" | "groups" | "departments";
   roles?: string[];
@@ -38,6 +39,32 @@ type Ref = {
   is_active?: boolean;
 };
 const name: Field = { key: "name", label: "Nome" };
+const suggestion = (minutes: number) =>
+  minutes < 60
+    ? `${minutes} min`
+    : `${minutes} min (${minutes / 60} h de expediente)`;
+// Suggested targets are a starting point for the administrator, never applied automatically.
+const slaFields: Field[] = (
+  [
+    [1, 30, 240],
+    [2, 60, 480],
+    [3, 240, 1200],
+    [4, 480, 3000],
+  ] as const
+).flatMap(([priority, response, resolution]) => [
+  {
+    key: `p${priority}_response`,
+    label: `${priorities[priority - 1][1]} · 1ª resposta (min úteis)`,
+    type: "number",
+    hint: `Sugestão: ${suggestion(response)}.`,
+  },
+  {
+    key: `p${priority}_resolution`,
+    label: `${priorities[priority - 1][1]} · resolução (min úteis)`,
+    type: "number",
+    hint: `Sugestão: ${suggestion(resolution)}. Não pode ser menor que a 1ª resposta.`,
+  },
+]);
 const active: Field = { key: "is_active", label: "Ativo", type: "checkbox" };
 const reason: Field = { key: "reason", label: "Justificativa" };
 const group: Field = { key: "group", label: "Grupo", ref: "groups" };
@@ -77,6 +104,14 @@ const resources: Resource[] = [
     fields: [
       name,
       group,
+      {
+        key: "priority",
+        label: "Prioridade sugerida",
+        type: "number",
+        options: priorities,
+        default: "3",
+        hint: "Vem selecionada na abertura; o solicitante pode trocar.",
+      },
       { key: "restricted", label: "Acesso restrito", type: "checkbox" },
       active,
     ],
@@ -95,9 +130,8 @@ const resources: Resource[] = [
         options: [
           ["collaborator", "Colaborador"],
           ["technician", "Técnico"],
-          ["manager", "Gestor de TI"],
+          ["manager", "Gestor"],
           ["admin", "Administrador"],
-          ["privacy", "Responsável por privacidade"],
         ],
       },
       department,
@@ -152,24 +186,6 @@ const resources: Resource[] = [
     create: true,
   },
   {
-    label: "Concessões de leitura",
-    path: "settings/ticket-access",
-    fields: [
-      {
-        key: "user",
-        label: "Administrador ou privacidade",
-        ref: "users",
-        roles: ["admin", "privacy"],
-      },
-      group,
-      { key: "internal", label: "Notas internas", type: "checkbox" },
-      { key: "restricted", label: "Restritos", type: "checkbox" },
-    ],
-    editable: true,
-    removable: true,
-    create: true,
-  },
-  {
     label: "Política de reabertura",
     path: "settings/reopen-policies",
     fields: [
@@ -210,46 +226,7 @@ const resources: Resource[] = [
         label: "Feriados (AAAA-MM-DD, separados por espaço)",
         optional: true,
       },
-      {
-        key: "p1_response",
-        label: "P1 · 1ª resposta (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p1_resolution",
-        label: "P1 · resolução (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p2_response",
-        label: "P2 · 1ª resposta (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p2_resolution",
-        label: "P2 · resolução (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p3_response",
-        label: "P3 · 1ª resposta (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p3_resolution",
-        label: "P3 · resolução (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p4_response",
-        label: "P4 · 1ª resposta (min úteis)",
-        type: "number",
-      },
-      {
-        key: "p4_resolution",
-        label: "P4 · resolução (min úteis)",
-        type: "number",
-      },
+      ...slaFields,
       reason,
     ],
     create: true,
@@ -297,7 +274,7 @@ export function Admin() {
         ? value
           ? "Sim"
           : "Não"
-        : (field.options?.find(([option]) => option === value)?.[1] ??
+        : (field.options?.find(([option]) => option === String(value))?.[1] ??
           String(value));
   async function load() {
     setRows(await all<Row>(resource.path + "/"));
@@ -524,74 +501,79 @@ export function Admin() {
                 }}
               >
                 {formFields.map((f) => (
-                  <label
-                    className={f.type === "checkbox" ? "checkbox" : ""}
-                    key={f.key}
-                  >
-                    {f.type === "checkbox" ? (
-                      <input
-                        type="checkbox"
-                        name={f.key}
-                        defaultChecked={
-                          editing
-                            ? Boolean(editing[f.key])
-                            : f.key === "is_active"
-                        }
-                      />
-                    ) : null}
-                    {f.label}
-                    {f.options ? (
-                      <select
-                        name={f.key}
-                        defaultValue={String(
-                          editing?.[f.key] || f.options[0][0],
-                        )}
-                      >
-                        {f.options.map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : f.ref ? (
-                      <select
-                        name={f.key}
-                        required={!f.optional}
-                        defaultValue={String(editing?.[f.key] ?? "")}
-                      >
-                        <option value="">
-                          {f.optional ? "Nenhuma" : "Selecione…"}
-                        </option>
-                        {(refs[f.ref] || [])
-                          .filter(
-                            (ref) =>
-                              (!f.roles ||
-                                f.roles.includes(String(ref.role))) &&
-                              (ref.is_active !== false ||
-                                ref.id === editing?.[f.key]),
-                          )
-                          .map((ref) => (
-                            <option key={ref.id} value={ref.id}>
-                              {refLabel(ref)}
+                  <Fragment key={f.key}>
+                    <label className={f.type === "checkbox" ? "checkbox" : ""}>
+                      {f.type === "checkbox" ? (
+                        <input
+                          type="checkbox"
+                          name={f.key}
+                          defaultChecked={
+                            editing
+                              ? Boolean(editing[f.key])
+                              : f.key === "is_active"
+                          }
+                        />
+                      ) : null}
+                      {f.label}
+                      {f.options ? (
+                        <select
+                          name={f.key}
+                          defaultValue={String(
+                            editing?.[f.key] || f.default || f.options[0][0],
+                          )}
+                        >
+                          {f.options.map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
                             </option>
                           ))}
-                      </select>
-                    ) : f.type !== "checkbox" ? (
-                      <input
-                        type={f.type || "text"}
-                        name={f.key}
-                        min={
-                          f.type === "number"
-                            ? Number(f.key !== "hours")
-                            : undefined
-                        }
-                        required={f.key !== "department" && !f.optional}
-                        defaultValue={String(
-                          editing?.[f.key] ?? f.default ?? "",
-                        )}
-                      />
-                    ) : null}
-                  </label>
+                        </select>
+                      ) : f.ref ? (
+                        <select
+                          name={f.key}
+                          required={!f.optional}
+                          defaultValue={String(editing?.[f.key] ?? "")}
+                        >
+                          <option value="">
+                            {f.optional ? "Nenhuma" : "Selecione…"}
+                          </option>
+                          {(refs[f.ref] || [])
+                            .filter(
+                              (ref) =>
+                                (!f.roles ||
+                                  f.roles.includes(String(ref.role))) &&
+                                (ref.is_active !== false ||
+                                  ref.id === editing?.[f.key]),
+                            )
+                            .map((ref) => (
+                              <option key={ref.id} value={ref.id}>
+                                {refLabel(ref)}
+                              </option>
+                            ))}
+                        </select>
+                      ) : f.type !== "checkbox" ? (
+                        <input
+                          type={f.type || "text"}
+                          name={f.key}
+                          min={
+                            f.type === "number"
+                              ? Number(f.key !== "hours")
+                              : undefined
+                          }
+                          required={f.key !== "department" && !f.optional}
+                          aria-describedby={f.hint && `${f.key}-hint`}
+                          defaultValue={String(
+                            editing?.[f.key] ?? f.default ?? "",
+                          )}
+                        />
+                      ) : null}
+                    </label>
+                    {f.hint && (
+                      <small id={`${f.key}-hint`} className="field-hint">
+                        {f.hint}
+                      </small>
+                    )}
+                  </Fragment>
                 ))}
                 <button disabled={busy}>
                   {busy ? "Salvando…" : "Salvar configuração"}

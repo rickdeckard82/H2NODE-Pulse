@@ -90,7 +90,8 @@ export function TicketDetail({
       </>
     );
   const owner = ticket.requester === user.id;
-  const support = !owner && ["technician", "manager"].includes(user.role);
+  const support =
+    !owner && ["technician", "manager", "admin"].includes(user.role);
   const terminal = ["closed", "cancelled"].includes(ticket.state);
   const working =
     ticket.assignee === user.id ||
@@ -104,17 +105,18 @@ export function TicketDetail({
     )
       ? ["join"]
       : []),
-    ...(support && working && ticket.state === "in_progress"
+    ...(support && ticket.state === "in_progress"
       ? ["request_information", "request_test", "resolve"]
       : []),
-    ...(owner && ticket.state === "resolved" ? ["confirm", "reopen"] : []),
-    ...(owner &&
-    ["in_progress", "waiting_information", "waiting_test"].includes(
-      ticket.state,
-    )
+    ...(owner && ticket.state === "resolved" ? ["confirm"] : []),
+    ...(((owner || support) &&
+      ["in_progress", "waiting_information", "waiting_test"].includes(
+        ticket.state,
+      )) ||
+    (support && ticket.state === "resolved")
       ? ["close"]
       : []),
-    ...((owner || user.role === "manager") && ticket.state === "closed"
+    ...((owner || support) && ["resolved", "closed"].includes(ticket.state)
       ? ["reopen"]
       : []),
     ...((owner && ticket.state === "new") ||

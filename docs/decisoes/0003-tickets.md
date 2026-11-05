@@ -11,8 +11,8 @@ sequência pode ter lacunas após rollback; nenhum identificador autoriza acesso
 Categorias determinam grupo e classificação de acesso na abertura. Somente
 administradores configuram categorias; usuários abrem para si. Solicitante,
 área/nomes históricos, prioridade, datas, estado e versão são definidos no servidor.
-Impacto/urgência usam escala 1–3; soma 6 → P1, 5 → P2, 4 → P3, 2–3 → P4.
-Essa matriz inicial é técnica e deve ser revisada com a empresa antes de produção.
+Impacto/urgência usavam escala 1–3; soma 6 → P1, 5 → P2, 4 → P3, 2–3 → P4.
+Substituído pela ADR 0004: a prioridade agora vem da categoria.
 
 Solicitantes veem apenas seus chamados. Técnicos/gestores veem os grupos em que
 têm membership ativo; chamados restritos exigem `can_view_restricted`. Área
@@ -28,8 +28,8 @@ destinatário reavalia conta e escopo antes de retornar metadados.
 
 ## Transições e histórico
 
-Só o técnico atribuído solicita informação/teste ou resolve. Gestores não ganham
-permissão automática para resolver chamados de outros técnicos. Transferência
+Papéis e acesso foram simplificados pela ADR 0005, que prevalece sobre esta ADR
+onde houver conflito. Transferência
 exige `can_transfer` na origem e acesso ao destino; atribuir apenas a técnico ou
 gestor ativo, confirmado e autorizado ao grupo/classificação. Devolução à fila
 muda explicitamente para Novo e remove a atribuição. Cancelamento de gestão exige

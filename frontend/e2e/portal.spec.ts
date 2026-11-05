@@ -98,6 +98,8 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
   await owner
     .getByLabel("Categoria")
     .selectOption({ label: "Acessos e sistemas" });
+  await expect(owner.getByLabel("Prioridade")).toHaveValue("3");
+  await owner.getByLabel("Prioridade").selectOption({ label: "Alta (P2)" });
   await owner
     .getByLabel("Assunto", { exact: true })
     .fill("Acesso ao sistema de operações");
@@ -271,14 +273,19 @@ test("administração básica, configuração auditada e layout", async ({
   await expect(page.getByLabel("Fuso horário (IANA)")).toHaveValue(
     "America/Sao_Paulo",
   );
+  const levels = ["Crítica", "Alta", "Média", "Baixa"];
   for (let p = 1; p <= 4; p++) {
+    const level = `${levels[p - 1]} (P${p})`;
     await page
-      .getByLabel(`P${p} · 1ª resposta (min úteis)`)
+      .getByLabel(`${level} · 1ª resposta (min úteis)`)
       .fill(String(60 * p));
     await page
-      .getByLabel(`P${p} · resolução (min úteis)`)
+      .getByLabel(`${level} · resolução (min úteis)`)
       .fill(String(240 * p));
   }
+  await expect(
+    page.getByLabel("Crítica (P1) · resolução (min úteis)"),
+  ).toHaveAccessibleDescription(/Sugestão: 240 min \(4 h de expediente\)/);
   await page
     .getByLabel("Feriados (AAAA-MM-DD, separados por espaço)")
     .fill("2026-12-25");
@@ -439,6 +446,14 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Versão/ })).toHaveCount(0);
+  for (const name of ["Termos de uso", "Aviso de privacidade"]) {
+    await page.getByRole("button", { name, exact: true }).click();
+    await expect(page.getByRole("heading", { name })).toBeVisible();
+    await audit(page);
+    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
   // Footer sits at the bottom of a short page without creating a scrollbar.
   expect(
     await page.evaluate(() => ({
@@ -492,6 +507,11 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
 test("perfil altera foto e nome, mas não o e-mail", async ({ page }) => {
   await login(page, "owner");
   await expect(page.locator(".avatar")).toHaveText("A");
+  await page.getByRole("button", { name: /^Versão \d/ }).click();
+  await expect(page.getByRole("heading", { name: "Novidades" })).toBeVisible();
+  await audit(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   const menu = page.locator("summary[aria-label^='Abrir menu de']");
   await menu.click();
   await expect(

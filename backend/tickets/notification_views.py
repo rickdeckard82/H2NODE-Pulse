@@ -30,6 +30,8 @@ class DeliveryOutput(serializers.ModelSerializer):
     def get_recipient(self, obj) -> str:
         if obj.channel == NotificationDelivery.Channel.CHAT:
             return "Espaço geral da TI"
+        if obj.channel == NotificationDelivery.Channel.CHAT_DM:
+            return "Conversa individual"
         local, _, domain = obj.recipient_key.partition("@")
         return f"{local[:1]}***@{domain}" if domain else "Destinatário protegido"
 

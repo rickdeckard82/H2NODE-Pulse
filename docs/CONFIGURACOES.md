@@ -98,8 +98,27 @@ Em **Administração → Google Chat**, cole o webhook do espaço da TI
 (`https://chat.googleapis.com/v1/spaces/…/messages?key=…&token=…`), informe a
 justificativa e ative. O webhook é cifrado com `IDENTITY_KEY`, nunca é devolvido
 pela API e só é aceito com esse formato. O espaço recebe apenas número, estado
-e link de eventos públicos de chamados não restritos. Mensagens individuais não
-são suportadas.
+e link de eventos públicos de chamados não restritos.
+
+### App do Google Chat (mensagens individuais)
+
+Cada pessoa recebe os avisos numa conversa privada com o app. O Google não informa
+essa conversa a partir do e-mail, então ela é aprendida quando a pessoa instala o
+app ou escreve para ele.
+
+1. No Google Cloud, em **Google Chat API → Configuração**, use o URL do endpoint
+   `https://SEU-DOMINIO/api/v1/integrations/google-chat/events/` e **Número do
+   projeto** como público de autenticação. Em **Visibilidade**, libere os usuários.
+2. Em **Administração → Google Chat**, informe o número do projeto e cole a chave
+   JSON da conta de serviço. A chave é cifrada e nunca é devolvida pela API.
+3. Aguarde o worker baixar os certificados do Google (a tela indica) e instale o
+   app no Chat. O app responde confirmando. Quem instalou antes deve mandar
+   qualquer mensagem a ele.
+
+O e-mail da conta no Chat precisa ser igual ao do Pulse. A mensagem traz apenas
+tipo do evento, número, estado e link, nunca o texto do comentário. Quem não
+instalar continua recebendo só e-mail. A rota de eventos é pública e aceita apenas
+requisições assinadas pelo Google para o número do projeto configurado.
 
 Em **Administração → Entregas**, veja as últimas 200 entregas com destinatário
 mascarado e código de erro sanitizado. **Reenviar** recoloca na fila uma entrega

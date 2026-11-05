@@ -97,10 +97,11 @@ class AttachmentTests(TicketHelpers, TestCase):
         self.assertEqual(self.upload(self.tech, visibility="internal").status_code, 201)
         scan_one()
         item = Attachment.objects.get()
-        for user in [self.owner, self.peer, self.admin]:
+        for user in [self.owner, self.peer]:
             self.assertEqual(self.download(user, item).status_code, 404)
         self.assertEqual(self.read(self.ticket, self.owner, "attachments/").json()["results"], [])
         self.assertEqual(self.download(self.tech, item).status_code, 200)
+        self.assertEqual(self.download(self.admin, item).status_code, 200)
 
     def test_type_spoof_large_and_empty_rejected(self):
         for raw, name, mime in [

@@ -11,7 +11,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from core.models import IdentityEvent
-from tickets.models import NotificationOutbox, ReadGrant, ReportExport, SlaPolicy, Ticket
+from tickets.models import NotificationOutbox, ReportExport, SlaPolicy, Ticket
 from tickets.reports import ZONE, cleanup_exports
 from tickets.sla import alert_breaches, business_seconds, measure
 from tickets.tests import TicketHelpers
@@ -185,12 +185,11 @@ class SlaReportTests(TicketHelpers, TestCase):
             self.assertEqual(counts["met"] + counts["breached"] + counts["pending"], 4)
         self.assertEqual(data["response"]["met"], 1)
         self.assertEqual(data["open_by_assignee"], [])
-        # Admin sees aggregates only through explicit, non-restricted grants and never by person.
-        self.assertEqual(self.summary(self.admin).json()["created"], 0)
-        ReadGrant.objects.create(user=self.admin, group=self.group)
+        # Admin has full access, restricted tickets and individual figures included.
         admin_data = self.summary(self.admin).json()
-        self.assertEqual(admin_data["created"], 3)
-        self.assertIsNone(admin_data["open_by_assignee"])
+        self.assertEqual(admin_data["created"], 4)
+        self.assertTrue(admin_data["has_scope"])
+        self.assertEqual(admin_data["open_by_assignee"], [])
         # Calendar days are local: 23:59 of the previous day belongs to that day only.
         late = datetime.combine(self.today() - timedelta(days=1), time(23, 59), tzinfo=ZONE)
         Ticket.objects.filter(pk=open_ticket.pk).update(created_at=late)

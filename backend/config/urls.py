@@ -3,6 +3,7 @@ from drf_spectacular.views import SpectacularAPIView
 from rest_framework.routers import SimpleRouter
 
 from core import identity_views as identity
+from core.chat_events import ChatEventsView
 from core.chat_settings import ChatSettingsView
 from core.smtp_settings import SmtpSettingsView
 from core.views import LiveView, ReadyView
@@ -25,11 +26,11 @@ router.register("memberships", identity.MembershipViewSet, basename="memberships
 router.register("settings/domains", identity.DomainViewSet, basename="domains")
 router.register("tickets", tickets.TicketViewSet, basename="tickets")
 router.register("categories", tickets.CategoryViewSet, basename="categories")
-router.register("settings/ticket-access", tickets.ReadGrantViewSet, basename="ticket-access")
 router.register("settings/reopen-policies", tickets.ReopenPolicyViewSet, basename="reopen-policies")
 router.register("settings/sla-policies", reports.SlaPolicyViewSet, basename="sla-policies")
 
 urlpatterns = [
+    path("api/v1/integrations/google-chat/events/", ChatEventsView.as_view()),
     path("api/v1/settings/chat/", ChatSettingsView.as_view()),
     path("api/v1/settings/smtp/", SmtpSettingsView.as_view()),
     path("api/v1/settings/notifications/", NotificationDiagnosticsView.as_view()),

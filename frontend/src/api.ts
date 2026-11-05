@@ -1,3 +1,9 @@
+export const priorities: [string, string][] = [
+  ["1", "Crítica (P1)"],
+  ["2", "Alta (P2)"],
+  ["3", "Média (P3)"],
+  ["4", "Baixa (P4)"],
+];
 export type User = {
   id: number;
   first_name: string;

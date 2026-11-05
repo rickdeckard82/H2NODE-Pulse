@@ -897,6 +897,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
           description: ''
+  /api/v1/integrations/google-chat/events/:
+    post:
+      operationId: integrations_google_chat_events_create
+      tags:
+      - integrations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/memberships/:
     get:
       operationId: memberships_list
@@ -1492,100 +1521,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/SmtpOutput'
           description: ''
-  /api/v1/settings/ticket-access/:
-    get:
-      operationId: settings_ticket_access_list
-      parameters:
-      - name: page
-        required: false
-        in: query
-        description: Um número de página dentro do conjunto de resultados paginado.
-        schema:
-          type: integer
-      tags:
-      - settings
-      security:
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedReadGrantList'
-          description: ''
-    post:
-      operationId: settings_ticket_access_create
-      tags:
-      - settings
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReadGrantRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ReadGrantRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ReadGrantRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReadGrant'
-          description: ''
-  /api/v1/settings/ticket-access/{id}/:
-    patch:
-      operationId: settings_ticket_access_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: Um valor inteiro único que identifica este read grant.
-        required: true
-      tags:
-      - settings
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedReadGrantRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedReadGrantRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedReadGrantRequest'
-      security:
-      - cookieAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReadGrant'
-          description: ''
-    delete:
-      operationId: settings_ticket_access_destroy
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: Um valor inteiro único que identifica este read grant.
-        required: true
-      tags:
-      - settings
-      security:
-      - cookieAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/v1/tickets/:
     get:
       operationId: tickets_list
@@ -2336,6 +2271,10 @@ components:
           type: boolean
         is_active:
           type: boolean
+        priority:
+          type: integer
+          maximum: 4
+          minimum: 1
       required:
       - group
       - id
@@ -2353,6 +2292,10 @@ components:
           type: boolean
         is_active:
           type: boolean
+        priority:
+          type: integer
+          maximum: 4
+          minimum: 1
       required:
       - group
       - name
@@ -2360,10 +2303,12 @@ components:
       enum:
       - email
       - chat
+      - chat_dm
       type: string
       description: |-
         * `email` - E-mail
         * `chat` - Google Chat
+        * `chat_dm` - Google Chat individual
     ChatOutput:
       type: object
       properties:
@@ -2372,11 +2317,22 @@ components:
         webhook_configured:
           type: boolean
           readOnly: true
+        project_number:
+          type: string
+          maxLength: 32
+        app_configured:
+          type: boolean
+          readOnly: true
+        certs_ready:
+          type: boolean
+          readOnly: true
         updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
+      - app_configured
+      - certs_ready
       - updated_at
       - webhook_configured
     ClockSummary:
@@ -2485,13 +2441,9 @@ components:
           type: string
           minLength: 1
           maxLength: 10000
-        impact:
+        priority:
           type: integer
-          maximum: 3
-          minimum: 1
-        urgency:
-          type: integer
-          maximum: 3
+          maximum: 4
           minimum: 1
         related_ticket:
           type: string
@@ -2499,9 +2451,7 @@ components:
       required:
       - category
       - description
-      - impact
       - subject
-      - urgency
     DeliveryOutput:
       type: object
       properties:
@@ -3130,29 +3080,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Organization'
-    PaginatedReadGrantList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=4
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=2
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReadGrant'
     PaginatedReopenPolicyList:
       type: object
       required:
@@ -3307,6 +3234,10 @@ components:
           type: boolean
         is_active:
           type: boolean
+        priority:
+          type: integer
+          maximum: 4
+          minimum: 1
     PatchedChatInputRequest:
       type: object
       properties:
@@ -3317,6 +3248,20 @@ components:
           writeOnly: true
           maxLength: 2048
         clear_webhook:
+          type: boolean
+          writeOnly: true
+          default: false
+        project_number:
+          oneOf:
+          - type: string
+            pattern: ^\d{1,32}$
+          - type: string
+            maxLength: 0
+        service_account:
+          type: string
+          writeOnly: true
+          maxLength: 8192
+        clear_app:
           type: boolean
           writeOnly: true
           default: false
@@ -3386,17 +3331,6 @@ components:
         avatar:
           type: string
           maxLength: 136597
-    PatchedReadGrantRequest:
-      type: object
-      properties:
-        user:
-          type: integer
-        group:
-          type: integer
-        internal:
-          type: boolean
-        restricted:
-          type: boolean
     PatchedSmtpInputRequest:
       type: object
       properties:
@@ -3512,38 +3446,6 @@ components:
       - is_active
       - mfa_enabled
       - role
-    ReadGrant:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        user:
-          type: integer
-        group:
-          type: integer
-        internal:
-          type: boolean
-        restricted:
-          type: boolean
-      required:
-      - group
-      - id
-      - user
-    ReadGrantRequest:
-      type: object
-      properties:
-        user:
-          type: integer
-        group:
-          type: integer
-        internal:
-          type: boolean
-        restricted:
-          type: boolean
-      required:
-      - group
-      - user
     RegisterInputRequest:
       type: object
       properties:
@@ -3938,9 +3840,11 @@ components:
         impact:
           type: integer
           readOnly: true
+          nullable: true
         urgency:
           type: integer
           readOnly: true
+          nullable: true
         priority:
           type: integer
           readOnly: true
@@ -4192,28 +4096,24 @@ components:
       - technician
       - manager
       - admin
-      - privacy
       type: string
       description: |-
         * `collaborator` - Colaborador
         * `technician` - Técnico
-        * `manager` - Gestor de TI
+        * `manager` - Gestor
         * `admin` - Administrador
-        * `privacy` - Responsável por privacidade
     UserUpdateInputRoleEnum:
       enum:
       - collaborator
       - technician
       - manager
       - admin
-      - privacy
       type: string
       description: |-
         * `collaborator` - collaborator
         * `technician` - technician
         * `manager` - manager
         * `admin` - admin
-        * `privacy` - privacy
     VersionInputRequest:
       type: object
       properties:

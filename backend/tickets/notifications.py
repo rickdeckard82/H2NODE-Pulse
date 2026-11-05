@@ -6,6 +6,7 @@ import smtplib
 import uuid
 from datetime import timedelta
 from email.utils import make_msgid
+from functools import lru_cache
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -14,9 +15,13 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from google.auth.exceptions import RefreshError, TransportError
+from google.auth.transport.requests import Request as GoogleRequest
+from google.oauth2 import service_account
 
-from core.chat_settings import active_webhook
-from core.models import Membership, User
+from core.chat_settings import active_app, active_webhook
+from core.identity import cipher
+from core.models import ChatConfiguration, Membership, User
 from core.smtp_settings import delivery_configuration
 from tickets.models import (
     Comment,
@@ -29,6 +34,11 @@ from tickets.permissions import outbox_projection
 
 LEASE_SECONDS = 60
 MAX_ATTEMPTS = 8
+CHAT_API = "https://chat.googleapis.com/v1"
+CHAT_SCOPE = "https://www.googleapis.com/auth/chat.bot"
+CHAT_CERTS = (
+    "https://www.googleapis.com/service_accounts/v1/metadata/x509/chat@system.gserviceaccount.com"
+)
 
 ACTION_LABELS = {
     "created": "Chamado aberto",
@@ -83,6 +93,7 @@ def _materialize(outbox):
         recipients = recipients | User.objects.filter(pk=ticket.requester_id)
     recipients = recipients.exclude(pk=event.actor_id).distinct()
     now = timezone.now()
+    app = active_app()
     for recipient in recipients:
         projection = outbox_projection(outbox, recipient)
         if projection and recipient.email:
@@ -90,6 +101,13 @@ def _materialize(outbox):
                 outbox=outbox,
                 channel=NotificationDelivery.Channel.EMAIL,
                 recipient_key=recipient.email.lower(),
+                defaults={"recipient": recipient, "next_attempt_at": now},
+            )
+        if projection and app and recipient.chat_space:
+            NotificationDelivery.objects.get_or_create(
+                outbox=outbox,
+                channel=NotificationDelivery.Channel.CHAT_DM,
+                recipient_key=recipient.chat_space,
                 defaults={"recipient": recipient, "next_attempt_at": now},
             )
     if event.visibility == Comment.Visibility.PUBLIC and not ticket.restricted and active_webhook():
@@ -137,6 +155,10 @@ def _message(delivery):
     link = f"{settings.APP_BASE_URL.rstrip('/')}/tickets/{ticket.uuid}"
     if delivery.channel == NotificationDelivery.Channel.CHAT:
         return {"text": f"Chamado #{ticket.number} · {ticket.get_state_display()}\n{link}"}
+    if delivery.channel == NotificationDelivery.Channel.CHAT_DM:
+        # Never the comment body: restricted tickets and internal notes also reach this channel.
+        summary = f"{label} · Chamado #{ticket.number} · {ticket.get_state_display()}"
+        return {"text": f"{summary}\n{link}"}
     body = [
         f"{label} no chamado #{ticket.number}.",
         f"Estado atual: {ticket.get_state_display()}.",
@@ -170,14 +192,44 @@ def _send_email(to, content):
     return message_id
 
 
+@lru_cache(maxsize=1)
+def _chat_credentials(encrypted):
+    info = json.loads(cipher().decrypt(encrypted.encode()))
+    return service_account.Credentials.from_service_account_info(info, scopes=[CHAT_SCOPE])
+
+
+def _chat_token():
+    encrypted = active_app()
+    if not encrypted:
+        raise RetryableDelivery("chat_not_configured", 300)
+    credentials = _chat_credentials(encrypted)
+    if not credentials.valid:
+        try:
+            credentials.refresh(GoogleRequest())
+        except TransportError:
+            raise RetryableDelivery("chat_auth_unavailable") from None
+        except RefreshError:
+            raise PermanentDelivery("chat_auth_rejected") from None
+    return credentials.token
+
+
 def _send_chat(content):
     webhook = active_webhook()
     if not webhook:
         raise RetryableDelivery("chat_not_configured", 300)
+    return _post_chat(webhook, content)
+
+
+def _send_chat_dm(space, content):
+    token = _chat_token()
+    return _post_chat(f"{CHAT_API}/{space}/messages", content, {"Authorization": f"Bearer {token}"})
+
+
+def _post_chat(url, content, headers=None):
     request = Request(
-        webhook,
+        url,
         data=json.dumps(content).encode(),
-        headers={"Content-Type": "application/json; charset=utf-8"},
+        headers={"Content-Type": "application/json; charset=utf-8", **(headers or {})},
         method="POST",
     )
     try:
@@ -199,6 +251,8 @@ def _send(channel, to, content):
     try:
         if channel == NotificationDelivery.Channel.EMAIL:
             return _send_email(to, content)
+        if channel == NotificationDelivery.Channel.CHAT_DM:
+            return _send_chat_dm(to, content)
         return _send_chat(content)
     except RetryableDelivery, PermanentDelivery:
         raise
@@ -308,8 +362,12 @@ def check_one():
             )
         else:
             content = {"text": "Pulse Services · teste controlado da integração"}
+        direct = check.channel == NotificationDelivery.Channel.CHAT_DM
+        to = check.requested_by.chat_space if direct else check.requested_by.email
         try:
-            _send(check.channel, check.requested_by.email, content)
+            if not to:
+                raise PermanentDelivery("chat_not_linked")
+            _send(check.channel, to, content)
         except (RetryableDelivery, PermanentDelivery) as exc:
             check.status, check.error_code = "failed", exc.code
         else:
@@ -317,3 +375,22 @@ def check_one():
         check.completed_at = timezone.now()
         check.save(update_fields=["status", "error_code", "completed_at"])
         return True
+
+
+def refresh_chat_certs():
+    """The API has no egress, so the worker keeps Google's public certificates in the database."""
+    config = ChatConfiguration.objects.exclude(project_number="").first()
+    now = timezone.now()
+    if not config or (
+        config.certs_updated_at and now - config.certs_updated_at < timedelta(hours=1)
+    ):
+        return
+    try:
+        with build_opener(NoRedirect).open(Request(CHAT_CERTS), timeout=10) as response:
+            certs = json.loads(response.read(262144))
+    except TimeoutError, URLError, OSError, ValueError:
+        return
+    if isinstance(certs, dict) and certs:
+        ChatConfiguration.objects.filter(pk=config.pk).update(
+            google_certs=certs, certs_updated_at=now
+        )

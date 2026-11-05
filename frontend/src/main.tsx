@@ -1,5 +1,6 @@
 import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { AboutDialog, version, type AboutDoc } from "./About";
 import { api, type User } from "./api";
 import { Auth } from "./Auth";
 import { Portal } from "./Portal";
@@ -14,9 +15,8 @@ import "./style.css";
 const roleLabels: Record<string, string> = {
   collaborator: "Colaborador",
   technician: "Técnico",
-  manager: "Gestor de TI",
+  manager: "Gestor",
   admin: "Administrador",
-  privacy: "Responsável por privacidade",
 };
 
 function Waves() {
@@ -42,6 +42,7 @@ function App() {
   const [error, setError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
   const [logoPulseKey, setLogoPulseKey] = useState(0);
+  const [about, setAbout] = useState<AboutDoc | null>(null);
 
   useEffect(() => {
     setLogoPulseKey((k) => k + 1);
@@ -140,7 +141,7 @@ function App() {
               >
                 Chamados
               </button>
-              {["manager", "admin", "privacy"].includes(user.role) && (
+              {["manager", "admin"].includes(user.role) && (
                 <button
                   className="selected"
                   aria-current={view === "reports" ? "page" : undefined}
@@ -262,8 +263,24 @@ function App() {
       </main>
       <footer>
         <Waves />
-        <span>Pulse Services · Horários de Brasília (America/Sao_Paulo)</span>
+        <nav className="footer-links" aria-label="Informações do sistema">
+          <span>Pulse Services</span>
+          <button className="link" onClick={() => setAbout("terms")}>
+            Termos de uso
+          </button>
+          <button className="link" onClick={() => setAbout("privacy")}>
+            Aviso de privacidade
+          </button>
+          {user && (
+            <button className="link" onClick={() => setAbout("changelog")}>
+              Versão {version}
+            </button>
+          )}
+        </nav>
       </footer>
+      {about && (about !== "changelog" || user) && (
+        <AboutDialog doc={about} onClose={() => setAbout(null)} />
+      )}
     </>
   );
 }

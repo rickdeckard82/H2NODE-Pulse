@@ -99,7 +99,7 @@ Falha CSRF anterior ao DRF pode retornar HTML; clientes devem tratar pelo status
 ## Organização e permissões
 
 Listas paginadas, 25 itens por página, ordenadas por ID. `/users/` lista apenas a
-própria conta para colaboradores, técnicos, gestores e privacidade; administrador
+própria conta para colaboradores, técnicos e gestores; administrador
 pode consultar todas. `GET /users/{id}/` segue o mesmo escopo. O único PATCH de
 usuário é administrativo: `role`, `department`, `is_active`, sempre com `reason`.
 Não há DELETE, criação privilegiada pública ou edição genérica de senha/MFA.

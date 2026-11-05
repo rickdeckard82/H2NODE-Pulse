@@ -167,9 +167,8 @@ export function Reports() {
         <>
           {!summary.has_scope && (
             <p className="notice" role="status">
-              Sua conta ainda não tem acesso de leitura a nenhum grupo, por isso
-              o relatório está vazio. Conceda em Administração → Concessões de
-              leitura.
+              Sua conta ainda não participa de nenhum grupo, por isso o
+              relatório está vazio. Peça a inclusão à administração.
             </p>
           )}
           <section className="panel" aria-label="Indicadores do período">
