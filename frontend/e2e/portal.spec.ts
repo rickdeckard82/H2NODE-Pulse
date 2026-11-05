@@ -568,6 +568,22 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
 test("perfil altera foto e nome, mas não o e-mail", async ({ page }) => {
   await login(page, "owner");
   await expect(page.locator(".avatar")).toHaveText("A");
+  await page.locator("summary[aria-label^='Abrir menu de']").click();
+  await page
+    .locator(".user-menu-popover")
+    .getByRole("button", { name: "Ajuda", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Como usar o sistema" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Abrir e acompanhar um chamado" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Configurar a Google Chat API" }),
+  ).toHaveCount(0);
+  await audit(page);
+  await page.getByRole("button", { name: "Chamados", exact: true }).click();
   await page.getByRole("button", { name: /^Versão \d/ }).click();
   await expect(page.getByRole("heading", { name: "Novidades" })).toBeVisible();
   await audit(page);

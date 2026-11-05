@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { AboutDialog, version, type AboutDoc } from "./About";
 import { api, type Company, type User } from "./api";
 import { Auth } from "./Auth";
+import { Help } from "./Help";
 import { Portal } from "./Portal";
 import { Admin } from "./Admin";
 import { Account } from "./Account";
@@ -240,6 +241,14 @@ function App() {
                 >
                   Perfil
                 </button>
+                <button
+                  onClick={() => {
+                    setView("help");
+                    setLogoPulseKey((k) => k + 1);
+                  }}
+                >
+                  Ajuda
+                </button>
                 {user.role === "admin" && (
                   <button
                     onClick={() => {
@@ -288,6 +297,8 @@ function App() {
             onChanged={setUser}
             onPasswordChanged={passwordChanged}
           />
+        ) : view === "help" ? (
+          <Help role={user.role} />
         ) : view === "password" ? (
           <PasswordChange onCompleted={passwordChanged} />
         ) : (

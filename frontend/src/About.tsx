@@ -127,6 +127,7 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
           <li>Cadastro da empresa, com logo e nome na barra superior.</li>
           <li>Log do sistema com filtros por usuário e data.</li>
           <li>Política de retenção com remoção definitiva de dados.</li>
+          <li>Página de ajuda com o passo a passo do sistema.</li>
           <li>Termos de uso e aviso de privacidade no rodapé.</li>
           <li>
             Papéis simplificados: colaborador, técnico, gestor e administrador.
