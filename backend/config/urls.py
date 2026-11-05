@@ -19,6 +19,7 @@ from tickets.notification_views import (
     NotificationDiagnosticsView,
     NotificationRetryView,
 )
+from tickets.retention import RetentionSettingsView
 
 router = SimpleRouter()
 router.register("users", identity.UserViewSet, basename="users")
@@ -36,6 +37,7 @@ urlpatterns = [
     path("api/v1/settings/chat/", ChatSettingsView.as_view()),
     path("api/v1/settings/company/", CompanySettingsView.as_view()),
     path("api/v1/settings/audit/", AuditLogView.as_view()),
+    path("api/v1/settings/retention/", RetentionSettingsView.as_view()),
     path("api/v1/settings/smtp/", SmtpSettingsView.as_view()),
     path("api/v1/settings/notifications/", NotificationDiagnosticsView.as_view()),
     path("api/v1/notifications/", InboxView.as_view()),

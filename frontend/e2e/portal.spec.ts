@@ -306,6 +306,20 @@ test("administração básica, configuração auditada e layout", async ({
   await page.getByRole("button", { name: "Filtrar", exact: true }).click();
   await expect(page.getByText("Nenhum registro.")).toBeVisible();
   await audit(page);
+  await page
+    .getByRole("button", { name: "Retenção de dados", exact: true })
+    .click();
+  await page.getByLabel("Chamados encerrados (dias)").fill("365");
+  await page.getByLabel("Ativar a remoção automática").check();
+  await page
+    .getByLabel("Justificativa da alteração")
+    .fill("Política sintética");
+  await page.getByRole("button", { name: "Salvar retenção" }).click();
+  await expect(page.getByText(/Digite REMOVER/)).toBeVisible();
+  await page.getByLabel("Ativar a remoção automática").uncheck();
+  await page.getByRole("button", { name: "Salvar retenção" }).click();
+  await expect(page.getByText("Política de retenção salva.")).toBeVisible();
+  await audit(page);
   await page.getByRole("button", { name: "Entregas", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Diagnóstico de notificações" }),

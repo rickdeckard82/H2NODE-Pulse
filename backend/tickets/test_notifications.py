@@ -1,4 +1,5 @@
 import json
+import tempfile
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -18,13 +19,25 @@ from google.auth import crypt, jwt
 from core.chat_events import ISSUER
 from core.chat_settings import active_webhook
 from core.identity import cipher
-from core.models import ChatConfiguration, SupportGroup
+from core.models import (
+    ChatConfiguration,
+    Department,
+    IdentityEvent,
+    Membership,
+    SupportGroup,
+)
+from tickets.attachments import path_for
 from tickets.models import (
+    Attachment,
     Category,
+    Comment,
     IntegrationCheck,
     NotificationAttempt,
     NotificationDelivery,
     NotificationOutbox,
+    RetentionPolicy,
+    Ticket,
+    TicketEvent,
 )
 from tickets.notifications import (
     RetryableDelivery,
@@ -32,6 +45,7 @@ from tickets.notifications import (
     deliver_one,
     refresh_chat_certs,
 )
+from tickets.retention import run_retention
 from tickets.tests import TicketHelpers
 
 EVENTS = "/api/v1/integrations/google-chat/events/"
@@ -492,3 +506,180 @@ class ChatAppTests(TicketHelpers, TestCase):
         ChatConfiguration.objects.update(certs_updated_at=None)
         refresh_chat_certs()
         self.assertEqual(ChatConfiguration.objects.get().google_certs, {"k2": "pem"})
+
+
+class RetentionTests(TicketHelpers, TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.make_fixtures()
+
+    def setUp(self):
+        self.clients = {}
+        self.now = timezone.now()
+        self.old = self.now - timedelta(days=400)
+        self.policy = RetentionPolicy.objects.create(
+            enabled=True,
+            tickets_days=365,
+            users_days=365,
+            groups_days=365,
+            categories_days=365,
+            departments_days=365,
+            logs_days=365,
+        )
+        RetentionPolicy.objects.update(updated_at=self.now - timedelta(days=2))
+
+    def closed_ticket(self, user=None, closed_at=None):
+        ticket = self.create(user=user)
+        self.claim(ticket)
+        Ticket.objects.filter(pk=ticket.pk).update(state="closed", closed_at=closed_at or self.old)
+        return ticket
+
+    def run_now(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            return run_retention(self.now)
+
+    def test_disabled_grace_and_daily_limit_remove_nothing(self):
+        ticket = self.closed_ticket()
+        RetentionPolicy.objects.update(enabled=False)
+        self.assertIsNone(self.run_now())
+        RetentionPolicy.objects.update(enabled=True, updated_at=self.now - timedelta(hours=23))
+        self.assertIsNone(self.run_now())
+        RetentionPolicy.objects.update(
+            updated_at=self.now - timedelta(days=2), last_run_at=self.now - timedelta(hours=23)
+        )
+        self.assertIsNone(self.run_now())
+        self.assertTrue(Ticket.objects.filter(pk=ticket.pk).exists())
+
+    def test_zero_period_never_disposes_of_that_class(self):
+        ticket = self.closed_ticket()
+        RetentionPolicy.objects.update(tickets_days=0)
+        self.assertEqual(self.run_now()["removed"]["tickets"], 0)
+        self.assertTrue(Ticket.objects.filter(pk=ticket.pk).exists())
+
+    def test_expired_ticket_is_erased_with_every_trace_and_file(self):
+        ticket = self.closed_ticket()
+        comment = Comment.objects.create(
+            ticket=ticket, actor=self.owner, body="SEGREDO", visibility="public"
+        )
+        with tempfile.TemporaryDirectory() as folder, override_settings(ATTACHMENT_ROOT=folder):
+            key = uuid.uuid4()
+            stored = path_for(key)
+            stored.write_bytes(b"conteudo")
+            Attachment.objects.create(
+                comment=comment,
+                storage_key=key,
+                name="a.txt",
+                media_type="text/plain",
+                size=8,
+                sha256="0" * 64,
+                status="clean",
+            )
+            result = self.run_now()
+            self.assertFalse(stored.exists())
+        self.assertEqual(result["removed"]["tickets"], 1)
+        self.assertFalse(Ticket.objects.filter(pk=ticket.pk).exists())
+        for model in [Comment, TicketEvent, Attachment, NotificationOutbox]:
+            self.assertFalse(model.objects.exists(), model)
+        self.assertEqual(self.owner.pk, type(self.owner).objects.get(pk=self.owner.pk).pk)
+
+    def test_open_recent_and_referenced_tickets_stay(self):
+        expired = self.closed_ticket()
+        recent = self.closed_ticket(closed_at=self.now - timedelta(days=10))
+        opened = self.create()
+        linked = self.closed_ticket()
+        Ticket.objects.filter(pk=opened.pk).update(related_ticket=linked)
+        result = self.run_now()
+        self.assertEqual(result["removed"]["tickets"], 1)
+        self.assertEqual(result["waiting"]["tickets"], 1)
+        self.assertFalse(Ticket.objects.filter(pk=expired.pk).exists())
+        self.assertEqual(Ticket.objects.count(), 3)
+        self.assertTrue(Ticket.objects.filter(pk=recent.pk).exists())
+
+    def test_deactivation_date_comes_from_the_database(self):
+        User = type(self.owner)
+        User.objects.filter(pk=self.peer.pk).update(is_active=False)
+        self.peer.refresh_from_db()
+        self.assertIsNotNone(self.peer.deactivated_at)
+        self.peer.first_name = "Outro"
+        self.peer.deactivated_at = None
+        self.peer.save()
+        self.peer.refresh_from_db()
+        self.assertIsNotNone(self.peer.deactivated_at)
+        User.objects.filter(pk=self.peer.pk).update(is_active=True)
+        self.peer.refresh_from_db()
+        self.assertIsNone(self.peer.deactivated_at)
+
+    def expire(self, model, pk):
+        model.objects.filter(pk=pk).update(is_active=False)
+
+    def test_inactive_records_go_only_when_nothing_references_them(self):
+        User = type(self.owner)
+        ticket = self.create(user=self.peer)
+        spare = User.objects.create(username="spare", email="spare@company.test")
+        system = User.objects.create(username="system:test", email="", is_active=True)
+        self.expire(User, spare.pk)
+        self.expire(User, self.peer.pk)
+        self.expire(User, system.pk)
+        self.expire(Category, self.category.pk)
+        group = SupportGroup.objects.create(name="Sem uso")
+        Membership.objects.create(user=self.tech, group=group)
+        self.expire(SupportGroup, group.pk)
+        area = Department.objects.create(name="Sem uso")
+        self.expire(Department, area.pk)
+        # The trigger owns the date, so time moves forward instead of the date backward.
+        self.now += timedelta(days=400)
+        result = self.run_now()
+        self.assertFalse(User.objects.filter(pk=spare.pk).exists())
+        self.assertTrue(User.objects.filter(pk=self.peer.pk).exists())
+        self.assertTrue(User.objects.filter(pk=system.pk).exists())
+        self.assertTrue(Category.objects.filter(pk=self.category.pk).exists())
+        self.assertFalse(SupportGroup.objects.filter(pk=group.pk).exists())
+        self.assertFalse(Department.objects.filter(pk=area.pk).exists())
+        self.assertEqual(result["waiting"]["users"], 1)
+        self.assertEqual(result["waiting"]["categories"], 1)
+        self.assertTrue(Ticket.objects.filter(pk=ticket.pk).exists())
+
+    def test_logs_expire_and_the_run_leaves_only_counts(self):
+        old_event = IdentityEvent.objects.create(action="x", subject_id="1")
+        IdentityEvent.objects.filter(pk=old_event.pk).update(created_at=self.old)
+        kept = IdentityEvent.objects.create(action="y", subject_id="2")
+        result = self.run_now()
+        self.assertGreaterEqual(result["removed"]["logs"], 1)
+        self.assertFalse(IdentityEvent.objects.filter(pk=old_event.pk).exists())
+        self.assertTrue(IdentityEvent.objects.filter(pk=kept.pk).exists())
+        record = IdentityEvent.objects.get(action="retention.purged")
+        self.assertEqual(record.changes, result)
+        self.assertIsNotNone(RetentionPolicy.objects.get().last_run_at)
+
+    def test_settings_require_admin_minimum_and_typed_confirmation(self):
+        path = "/api/v1/settings/retention/"
+        self.closed_ticket()
+        data = {
+            "enabled": True,
+            "tickets_days": 365,
+            "users_days": 0,
+            "groups_days": 0,
+            "categories_days": 0,
+            "departments_days": 0,
+            "logs_days": 365,
+            "confirmation": "REMOVER",
+            "reason": "Teste",
+        }
+        admin = self.client_as(self.admin)
+        csrf = admin.get("/api/v1/auth/csrf/").json()["csrfToken"]
+
+        def save(body):
+            return admin.patch(path, body, content_type="application/json", HTTP_X_CSRFTOKEN=csrf)
+
+        self.assertEqual(self.client_as(self.manager).get(path).status_code, 403)
+        self.assertEqual(save({**data, "tickets_days": 29}).status_code, 400)
+        self.assertEqual(save({**data, "confirmation": ""}).status_code, 400)
+        self.assertEqual(save({**data, "confirmation": "sim"}).status_code, 400)
+        response = save(data)
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["preview"]["tickets"], 1)
+        self.assertIsNotNone(response.json()["next_run_at"])
+        self.assertEqual(Ticket.objects.count(), 1)
+        self.assertIsNone(run_retention())
+        off = {**data, "enabled": False, "confirmation": ""}
+        self.assertIsNone(save(off).json()["next_run_at"])

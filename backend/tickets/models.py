@@ -12,6 +12,7 @@ class Category(models.Model):
     group = models.ForeignKey("core.SupportGroup", on_delete=models.PROTECT)
     restricted = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    deactivated_at = models.DateTimeField(null=True, editable=False)
     # Suggested at ticket opening; the requester may choose another level.
     priority = models.PositiveSmallIntegerField(default=3)
 
@@ -21,6 +22,25 @@ class Category(models.Model):
                 condition=models.Q(priority__range=(1, 4)), name="category_valid_priority"
             )
         ]
+
+
+class RetentionPolicy(models.Model):
+    """Single policy; a period of zero keeps that class of data indefinitely."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    enabled = models.BooleanField(default=False)
+    tickets_days = models.PositiveIntegerField(default=0)
+    users_days = models.PositiveIntegerField(default=0)
+    groups_days = models.PositiveIntegerField(default=0)
+    categories_days = models.PositiveIntegerField(default=0)
+    departments_days = models.PositiveIntegerField(default=0)
+    logs_days = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_run_at = models.DateTimeField(null=True)
+    last_result = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="retention_singleton")]
 
 
 class ReadGrant(models.Model):

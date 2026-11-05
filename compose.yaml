@@ -124,6 +124,29 @@ services:
       retries: 3
       start_period: 15s
 
+  # Separate on purpose: the application account cannot delete the audit trail.
+  # shortcut: reuses the migration credential to avoid a new secret, add a dedicated role later.
+  retention:
+    <<: *backend
+    environment:
+      <<: *runtime-env
+      POSTGRES_USER: pulse
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password, django_secret_key, identity_key]
+    volumes: [attachments:/var/lib/pulse/attachments]
+    command: [python, manage.py, runretention]
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+    depends_on:
+      db-permissions: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; assert time.time()-pathlib.Path('/tmp/pulse-retention-heartbeat').stat().st_mtime < 120"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   antimalware:
     image: clamav/clamav:1.4@sha256:982e28f90061d0e66eb03276419f589a47c9fa601e985e472fc2f6c64b497ca0
     networks: [private, scanner_updates]

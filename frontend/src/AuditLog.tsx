@@ -42,6 +42,8 @@ const labels: Record<string, string> = {
   "notification.requeued": "Reenviou uma notificação",
   "reopen_policy.created": "Criou política de reabertura",
   "report.downloaded": "Baixou um relatório",
+  "retention.purged": "Remoção automática de dados executada",
+  "retention.updated": "Alterou a política de retenção",
   "report.exported": "Exportou um relatório",
   "account.invite": "Aceitou o convite",
   "account.reset": "Redefiniu a senha",

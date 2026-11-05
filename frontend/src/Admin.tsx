@@ -4,6 +4,7 @@ import { AuditLog } from "./AuditLog";
 import { ChatSettings } from "./ChatSettings";
 import { CompanySettings } from "./CompanySettings";
 import { NotificationDiagnostics } from "./NotificationDiagnostics";
+import { RetentionSettings } from "./RetentionSettings";
 import { SmtpSettings } from "./SmtpSettings";
 type Field = {
   key: string;
@@ -84,6 +85,7 @@ const resources: Resource[] = [
   { label: "Google Chat", path: "settings/chat", fields: [] },
   { label: "Entregas", path: "settings/notifications", fields: [] },
   { label: "Log do sistema", path: "settings/audit", fields: [] },
+  { label: "Retenção de dados", path: "settings/retention", fields: [] },
   {
     label: "Áreas",
     path: "departments",
@@ -377,6 +379,8 @@ export function Admin() {
         <CompanySettings />
       ) : resource.path === "settings/audit" ? (
         <AuditLog />
+      ) : resource.path === "settings/retention" ? (
+        <RetentionSettings />
       ) : resource.path === "settings/smtp" ? (
         <SmtpSettings />
       ) : resource.path === "settings/chat" ? (

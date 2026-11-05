@@ -109,6 +109,20 @@ os de chamados, e é somente leitura. Registra entradas, saídas e logins recusa
 e-mails não cadastrados não são guardados. Consultas a chamados não geram registro.
 API: `GET /api/v1/settings/audit/?user=&start=&end=&page=`.
 
+## Retenção de dados
+
+Em **Administração → Retenção de dados**, informe os dias de guarda de chamados
+encerrados, usuários, grupos, categorias e áreas desativados, e logs. **Depois do
+prazo, os dados são apagados definitivamente**, inclusive os arquivos de anexos.
+
+Use 0 para não remover aquela classe, ou pelo menos 30 dias. Para ativar, digite
+REMOVER. Toda alteração reinicia uma carência de 24 horas, e a remoção roda no
+máximo uma vez por dia, no serviço `retention`. Desmarcar **Ativar** suspende tudo.
+
+O que ainda é usado por outros dados aguarda: um usuário com chamados ou logs
+permanece até eles expirarem. Backups não são alterados, e uma restauração traz os
+dados de volta. Decisão e justificativa estão na ADR 0007.
+
 ## Quem recebe avisos
 
 E-mail e Chat vão aos membros do grupo do chamado, ao técnico atribuído, aos

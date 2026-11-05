@@ -24,6 +24,8 @@ class User(AbstractUser):
     notifications_muted = models.BooleanField(default=False)
     # Direct message with the Chat app, learned from its installation event.
     chat_space = models.CharField(max_length=128, blank=True)
+    # Kept by a database trigger from is_active; drives data retention.
+    deactivated_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         constraints = [
@@ -40,11 +42,13 @@ class User(AbstractUser):
 class Department(models.Model):
     name = models.CharField(max_length=120, unique=True)
     is_active = models.BooleanField(default=True)
+    deactivated_at = models.DateTimeField(null=True, editable=False)
 
 
 class SupportGroup(models.Model):
     name = models.CharField(max_length=120, unique=True)
     is_active = models.BooleanField(default=True)
+    deactivated_at = models.DateTimeField(null=True, editable=False)
 
 
 class Membership(models.Model):
