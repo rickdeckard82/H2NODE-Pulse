@@ -97,10 +97,14 @@ const sections: {
         </p>
         <p>
           Gestores e administradores usam <b>Nova página</b>, informam título,
-          até 5 tags separadas por vírgula e o conteúdo. No conteúdo, use{" "}
-          <code># Título</code>, <code>- lista</code>, <code>1. passos</code>,{" "}
-          <code>**negrito**</code> e <code>[texto](https://link)</code>. Não
-          registre senhas nem dados de clientes. Criações, edições e exclusões
+          até 5 tags separadas por vírgula e escrevem o conteúdo com a barra de
+          ferramentas: título, negrito, itálico, tachado, citação, código, link,
+          imagem, anexo, listas, tabela, alinhamento, tamanho e emoji. A
+          pré-visualização ao lado mostra o resultado enquanto você escreve.
+          Imagens (PNG, JPG, GIF, WebP) e anexos (PDF, TXT, DOCX, XLSX) têm até
+          5 MiB e são verificados contra vírus ao enviar; também funciona colar
+          ou arrastar uma imagem para a caixa de texto. Não registre senhas nem
+          dados de clientes. Criações, edições, exclusões e envios de arquivos
           ficam no log do sistema.
         </p>
       </>

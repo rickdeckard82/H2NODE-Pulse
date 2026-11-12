@@ -20,6 +20,7 @@ from tickets.notification_views import (
     NotificationRetryView,
 )
 from tickets.retention import RetentionSettingsView
+from wiki import files as wiki_files
 from wiki import views as wiki
 
 router = SimpleRouter()
@@ -36,6 +37,8 @@ router.register("settings/sla-policies", reports.SlaPolicyViewSet, basename="sla
 urlpatterns = [
     path("api/v1/integrations/google-chat/events/", ChatEventsView.as_view()),
     path("api/v1/wiki/", wiki.PageListView.as_view()),
+    path("api/v1/wiki/files/", wiki_files.FileUploadView.as_view()),
+    path("api/v1/wiki/files/<uuid:file_id>/", wiki_files.FileView.as_view()),
     path("api/v1/wiki/<uuid:page_id>/", wiki.PageView.as_view()),
     path("api/v1/settings/chat/", ChatSettingsView.as_view()),
     path("api/v1/settings/company/", CompanySettingsView.as_view()),

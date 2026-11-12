@@ -39,6 +39,8 @@ def run(*args):
 
 
 try:
+    # Wiki uploads are scanned synchronously and fail closed, so the scanner must be up.
+    run("--profile", "scanner", "up", "-d", "--wait", "--wait-timeout", "600", "antimalware")
     run("up", "-d", "--wait", "--wait-timeout", "180", "gateway")
     run(
         "run",
@@ -59,5 +61,5 @@ try:
         [shutil.which("npx"), "playwright", "test"], cwd=root / "frontend", check=True
     )
 finally:
-    run("down")
+    run("--profile", "scanner", "down")
     fixture.unlink(missing_ok=True)

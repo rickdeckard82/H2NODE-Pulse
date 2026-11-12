@@ -22,3 +22,17 @@ class WikiPage(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+
+
+class WikiFile(models.Model):
+    """Image or attachment used by wiki pages. Stored privately; only clean files exist."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=120)
+    media_type = models.CharField(max_length=120)
+    size = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)

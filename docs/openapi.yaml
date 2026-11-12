@@ -2475,6 +2475,48 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/wiki/files/:
+    post:
+      operationId: wiki_files_create
+      tags:
+      - wiki
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+          description: ''
+  /api/v1/wiki/files/{file_id}/:
+    get:
+      operationId: wiki_files_retrieve
+      parameters:
+      - in: path
+        name: file_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - wiki
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
 components:
   schemas:
     ActionEnum:
@@ -3007,6 +3049,36 @@ components:
       - id
       - rows
       - start
+    File:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        media_type:
+          type: string
+          readOnly: true
+        size:
+          type: integer
+          readOnly: true
+        url:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - media_type
+      - name
+      - size
+      - url
     Group:
       type: object
       properties:
@@ -4723,6 +4795,14 @@ components:
       required:
       - action
       - expected_version
+    UploadInputRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     User:
       type: object
       properties:

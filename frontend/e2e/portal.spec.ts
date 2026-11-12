@@ -737,12 +737,50 @@ test("wiki: gestor cria página e técnico apenas lê", async ({ page }) => {
   await page
     .getByLabel("Conteúdo")
     .fill("# Passos\n- Abra o menu\n- Limpe o cache");
+  // Toolbar: bold wraps the selection; preview updates live.
+  await page.getByLabel("Conteúdo").press("Control+End");
+  await page.getByRole("button", { name: "Negrito" }).click();
+  await expect(page.getByLabel("Conteúdo")).toBeFocused();
+  await page.keyboard.type("importante");
+  await expect(page.locator(".editor-preview-body strong")).toHaveText(
+    "importante",
+  );
+  // Image upload (scanned by ClamAV) and a document attachment.
+  await page.getByRole("button", { name: "Imagem", exact: true }).click();
+  await page.locator(".img-popover input[type=file]").setInputFiles({
+    name: "print.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await expect(page.locator(".img-thumb")).toBeVisible();
+  await page.getByLabel("Texto alternativo").fill("Tela inicial");
+  await page.getByRole("button", { name: "Inserir imagem" }).click();
+  await page.locator(".editor-file input").setInputFiles({
+    name: "guia.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+  });
+  await expect(
+    page.locator(".editor-preview-body a", { hasText: "guia.pdf" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".editor-preview-body img")
+        .evaluate((i: HTMLImageElement) => i.naturalWidth),
+    )
+    .toBeGreaterThan(0);
   await audit(page);
+  await page.screenshot({ path: "../work/wiki-editor.png", fullPage: true });
   await page.getByRole("button", { name: "Salvar página" }).click();
   await expect(
     page.getByRole("heading", { name: "Limpar o cache do navegador" }),
   ).toBeVisible();
   await expect(page.getByText("Limpe o cache")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Tela inicial" })).toBeVisible();
   await audit(page);
   await page.getByRole("button", { name: "← Todas as páginas" }).click();
   await audit(page);
@@ -763,6 +801,14 @@ test("wiki: gestor cria página e técnico apenas lê", async ({ page }) => {
   await page
     .getByRole("button", { name: "Limpar o cache do navegador" })
     .click();
+  await expect
+    .poll(() =>
+      page
+        .getByRole("img", { name: "Tela inicial" })
+        .evaluate((i: HTMLImageElement) => i.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await expect(page.getByRole("link", { name: "guia.pdf" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Excluir" })).toHaveCount(0);
 });

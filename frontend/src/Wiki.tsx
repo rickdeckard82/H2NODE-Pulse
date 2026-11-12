@@ -6,6 +6,8 @@ import {
   type ReactNode,
 } from "react";
 import { api, ApiError, date } from "./api";
+import { Markup } from "./WikiMarkup";
+import { WikiEditor } from "./WikiEditor";
 
 type Summary = {
   id: string;
@@ -35,68 +37,6 @@ function Tags({ tags }: { tags: string[] }) {
   );
 }
 
-function inline(text: string): ReactNode[] {
-  // Only http(s) links; everything else stays text, so stored content cannot inject markup.
-  return text
-    .split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g)
-    .map((part, i) => {
-      if (/^\*\*.+\*\*$/.test(part)) return <b key={i}>{part.slice(2, -2)}</b>;
-      if (/^`.+`$/.test(part)) return <code key={i}>{part.slice(1, -1)}</code>;
-      const link = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/.exec(part);
-      if (link)
-        return (
-          <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer">
-            {link[1]}
-          </a>
-        );
-      return part;
-    });
-}
-
-export function Content({ text }: { text: string }) {
-  const blocks: ReactNode[] = [];
-  let list: string[] = [];
-  let ordered = false;
-  let paragraph: string[] = [];
-  const flush = () => {
-    if (paragraph.length)
-      blocks.push(<p key={blocks.length}>{inline(paragraph.join(" "))}</p>);
-    if (list.length) {
-      const items = list.map((item, i) => <li key={i}>{inline(item)}</li>);
-      blocks.push(
-        ordered ? (
-          <ol key={blocks.length}>{items}</ol>
-        ) : (
-          <ul key={blocks.length}>{items}</ul>
-        ),
-      );
-    }
-    paragraph = [];
-    list = [];
-  };
-  for (const raw of text.split("\n")) {
-    const line = raw.trimEnd();
-    const heading = /^(#{1,3})\s+(.*)$/.exec(line);
-    const item = /^\s*(?:([-*])|(\d+)\.)\s+(.*)$/.exec(line);
-    if (heading) {
-      flush();
-      const Tag = `h${heading[1].length + 2}` as "h3" | "h4" | "h5";
-      blocks.push(<Tag key={blocks.length}>{inline(heading[2])}</Tag>);
-    } else if (item) {
-      const isOrdered = Boolean(item[2]);
-      if (paragraph.length || (list.length && isOrdered !== ordered)) flush();
-      ordered = isOrdered;
-      list.push(item[3]);
-    } else if (!line.trim()) flush();
-    else {
-      if (list.length) flush();
-      paragraph.push(line.trim());
-    }
-  }
-  flush();
-  return <div className="wiki-content">{blocks}</div>;
-}
-
 export function Wiki({ canEdit }: { canEdit: boolean }) {
   const [pages, setPages] = useState<Summary[] | null>(null);
   const [tag, setTag] = useState("");
@@ -105,6 +45,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
   const [editing, setEditing] = useState<Page | "new" | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -192,6 +133,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
         <button
           onClick={() => {
             setOpen(null);
+            setDraft("");
             setEditing("new");
           }}
         >
@@ -253,19 +195,12 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
             Tags (separadas por vírgula, até 5)
             <input name="tags" defaultValue={page?.tags.join(", ")} />
           </label>
-          <label>
-            Conteúdo
-            <textarea
-              name="body"
-              required
-              rows={16}
-              maxLength={50000}
-              defaultValue={page?.body}
-            />
-          </label>
+          <p className="editor-label">Conteúdo</p>
+          <WikiEditor value={draft} onChange={setDraft} />
           <small className="field-hint">
-            Use # Título, - lista, 1. passos, **negrito**, `código` e
-            [texto](https://link). Não coloque senhas nem dados de clientes.
+            Use a barra de ferramentas ou a sintaxe Markdown. Imagens e anexos
+            são verificados contra vírus ao enviar. Não coloque senhas nem dados
+            de clientes.
           </small>
           <div className="wiki-actions">
             <button disabled={busy}>
@@ -294,10 +229,17 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
           {open.updated_by_name &&
             ` · editado por ${open.updated_by_name} em ${date(open.updated_at)}`}
         </p>
-        <Content text={open.body} />
+        <Markup text={open.body} />
         {canEdit && (
           <div className="wiki-actions">
-            <button onClick={() => setEditing(open)}>Editar</button>
+            <button
+              onClick={() => {
+                setDraft(open.body);
+                setEditing(open);
+              }}
+            >
+              Editar
+            </button>
             <button className="secondary" onClick={() => void remove(open)}>
               Excluir
             </button>
@@ -368,8 +310,8 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
           {error}
         </p>
       )}
-      <div className="wiki-layout">
-        {side}
+      <div className={`wiki-layout${editing ? " editing" : ""}`}>
+        {!editing && side}
         <div>{main}</div>
       </div>
     </div>
