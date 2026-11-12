@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 
 const support = ["technician", "manager", "admin"];
 const everyone = ["collaborator", ...support];
+const readers = ["user", ...everyone];
 
 function Shot({ file, alt }: { file: string; alt: string }) {
   return <img src={`/ajuda/${file}`} alt={alt} loading="lazy" />;
@@ -16,7 +17,7 @@ const sections: {
   {
     id: "primeiros-passos",
     title: "Primeiros passos",
-    roles: everyone,
+    roles: readers,
     body: (
       <>
         <p>
@@ -86,7 +87,7 @@ const sections: {
   {
     id: "wiki",
     title: "Wiki",
-    roles: everyone,
+    roles: readers,
     body: (
       <>
         <p>

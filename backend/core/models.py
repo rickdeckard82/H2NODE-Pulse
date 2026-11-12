@@ -5,12 +5,14 @@ from django.db.models.functions import Lower
 
 class User(AbstractUser):
     class Role(models.TextChoices):
+        # Self-registration lands here: wiki only, until an administrator promotes the account.
+        USER = "user", "Usuário"
         COLLABORATOR = "collaborator", "Colaborador"
         TECHNICIAN = "technician", "Técnico"
         MANAGER = "manager", "Gestor"
         ADMIN = "admin", "Administrador"
 
-    role = models.CharField(max_length=20, choices=Role, default=Role.COLLABORATOR)
+    role = models.CharField(max_length=20, choices=Role, default=Role.USER)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     session_version = models.PositiveIntegerField(default=1)
     department = models.ForeignKey("Department", null=True, blank=True, on_delete=models.PROTECT)

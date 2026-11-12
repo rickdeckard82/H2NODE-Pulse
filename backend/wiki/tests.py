@@ -8,7 +8,11 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
+from django.utils import timezone
 
+from core.models import User
+from core.test_identity import PASSWORD
+from tickets.models import Ticket
 from tickets.tests import TicketHelpers
 from wiki.files import path_for
 from wiki.models import WikiFile, WikiPage
@@ -242,3 +246,104 @@ class AutocommitTests(TicketHelpers, TransactionTestCase):
             HTTP_X_CSRFTOKEN=csrf,
         )
         self.assertEqual(page.status_code, 201, page.content)
+
+
+class UserRoleTests(TicketHelpers, TestCase):
+    """The self-registered "Usuário" role reaches the wiki and nothing else."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.make_fixtures()
+        cls.visitor = User.objects.create(
+            username="visitor",
+            email="visitor@company.test",
+            first_name="visitor",
+            password=cls.owner.password,
+            email_verified_at=timezone.now(),
+        )
+
+    def setUp(self):
+        self.clients = {}
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL ROLE pulse_runtime")
+
+    def test_new_accounts_default_to_user_role(self):
+        self.assertEqual(self.visitor.role, "user")
+
+    def test_registration_creates_user_role(self):
+        from core import identity
+
+        identity.register(
+            {"email": "novo@company.test", "name": "Novo", "password": PASSWORD + "-Zx9"}
+        )
+        self.assertEqual(User.objects.get(email="novo@company.test").role, "user")
+
+    def test_user_role_reads_wiki_but_cannot_write(self):
+        page = WikiPage.objects.create(title="A", body="B", author=self.manager)
+        client = self.client_as(self.visitor)
+        self.assertEqual(client.get("/api/v1/wiki/").status_code, 200)
+        self.assertEqual(client.get(f"/api/v1/wiki/{page.uuid}/").status_code, 200)
+        self.assertEqual(client.get("/api/v1/auth/me/").json()["role"], "user")
+        self.assertEqual(client.get("/api/v1/settings/company/").status_code, 200)
+        body = {"title": "X", "body": "Y"}
+        self.assertEqual(self.call(self.visitor, "post", "/api/v1/wiki/", body).status_code, 403)
+
+    def call(self, user, method, path, data=None):
+        client = self.client_as(user)
+        csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        return getattr(client, method)(
+            path, data, content_type="application/json", HTTP_X_CSRFTOKEN=csrf
+        )
+
+    def test_user_role_is_denied_everywhere_else(self):
+        ticket = Ticket.objects.create(
+            requester=self.owner,
+            category=self.category,
+            group=self.group,
+            subject="S",
+            description="D",
+            priority=2,
+        )
+        client = self.client_as(self.visitor)
+        for path in [
+            "/api/v1/tickets/",
+            f"/api/v1/tickets/{ticket.uuid}/",
+            f"/api/v1/tickets/{ticket.uuid}/attachments/",
+            "/api/v1/categories/",
+            "/api/v1/notifications/",
+            "/api/v1/reports/summary/",
+            "/api/v1/users/",
+            "/api/v1/departments/",
+            "/api/v1/groups/",
+            "/api/v1/memberships/",
+            "/api/v1/settings/audit/",
+            "/api/v1/settings/smtp/",
+            "/api/v1/settings/sla-policies/",
+            "/api/v1/settings/domains/",
+        ]:
+            self.assertEqual(client.get(path).status_code, 403, path)
+        created = self.call(
+            self.visitor,
+            "post",
+            "/api/v1/tickets/",
+            {"category": self.category.pk, "subject": "X", "description": "Y"},
+        )
+        self.assertEqual(created.status_code, 403)
+        self.assertEqual(Ticket.objects.count(), 1)
+        self.assertEqual(
+            self.call(self.visitor, "patch", "/api/v1/settings/company/", {}).status_code, 403
+        )
+
+    def test_collaborator_is_not_restricted_and_promotion_works(self):
+        self.assertEqual(self.client_as(self.owner).get("/api/v1/tickets/").status_code, 200)
+        response = self.call(
+            self.admin,
+            "patch",
+            f"/api/v1/users/{self.visitor.pk}/",
+            {"role": "collaborator", "reason": "Liberar chamados"},
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.visitor.refresh_from_db()
+        self.assertEqual(self.visitor.role, "collaborator")
+        self.clients.clear()
+        self.assertEqual(self.client_as(self.visitor).get("/api/v1/tickets/").status_code, 200)

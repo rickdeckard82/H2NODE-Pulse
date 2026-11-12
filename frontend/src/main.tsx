@@ -15,6 +15,7 @@ import { Notifications } from "./Notifications";
 import "./style.css";
 
 const roleLabels: Record<string, string> = {
+  user: "Usuário",
   collaborator: "Colaborador",
   technician: "Técnico",
   manager: "Gestor",
@@ -65,9 +66,15 @@ function CompanyBadge({ company }: { company: Company }) {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("portal");
+  const [requested, setView] = useState("portal");
   const [error, setError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
+  // The "Usuário" role only has the wiki (plus profile, password and help); the API enforces it.
+  const wikiOnly = user?.role === "user";
+  const view =
+    wikiOnly && !["wiki", "account", "password", "help"].includes(requested)
+      ? "wiki"
+      : requested;
   const [logoPulseKey, setLogoPulseKey] = useState(0);
   const [about, setAbout] = useState<AboutDoc | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
@@ -170,16 +177,18 @@ function App() {
         {user && (
           <>
             <nav aria-label="Navegação principal">
-              <button
-                className="selected"
-                aria-current={view === "portal" ? "page" : undefined}
-                onClick={() => {
-                  setView("portal");
-                  setLogoPulseKey((k) => k + 1);
-                }}
-              >
-                Chamados
-              </button>
+              {!wikiOnly && (
+                <button
+                  className="selected"
+                  aria-current={view === "portal" ? "page" : undefined}
+                  onClick={() => {
+                    setView("portal");
+                    setLogoPulseKey((k) => k + 1);
+                  }}
+                >
+                  Chamados
+                </button>
+              )}
               {["manager", "admin"].includes(user.role) && (
                 <button
                   className="selected"
@@ -204,13 +213,15 @@ function App() {
               </button>
             </nav>
             {company?.name && <CompanyBadge company={company} />}
-            <Notifications
-              ref={bell}
-              onOpen={(id) => {
-                setView("portal");
-                setOpened((o) => ({ id, n: o.n + 1 }));
-              }}
-            />
+            {!wikiOnly && (
+              <Notifications
+                ref={bell}
+                onOpen={(id) => {
+                  setView("portal");
+                  setOpened((o) => ({ id, n: o.n + 1 }));
+                }}
+              />
+            )}
             <details className="user-menu" ref={menu}>
               <summary aria-label={`Abrir menu de ${user.first_name}`}>
                 {user.avatar ? (

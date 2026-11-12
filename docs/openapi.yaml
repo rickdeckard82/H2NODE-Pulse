@@ -4868,24 +4868,28 @@ components:
       - reason
     UserRoleEnum:
       enum:
+      - user
       - collaborator
       - technician
       - manager
       - admin
       type: string
       description: |-
+        * `user` - Usuário
         * `collaborator` - Colaborador
         * `technician` - Técnico
         * `manager` - Gestor
         * `admin` - Administrador
     UserUpdateInputRoleEnum:
       enum:
+      - user
       - collaborator
       - technician
       - manager
       - admin
       type: string
       description: |-
+        * `user` - user
         * `collaborator` - collaborator
         * `technician` - technician
         * `manager` - manager

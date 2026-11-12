@@ -94,7 +94,7 @@ class BootstrapTests(TestCase):
         )
         with self.assertRaises(CommandError):
             self.provision()
-        self.assertEqual(User.objects.get().role, "collaborator")
+        self.assertEqual(User.objects.get().role, "user")
         self.provision(BOOTSTRAP_ADMIN_EMAIL="initial@company.test")
         self.provision(BOOTSTRAP_ADMIN_EMAIL="second@company.test")
         self.assertEqual(User.objects.filter(role="admin").count(), 1)

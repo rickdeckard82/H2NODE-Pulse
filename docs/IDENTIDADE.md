@@ -108,7 +108,7 @@ Não há DELETE, criação privilegiada pública ou edição genérica de senha/
 O administrador desativa o MFA de outra conta em `POST /users/{id}/disable-mfa/`
 (`reason`). O MFA é opcional; ver
 [ADR 0008](decisoes/0008-mfa-opcional.md).
-Para cadastrar técnicos, confirmar a conta de colaborador e depois promovê-la.
+Autoinscrição cria o papel **Usuário** (somente wiki; ver ADR 0009). Para liberar chamados, o administrador promove a conta a Colaborador. Para cadastrar técnicos, confirmar a conta e depois promovê-la.
 
 `/departments/`: leitura por autenticados; criação/alteração apenas pelo admin.
 `/groups/`: admin vê todos; técnico/gestor vê apenas memberships autorizados e

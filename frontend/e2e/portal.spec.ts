@@ -35,9 +35,11 @@ async function login(page: Page, name: string) {
   await expect(
     page.getByRole("heading", {
       name:
-        name === "owner" || name === "peer"
-          ? "Meus chamados"
-          : "Fila de chamados",
+        name === "visitor"
+          ? "Wiki"
+          : name === "owner" || name === "peer"
+            ? "Meus chamados"
+            : "Fila de chamados",
     }),
   ).toBeVisible();
 }
@@ -811,4 +813,22 @@ test("wiki: gestor cria página e técnico apenas lê", async ({ page }) => {
   await expect(page.getByRole("link", { name: "guia.pdf" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Excluir" })).toHaveCount(0);
+});
+
+test("perfil Usuário acessa somente a wiki", async ({ page }) => {
+  await login(page, "visitor");
+  const nav = page.getByRole("navigation", { name: "Navegação principal" });
+  await expect(nav.getByRole("button")).toHaveText(["Wiki"]);
+  await expect(page.getByRole("button", { name: "Notificações" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText("Usuário", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Nova página", exact: true }),
+  ).toHaveCount(0);
+  await audit(page);
+  // The server refuses everything outside the wiki even if the page is bypassed.
+  for (const path of ["tickets/", "categories/", "notifications/", "users/"])
+    expect((await page.request.get(`/api/v1/${path}`)).status()).toBe(403);
+  expect((await page.request.get("/api/v1/wiki/")).status()).toBe(200);
 });

@@ -24,6 +24,7 @@ for name, role in [
     ("manager", "manager"),
     ("enroll", "technician"),
     ("reset", "collaborator"),
+    ("visitor", "user"),
 ]:
     user = User.objects.create_user(
         username=name,
@@ -36,6 +37,7 @@ for name, role in [
             "tech": "Lucas",
             "admin": "Administração",
             "manager": "Marina",
+            "visitor": "Visitante",
         }[name],
         password=config["password"],
         role=role,

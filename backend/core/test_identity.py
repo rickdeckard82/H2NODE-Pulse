@@ -112,7 +112,7 @@ class IdentityTests(HTTPHelpers, TestCase):
         )
         self.assertIsNone(IdentityMail.objects.get(token__user=user).sent_at)
         self.assertTrue(user.password.startswith("argon2$argon2id$"))
-        self.assertEqual(user.role, User.Role.COLLABORATOR)
+        self.assertEqual(user.role, User.Role.USER)
         self.assertFalse(user.is_staff or user.is_superuser)
         login_data = {"email": user.email, "password": PASSWORD}
         self.assertEqual(self.post(self.client, "/api/v1/auth/login/", login_data).status_code, 403)

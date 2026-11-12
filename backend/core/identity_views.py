@@ -355,8 +355,9 @@ class UserViewSet(
         if User.objects.filter(email__iexact=data["email"]).exists():
             raise ValidationError({"email": ["Já existe uma conta com este e-mail."]})
         # Always a collaborator without password: privileges only after the invite proves the
-        # mailbox, as with self-registration.
+        # mailbox. Self-registration, by contrast, starts as the wiki-only "Usuário".
         user = User(
+            role=User.Role.COLLABORATOR,
             username=uuid.uuid4().hex,
             email=data["email"],
             first_name=data["first_name"],
@@ -391,7 +392,11 @@ class UserViewSet(
         role, active = data.get("role", user.role), data.get("is_active", user.is_active)
         if active and not identity.domain_allowed(user.email):
             raise ValidationError("O domínio deve estar autorizado para ativar a conta.")
-        if role != user.role and role != User.Role.COLLABORATOR and not user.email_verified_at:
+        if (
+            role != user.role
+            and role not in {User.Role.USER, User.Role.COLLABORATOR}
+            and not user.email_verified_at
+        ):
             raise ValidationError("Confirme o e-mail antes de conceder privilégios.")
         if (
             user.role == User.Role.ADMIN

@@ -1,10 +1,22 @@
 from django.contrib.auth import logout
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from core.identity import eligible
 from core.models import User
+
+# The "Usuário" role reaches only these areas, whatever the view's own permissions say.
+USER_ROLE_PREFIXES = ("/api/v1/auth/", "/api/v1/wiki/")
+USER_ROLE_READ_ONLY = ("/api/v1/settings/company/",)
+
+
+def user_role_may_access(request):
+    path = request.path
+    return path.startswith(USER_ROLE_PREFIXES) or (
+        path in USER_ROLE_READ_ONLY and request.method in {"GET", "HEAD", "OPTIONS"}
+    )
 
 
 class VerifiedSessionAuthentication(SessionAuthentication):
@@ -19,7 +31,10 @@ class VerifiedSessionAuthentication(SessionAuthentication):
         ):
             logout(request._request)
             return None
-        return super().authenticate(request)
+        result = super().authenticate(request)
+        if result and user.role == User.Role.USER and not user_role_may_access(request):
+            raise PermissionDenied("Seu perfil acessa somente a wiki.")
+        return result
 
 
 class IsIdentityAdmin(BasePermission):

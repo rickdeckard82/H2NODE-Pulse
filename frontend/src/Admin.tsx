@@ -134,6 +134,7 @@ const resources: Resource[] = [
         key: "role",
         label: "Papel",
         options: [
+          ["user", "Usuário (somente wiki)"],
           ["collaborator", "Colaborador"],
           ["technician", "Técnico"],
           ["manager", "Gestor"],
