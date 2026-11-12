@@ -546,6 +546,43 @@ class TicketTests(TicketHelpers, TestCase):
             )
         self.assertEqual(Ticket.objects.count(), 0)
 
+    def test_device_info_is_stored_only_with_consent(self):
+        plain = self.create()
+        self.assertIsNone(plain.client_ip)
+        self.assertEqual(plain.client_os, "")
+        self.assertFalse(plain.events.get().changes["device_info_shared"])
+        refused = self.create(client_os="Windows 11", share_device_info=False)
+        self.assertIsNone(refused.client_ip)
+        self.assertEqual(refused.client_os, "")
+        shared = self.create(share_device_info=True, client_os="Windows 11\x07 ")
+        self.assertEqual(shared.client_ip, "127.0.0.1")
+        self.assertEqual(shared.client_os, "Windows 11")
+        detail = self.client_as(self.owner).get(f"/api/v1/tickets/{shared.uuid}/").json()
+        self.assertEqual(detail["client_ip"], "127.0.0.1")
+        self.assertEqual(detail["client_os"], "Windows 11")
+
+    @override_settings(TRUSTED_PROXY_COUNT=1)
+    def test_forged_forwarded_for_is_ignored(self):
+        client = self.client_as(self.owner)
+        csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        response = client.post(
+            "/api/v1/tickets/",
+            {
+                "category": self.category.pk,
+                "subject": "X",
+                "description": "Y",
+                "share_device_info": True,
+            },
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf,
+            HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+            HTTP_X_FORWARDED_FOR="6.6.6.6, 203.0.113.9",
+            REMOTE_ADDR="172.18.0.2",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        ticket = Ticket.objects.get(number=response.json()["number"])
+        self.assertEqual(ticket.client_ip, "203.0.113.9")
+
     def test_priority_comes_from_category_unless_requester_chooses(self):
         Category.objects.filter(pk=self.category.pk).update(priority=1)
         data = {"category": self.category.pk, "subject": "X", "description": "Y"}

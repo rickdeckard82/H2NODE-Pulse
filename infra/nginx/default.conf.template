@@ -20,7 +20,8 @@ server {
         proxy_pass http://pulse_api;
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-Proto ${UPSTREAM_SCHEME};
-        proxy_set_header X-Forwarded-For $remote_addr;
+        # Append only: the API counts trusted hops from the right (TRUSTED_PROXY_COUNT).
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_connect_timeout 5s;
         proxy_read_timeout 35s;

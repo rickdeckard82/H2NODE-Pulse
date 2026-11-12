@@ -2710,6 +2710,12 @@ components:
         related_ticket:
           type: string
           format: uuid
+        share_device_info:
+          type: boolean
+          default: false
+        client_os:
+          type: string
+          maxLength: 120
       required:
       - category
       - description
@@ -4367,6 +4373,13 @@ components:
           format: uuid
           readOnly: true
           nullable: true
+        client_ip:
+          type: string
+          readOnly: true
+          nullable: true
+        client_os:
+          type: string
+          readOnly: true
         can_transfer:
           type: boolean
           readOnly: true
@@ -4379,6 +4392,8 @@ components:
       - can_cancel
       - can_transfer
       - category
+      - client_ip
+      - client_os
       - closed_at
       - created_at
       - department

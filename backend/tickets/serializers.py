@@ -11,6 +11,8 @@ class CreateInput(StrictSerializer):
     description = serializers.CharField(max_length=10000)
     priority = serializers.IntegerField(min_value=1, max_value=4, required=False)
     related_ticket = serializers.UUIDField(required=False)
+    share_device_info = serializers.BooleanField(required=False, default=False)
+    client_os = serializers.CharField(max_length=120, required=False, allow_blank=True)
 
 
 class VersionInput(StrictSerializer):
@@ -117,6 +119,8 @@ class TicketSerializer(serializers.ModelSerializer):
             "resolution_class",
             "reopen_policy",
             "related_ticket",
+            "client_ip",
+            "client_os",
             "can_transfer",
             "can_cancel",
         ]

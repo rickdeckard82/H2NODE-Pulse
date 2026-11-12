@@ -161,6 +161,9 @@ class Ticket(models.Model):
     reopen_policy = models.ForeignKey(ReopenPolicy, null=True, on_delete=models.PROTECT)
     sla_policy = models.ForeignKey(SlaPolicy, null=True, on_delete=models.PROTECT)
     related_ticket = models.ForeignKey("self", null=True, on_delete=models.PROTECT)
+    # Stored only when the requester consents at opening time.
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    client_os = models.CharField(max_length=120, blank=True)
 
     class Meta:
         indexes = [

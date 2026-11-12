@@ -143,7 +143,11 @@ def execute(request, operation, payload, mutation, ticket_uuid=None, status_code
     return result, status_code, False
 
 
-def create_ticket(actor, unused, data):
+def clean_os(value):
+    return "".join(c for c in value if c.isprintable()).strip()[:120]
+
+
+def create_ticket(actor, unused, data, client_ip=None):
     category = get_object_or_404(
         Category, pk=data["category"], is_active=True, group__is_active=True
     )
@@ -156,6 +160,7 @@ def create_ticket(actor, unused, data):
             raise ValidationError(
                 "Um chamado vinculado a conteúdo restrito deve continuar restrito."
             )
+    share = bool(data.get("share_device_info"))
     ticket = Ticket.objects.create(
         requester=actor,
         department=actor.department,
@@ -169,6 +174,8 @@ def create_ticket(actor, unused, data):
         reopen_policy=ReopenPolicy.objects.order_by("-pk").first(),
         sla_policy=SlaPolicy.objects.order_by("-pk").first(),
         related_ticket=related,
+        client_ip=client_ip if share else None,
+        client_os=clean_os(data.get("client_os", "")) if share else "",
     )
     return emit(
         ticket,
@@ -179,6 +186,7 @@ def create_ticket(actor, unused, data):
             "group": ticket.group_id,
             "priority": ticket.priority,
             "restricted": ticket.restricted,
+            "device_info_shared": share,
         },
     )
 

@@ -131,6 +131,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 # API has no published port. Gateway replaces this header, never passes client values.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Proxies in front of the API that append to X-Forwarded-For (gateway = 1, NPM + gateway = 2).
+# 0 keeps REMOTE_ADDR, the safe default until the proxy chain is homologated.
+TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
+if TRUSTED_PROXY_COUNT < 0:
+    raise ImproperlyConfigured("TRUSTED_PROXY_COUNT must not be negative")
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 LOGGING = {

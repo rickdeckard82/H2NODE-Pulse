@@ -11,6 +11,7 @@ from core.authentication import IsIdentityAdmin
 from core.identity_views import AdminWriteViewSet, NoStoreMixin, locked_actor
 from core.models import Membership, User
 from tickets import services
+from tickets.client_ip import client_ip
 from tickets.models import Category, ReopenPolicy, Ticket
 from tickets.permissions import visible_history, visible_tickets
 from tickets.serializers import (
@@ -78,7 +79,14 @@ class TicketViewSet(
 
     @extend_schema(request=CreateInput, responses={201: MutationResult}, parameters=[KEY_PARAMETER])
     def create(self, request):
-        return self.mutate(request, "create", CreateInput, services.create_ticket, status_code=201)
+        ip = client_ip(request)
+        return self.mutate(
+            request,
+            "create",
+            CreateInput,
+            lambda actor, ticket, data: services.create_ticket(actor, ticket, data, ip),
+            status_code=201,
+        )
 
     @extend_schema(
         request=VersionInput,

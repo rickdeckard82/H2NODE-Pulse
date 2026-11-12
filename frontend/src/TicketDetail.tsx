@@ -169,6 +169,14 @@ export function TicketDetail({
             <p className="muted">
               {ticket.requester_name} · {date(ticket.created_at)}
             </p>
+            {(ticket.client_ip || ticket.client_os) && (
+              <p className="muted">
+                Informado com autorização do solicitante:
+                {ticket.client_ip && ` IP ${ticket.client_ip}`}
+                {ticket.client_ip && ticket.client_os && " ·"}
+                {ticket.client_os && ` ${ticket.client_os}`}
+              </p>
+            )}
           </section>
           <section className="panel timeline">
             <h2>Histórico do atendimento</h2>

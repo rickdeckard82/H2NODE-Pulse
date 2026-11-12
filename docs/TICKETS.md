@@ -121,6 +121,15 @@ transferência são públicos. Correções exigem mesmo autor e visibilidade e n
 apagam o original. Não existem PATCH/DELETE genéricos de ticket/comentário.
 Não enviar senhas, tokens ou dados sensíveis desnecessários no conteúdo.
 
+## IP e sistema operacional (opcional)
+
+Ao abrir o chamado, o solicitante pode marcar a autorização para registrar o IP
+público e o sistema operacional. `share_device_info=true` faz o servidor gravar o
+IP (calculado no servidor, nunca enviado pelo cliente) e o `client_os` informado
+pelo navegador. Sem autorização, ambos ficam vazios e o `client_os` enviado é
+descartado. O evento `created` registra apenas `device_info_shared`. Os campos
+seguem a retenção do chamado. IP local (WebRTC) não é coletado.
+
 ## Validação e pendências
 
 `python tests/run_identity.py` agora executa identidade e tickets no cluster

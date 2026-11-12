@@ -33,6 +33,8 @@ export type Ticket = {
   number: number;
   subject: string;
   description: string;
+  client_ip: string | null;
+  client_os: string;
   state: string;
   priority: number;
   requester: number;
@@ -158,4 +160,44 @@ export async function all<T>(path: string): Promise<T[]> {
     next = page.next ? page.next.split("/api/v1/")[1] : null;
   }
   return rows;
+}
+
+export async function detectOs(): Promise<string> {
+  const nav = navigator as Navigator & {
+    userAgentData?: {
+      platform: string;
+      getHighEntropyValues: (
+        hints: string[],
+      ) => Promise<{ platformVersion?: string }>;
+    };
+  };
+  const ua = navigator.userAgent;
+  let name = nav.userAgentData?.platform ?? "";
+  if (!name) {
+    name = /Windows/.test(ua)
+      ? "Windows"
+      : /Android/.test(ua)
+        ? "Android"
+        : /iPhone|iPad/.test(ua)
+          ? "iOS"
+          : /Mac OS X/.test(ua)
+            ? "macOS"
+            : /CrOS/.test(ua)
+              ? "ChromeOS"
+              : /Linux/.test(ua)
+                ? "Linux"
+                : "";
+  }
+  try {
+    const high = await nav.userAgentData?.getHighEntropyValues([
+      "platformVersion",
+    ]);
+    const major = Number((high?.platformVersion ?? "").split(".")[0]);
+    if (name === "Windows" && major)
+      return major >= 13 ? "Windows 11" : "Windows 10";
+    if (name && high?.platformVersion) return `${name} ${high.platformVersion}`;
+  } catch {
+    /* the name alone is enough */
+  }
+  return name;
 }

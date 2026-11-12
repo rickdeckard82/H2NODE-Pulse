@@ -4,6 +4,7 @@ import {
   api,
   ApiError,
   date,
+  detectOs,
   priorities,
   states,
   type Page,
@@ -108,14 +109,20 @@ export function Portal({
               if (busy) return;
               setBusy(true);
               setError("");
-              const data = Object.fromEntries(new FormData(e.currentTarget));
+              const form = new FormData(e.currentTarget);
+              const share = form.get("share_device_info") === "on";
+              form.delete("share_device_info");
+              const data = Object.fromEntries(form);
               try {
+                const clientOs = share ? await detectOs() : "";
                 const result = await api<{ ticket_id: string }>(
                   "tickets/",
                   {
                     ...data,
                     category: Number(data.category),
                     priority: Number(data.priority),
+                    share_device_info: share,
+                    ...(clientOs ? { client_os: clientOs } : {}),
                   },
                   "POST",
                   createKey.current,
@@ -191,6 +198,15 @@ export function Portal({
             </label>
             <small id="priority-hint" className="field-hint">
               Sugerida pela categoria. Altere se o caso exigir.
+            </small>
+            <label className="checkbox">
+              <input type="checkbox" name="share_device_info" />
+              Permitir que o suporte registre no chamado o IP e o sistema
+              operacional deste computador, para agilizar o atendimento.
+            </label>
+            <small className="field-hint">
+              Opcional. Sem marcar, nada é coletado. Os dados ficam visíveis
+              apenas a quem acessa o chamado e seguem a política de retenção.
             </small>
             <button disabled={busy || !categories.length}>
               {busy ? "Enviando…" : "Criar chamado"}
