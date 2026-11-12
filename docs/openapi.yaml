@@ -690,6 +690,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/company/legal/:
+    get:
+      operationId: company_legal_retrieve
+      description: |-
+        Controller identification for the terms and privacy notice, which open before login.
+
+        The privacy notice must name the controller and a contact, so these fields are public by
+        design. The logo and everything else stay behind the session.
+      tags:
+      - company
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyLegalOutput'
+          description: ''
   /api/v1/departments/:
     get:
       operationId: departments_list
@@ -2808,6 +2825,32 @@ components:
       description: |-
         * `public` - Resposta pública
         * `internal` - Nota interna
+    CompanyLegalOutput:
+      type: object
+      properties:
+        name:
+          type: string
+          readOnly: true
+        cnpj:
+          type: string
+          readOnly: true
+        responsible:
+          type: string
+          readOnly: true
+        responsible_email:
+          type: string
+          format: email
+          readOnly: true
+        website:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - cnpj
+      - name
+      - responsible
+      - responsible_email
+      - website
     CompanyOutput:
       type: object
       properties:

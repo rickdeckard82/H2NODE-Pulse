@@ -1,26 +1,65 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "./api";
 import { version } from "../package.json";
 
 export { version };
 export type AboutDoc = "terms" | "privacy" | "changelog";
 
-const draft = (
-  <p className="notice">
-    Minuta pendente de revisão jurídica. A empresa responsável por esta
-    instalação deve completar sua identificação, o canal de privacidade, as
-    bases legais e os prazos de retenção.
-  </p>
-);
+type Legal = {
+  name: string;
+  cnpj: string;
+  responsible: string;
+  responsible_email: string;
+  website: string;
+};
 
-const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
+const formatCnpj = (cnpj: string) =>
+  cnpj.replace(/^(.{2})(.{3})(.{3})(.{4})(.{2})$/, "$1.$2.$3/$4-$5");
+
+function Company({ legal, role }: { legal: Legal | null; role: string }) {
+  if (!legal?.name) return null;
+  return (
+    <>
+      <h3>{role}</h3>
+      <p className="preserve">
+        <strong>{legal.name}</strong>
+        {legal.cnpj && `\nCNPJ ${formatCnpj(legal.cnpj)}`}
+        {legal.website && `\n${legal.website}`}
+      </p>
+    </>
+  );
+}
+
+function Contact({ legal }: { legal: Legal | null }) {
+  if (!legal?.responsible && !legal?.responsible_email) return null;
+  return (
+    <>
+      <h3>Canal de privacidade</h3>
+      <p>
+        {legal.responsible}
+        {legal.responsible && legal.responsible_email && " · "}
+        {legal.responsible_email && (
+          <a href={`mailto:${legal.responsible_email}`}>
+            {legal.responsible_email}
+          </a>
+        )}
+      </p>
+    </>
+  );
+}
+
+const documents: Record<
+  AboutDoc,
+  { title: string; body: (legal: Legal | null) => React.ReactNode }
+> = {
   terms: {
     title: "Termos de uso",
-    body: (
+    body: (legal) => (
       <>
-        {draft}
         <p>
           <small>Versão 1 · 04/11/2026</small>
         </p>
+        <Company legal={legal} role="Empresa responsável" />
         <h3>Finalidade</h3>
         <p>
           O Pulse Services é o sistema interno de chamados da empresa. Use-o
@@ -58,12 +97,13 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
   },
   privacy: {
     title: "Aviso de privacidade",
-    body: (
+    body: (legal) => (
       <>
-        {draft}
         <p>
           <small>Versão 1 · 04/11/2026</small>
         </p>
+        <Company legal={legal} role="Controlador dos dados" />
+        <Contact legal={legal} />
         <h3>Dados tratados</h3>
         <ul>
           <li>
@@ -71,7 +111,9 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
           </li>
           <li>
             Chamados: assunto, descrição, comentários, anexos, categoria,
-            prioridade e histórico de atendimento.
+            prioridade e histórico de atendimento. Se você autorizar ao abrir o
+            chamado, também o IP público e o sistema operacional do seu
+            computador.
           </li>
           <li>
             Segurança: registros de ações, dados de verificação em duas etapas,
@@ -83,7 +125,7 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
         <p>
           Autenticar usuários, atender chamados, notificar envolvidos, medir
           prazos, gerar relatórios internos e manter a segurança e a auditoria.
-          As bases legais são definidas pela empresa.
+          As bases legais são definidas pela empresa controladora.
         </p>
         <h3>Quem acessa</h3>
         <p>
@@ -107,18 +149,22 @@ const documents: Record<AboutDoc, { title: string; body: React.ReactNode }> = {
         <h3>Seus direitos</h3>
         <p>
           A Lei Geral de Proteção de Dados garante direitos como confirmação,
-          acesso e correção. Para exercê-los, procure o canal de privacidade da
-          empresa.
+          acesso e correção. Para exercê-los, procure o canal de privacidade
+          acima ou, se ele não estiver informado, a TI da empresa.
         </p>
       </>
     ),
   },
   changelog: {
     title: `Versão ${version}`,
-    body: (
+    body: () => (
       <>
         <h3>Novidades</h3>
         <ul>
+          <li>Wiki interna com editor, imagens e anexos verificados.</li>
+          <li>Perfil Usuário (somente wiki) para quem se cadastra sozinho.</li>
+          <li>IP e sistema operacional no chamado, com autorização.</li>
+          <li>Termos e aviso de privacidade com os dados da empresa.</li>
           <li>
             Prioridade definida por categoria, com troca na abertura do chamado.
           </li>
@@ -159,8 +205,13 @@ export function AboutDialog({
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [legal, setLegal] = useState<Legal | null>(null);
   useEffect(() => {
     dialog.current?.showModal();
+    // Public on purpose: the terms open on the sign-in screen too.
+    api<Legal>("company/legal/")
+      .then(setLegal)
+      .catch(() => setLegal(null));
   }, []);
   return (
     <dialog
@@ -170,7 +221,7 @@ export function AboutDialog({
       onClose={onClose}
     >
       <h2 id="about-title">{documents[doc].title}</h2>
-      {documents[doc].body}
+      {documents[doc].body(legal)}
       <form method="dialog">
         <button autoFocus>Fechar</button>
       </form>

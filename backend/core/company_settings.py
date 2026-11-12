@@ -8,7 +8,7 @@ from django.core.validators import URLValidator
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -131,3 +131,24 @@ class CompanySettingsView(NoStoreMixin, APIView):
             },
         )
         return Response(CompanyOutput(obj).data)
+
+
+class CompanyLegalOutput(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyProfile
+        fields = ["name", "cnpj", "responsible", "responsible_email", "website"]
+        read_only_fields = fields
+
+
+class CompanyLegalView(NoStoreMixin, APIView):
+    """Controller identification for the terms and privacy notice, which open before login.
+
+    The privacy notice must name the controller and a contact, so these fields are public by
+    design. The logo and everything else stay behind the session.
+    """
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses=CompanyLegalOutput, auth=[])
+    def get(self, request):
+        return Response(CompanyLegalOutput(CompanyProfile.objects.first() or CompanyProfile()).data)

@@ -5,7 +5,7 @@ from rest_framework.routers import SimpleRouter
 from core import identity_views as identity
 from core.chat_events import ChatEventsView
 from core.chat_settings import ChatSettingsView
-from core.company_settings import CompanySettingsView
+from core.company_settings import CompanyLegalView, CompanySettingsView
 from core.smtp_settings import SmtpSettingsView
 from core.views import LiveView, ReadyView
 from tickets import reports
@@ -41,6 +41,7 @@ urlpatterns = [
     path("api/v1/wiki/files/<uuid:file_id>/", wiki_files.FileView.as_view()),
     path("api/v1/wiki/<uuid:page_id>/", wiki.PageView.as_view()),
     path("api/v1/settings/chat/", ChatSettingsView.as_view()),
+    path("api/v1/company/legal/", CompanyLegalView.as_view()),
     path("api/v1/settings/company/", CompanySettingsView.as_view()),
     path("api/v1/settings/audit/", AuditLogView.as_view()),
     path("api/v1/settings/retention/", RetentionSettingsView.as_view()),

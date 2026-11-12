@@ -384,3 +384,28 @@ class ConfigurationTests(HTTPHelpers, TestCase):
                 finally:
                     server.shutdown()
                     thread.join()
+
+
+class CompanyLegalTests(TestCase):
+    def test_controller_identification_is_public_but_nothing_else(self):
+        from core.models import CompanyProfile
+
+        CompanyProfile.objects.create(
+            name="Empresa Sintética",
+            cnpj="11222333000181",
+            responsible="Pessoa Teste",
+            responsible_email="pessoa@company.test",
+            website="https://empresa.example/",
+            logo="data:image/png;base64,AAAA",
+        )
+        response = self.client.get("/api/v1/company/legal/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            set(response.json()),
+            {"name", "cnpj", "responsible", "responsible_email", "website"},
+        )
+        self.assertEqual(response.json()["cnpj"], "11222333000181")
+        self.assertEqual(self.client.patch("/api/v1/company/legal/").status_code, 405)
+
+    def test_empty_company_returns_blank_fields(self):
+        self.assertEqual(self.client.get("/api/v1/company/legal/").json()["name"], "")

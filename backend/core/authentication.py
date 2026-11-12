@@ -9,7 +9,7 @@ from core.models import User
 
 # The "Usuário" role reaches only these areas, whatever the view's own permissions say.
 USER_ROLE_PREFIXES = ("/api/v1/auth/", "/api/v1/wiki/")
-USER_ROLE_READ_ONLY = ("/api/v1/settings/company/",)
+USER_ROLE_READ_ONLY = ("/api/v1/settings/company/", "/api/v1/company/legal/")
 
 
 def user_role_may_access(request):

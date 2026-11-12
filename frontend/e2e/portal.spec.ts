@@ -296,6 +296,22 @@ test("administração básica, configuração auditada e layout", async ({
     "target",
     "_blank",
   );
+  // The company identification now fills the terms and the privacy notice.
+  await page
+    .getByRole("button", { name: "Aviso de privacidade", exact: true })
+    .click();
+  const legal = page.getByRole("dialog");
+  await expect(legal).toContainText("Controlador dos dados");
+  await expect(legal).toContainText("Empresa Sintética");
+  await expect(legal).toContainText("CNPJ 11.222.333/0001-81");
+  await expect(legal).toContainText("Pessoa Teste");
+  await expect(
+    legal.getByRole("link", { name: "pessoa@company.test" }),
+  ).toBeVisible();
+  await audit(page);
+  await legal.evaluate((d) => d.scrollTo(0, 0));
+  await page.screenshot({ path: "../work/aviso-privacidade.png" });
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
   await audit(page);
   await page
     .getByRole("button", { name: "Log do sistema", exact: true })
@@ -575,6 +591,7 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
   for (const name of ["Termos de uso", "Aviso de privacidade"]) {
     await page.getByRole("button", { name, exact: true }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
+    await expect(page.getByText(/Minuta pendente/)).toHaveCount(0);
     await audit(page);
     await page.getByRole("button", { name: "Fechar", exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);

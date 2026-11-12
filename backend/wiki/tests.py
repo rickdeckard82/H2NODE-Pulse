@@ -285,6 +285,7 @@ class UserRoleTests(TicketHelpers, TestCase):
         self.assertEqual(client.get(f"/api/v1/wiki/{page.uuid}/").status_code, 200)
         self.assertEqual(client.get("/api/v1/auth/me/").json()["role"], "user")
         self.assertEqual(client.get("/api/v1/settings/company/").status_code, 200)
+        self.assertEqual(client.get("/api/v1/company/legal/").status_code, 200)
         body = {"title": "X", "body": "Y"}
         self.assertEqual(self.call(self.visitor, "post", "/api/v1/wiki/", body).status_code, 403)
 
