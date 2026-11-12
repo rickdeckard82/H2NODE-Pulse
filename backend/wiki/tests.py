@@ -1,5 +1,8 @@
 import uuid
+from io import StringIO
 
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import connection
 from django.test import TestCase
 
@@ -83,3 +86,34 @@ class WikiTests(TicketHelpers, TestCase):
                 self.call(self.manager, "post", "/api/v1/wiki/", {**base, **extra}).status_code,
                 400,
             )
+
+
+class ImportTests(TicketHelpers, TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.make_fixtures()
+
+    def run_import(self, *args):
+        out = StringIO()
+        call_command("import_wiki", *args, stdout=out)
+        return out.getvalue()
+
+    def test_bundled_pages_import_once_with_original_dates(self):
+        author = ["--author", self.manager.email]
+        self.assertIn("Simulação: 10 criada(s)", self.run_import(*author, "--dry-run"))
+        self.assertEqual(WikiPage.objects.count(), 0)
+        self.assertIn("10 criada(s), 0 já existente(s)", self.run_import(*author))
+        self.assertIn("0 criada(s), 10 já existente(s)", self.run_import(*author))
+        page = WikiPage.objects.get(title__contains="Limpar o cache")
+        self.assertEqual(
+            (page.author, page.tags, page.created_at.year), (self.manager, ["Suporte"], 2026)
+        )
+        self.assertTrue(self.manager.identity_actions.filter(action="wiki.imported").exists())
+
+    def test_author_must_be_manager_or_admin(self):
+        for user in [self.owner, self.tech]:
+            with self.assertRaises(CommandError):
+                self.run_import("--author", user.email)
+        with self.assertRaises(CommandError):
+            self.run_import("--author", "ninguem@company.test")
+        self.assertEqual(WikiPage.objects.count(), 0)
