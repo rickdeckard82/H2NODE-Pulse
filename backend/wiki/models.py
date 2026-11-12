@@ -1,0 +1,24 @@
+import uuid
+
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
+
+class WikiPage(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    # Short labels shown as colored chips and used as the side menu filter.
+    tags = models.JSONField(default=list)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="wiki_pages"
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]

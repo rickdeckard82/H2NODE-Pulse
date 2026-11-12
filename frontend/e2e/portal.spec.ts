@@ -721,3 +721,48 @@ test("gestor consulta relatórios e exporta CSV com prazo", async ({ page }) => 
     fullPage: true,
   });
 });
+
+// A TOTP code is single-use: start each login in a fresh 30 s window.
+const nextWindow = () =>
+  new Promise((done) => setTimeout(done, 30500 - (Date.now() % 30000)));
+
+test("wiki: gestor cria página e técnico apenas lê", async ({ page }) => {
+  await nextWindow();
+  await login(page, "manager");
+  await page.getByRole("button", { name: "Wiki", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Wiki" })).toBeVisible();
+  await page.getByRole("button", { name: "Nova página", exact: true }).click();
+  await page.getByLabel("Título").fill("Limpar o cache do navegador");
+  await page.getByLabel(/^Tags/).fill("Suporte, Navegador");
+  await page
+    .getByLabel("Conteúdo")
+    .fill("# Passos\n- Abra o menu\n- Limpe o cache");
+  await audit(page);
+  await page.getByRole("button", { name: "Salvar página" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Limpar o cache do navegador" }),
+  ).toBeVisible();
+  await expect(page.getByText("Limpe o cache")).toBeVisible();
+  await audit(page);
+  await page.getByRole("button", { name: "← Todas as páginas" }).click();
+  await audit(page);
+  await page
+    .getByRole("button", { name: /Sair/ })
+    .first()
+    .click()
+    .catch(() => {});
+  await page.context().clearCookies();
+  await login(page, "tech");
+  await page.getByRole("button", { name: "Wiki", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Limpar o cache do navegador" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Nova página", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Limpar o cache do navegador" })
+    .click();
+  await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Excluir" })).toHaveCount(0);
+});

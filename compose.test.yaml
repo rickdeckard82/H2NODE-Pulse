@@ -35,4 +35,4 @@ services:
     read_only: true
     tmpfs: [/tmp]
     mem_limit: 1g
-    command: [python, manage.py, test, core.test_identity, core.test_configuration, core.test_trusted_devices, tickets, --keepdb, --noinput, -v, '2']
+    command: [python, manage.py, test, core.test_identity, core.test_configuration, core.test_trusted_devices, tickets, wiki, --keepdb, --noinput, -v, '2']

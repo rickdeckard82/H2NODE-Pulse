@@ -9,6 +9,7 @@ import { Admin } from "./Admin";
 import { Account } from "./Account";
 import { PasswordChange } from "./PasswordChange";
 import { Reports } from "./Reports";
+import { Wiki } from "./Wiki";
 import { PulseIntro } from "./PulseIntro";
 import { Notifications } from "./Notifications";
 import "./style.css";
@@ -191,6 +192,16 @@ function App() {
                   Relatórios
                 </button>
               )}
+              <button
+                className="selected"
+                aria-current={view === "wiki" ? "page" : undefined}
+                onClick={() => {
+                  setView("wiki");
+                  setLogoPulseKey((k) => k + 1);
+                }}
+              >
+                Wiki
+              </button>
             </nav>
             {company?.name && <CompanyBadge company={company} />}
             <Notifications
@@ -287,6 +298,8 @@ function App() {
           <p role="status">Carregando seu portal…</p>
         ) : !user ? (
           <Auth onLogin={load} initialNotice={authNotice} />
+        ) : view === "wiki" ? (
+          <Wiki canEdit={["manager", "admin"].includes(user.role)} />
         ) : view === "reports" ? (
           <Reports />
         ) : view === "admin" ? (

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "core",
     "tickets",
+    "wiki",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

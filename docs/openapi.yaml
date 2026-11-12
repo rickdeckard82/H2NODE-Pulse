@@ -2364,6 +2364,117 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/v1/wiki/:
+    get:
+      operationId: wiki_list
+      description: Every signed-in user reads; only managers and administrators write.
+      tags:
+      - wiki
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PageSummary'
+          description: ''
+    post:
+      operationId: wiki_create
+      description: Every signed-in user reads; only managers and administrators write.
+      tags:
+      - wiki
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PageInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PageInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PageInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageDetail'
+          description: ''
+  /api/v1/wiki/{page_id}/:
+    get:
+      operationId: wiki_retrieve
+      parameters:
+      - in: path
+        name: page_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - wiki
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageDetail'
+          description: ''
+    patch:
+      operationId: wiki_partial_update
+      parameters:
+      - in: path
+        name: page_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - wiki
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPageInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPageInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPageInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageDetail'
+          description: ''
+    delete:
+      operationId: wiki_destroy
+      parameters:
+      - in: path
+        name: page_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - wiki
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     ActionEnum:
@@ -3180,6 +3291,96 @@ components:
           type: boolean
       required:
       - name
+    PageDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        tags:
+          readOnly: true
+        author_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        updated_by_name:
+          type: string
+          readOnly: true
+          default: ''
+      required:
+      - author_name
+      - body
+      - created_at
+      - id
+      - tags
+      - title
+      - updated_at
+      - updated_by_name
+    PageInputRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        body:
+          type: string
+          minLength: 1
+          maxLength: 50000
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+          maxItems: 5
+      required:
+      - body
+      - title
+    PageSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        tags:
+          readOnly: true
+        author_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author_name
+      - created_at
+      - id
+      - tags
+      - title
+      - updated_at
     PaginatedAttachmentList:
       type: object
       required:
@@ -3662,6 +3863,24 @@ components:
           maxLength: 120
         is_active:
           type: boolean
+    PatchedPageInputRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        body:
+          type: string
+          minLength: 1
+          maxLength: 50000
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+          maxItems: 5
     PatchedProfileInputRequest:
       type: object
       description: 'E-mail is deliberately absent: it identifies the corporate account

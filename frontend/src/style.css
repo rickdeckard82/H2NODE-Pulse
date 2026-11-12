@@ -1499,3 +1499,133 @@ button[type="submit"] {
 .notify-count.muted-count {
   background: #8a96a8;
 }
+
+/* Wiki */
+.wiki-hero {
+  text-align: center;
+  background: #e9effa;
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+}
+.wiki-hero h2,
+.wiki-hero p {
+  margin: 0;
+}
+.wiki-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+.wiki-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wiki-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: #163b74;
+  text-align: left;
+  font-weight: 500;
+  padding: 0.5rem 0.6rem;
+}
+.wiki-menu:hover,
+.wiki-menu.active {
+  background: #e9effa;
+  color: #163b74;
+}
+.wiki-menu.active {
+  font-weight: 700;
+}
+.wiki-menu small {
+  margin-left: auto;
+}
+.wiki-menu-title {
+  margin: 14px 0 2px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #52637b;
+}
+.wiki-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.wiki-bar {
+  margin-bottom: 14px;
+}
+.wiki-bar input {
+  width: 100%;
+}
+.wiki-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wiki-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #dbe3ee;
+}
+.wiki-list li > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wiki-title {
+  text-align: left;
+  padding: 0;
+  font-size: 1.05rem;
+}
+.wiki-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #c9d7f3;
+  color: #163b74;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.wiki-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.wiki-tag {
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 8px;
+}
+.wiki-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.wiki-content {
+  overflow-wrap: anywhere;
+}
+.wiki-content code {
+  background: #eef2f8;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+@media (max-width: 760px) {
+  .wiki-layout {
+    grid-template-columns: 1fr;
+  }
+  .wiki-list li {
+    flex-wrap: wrap;
+  }
+}

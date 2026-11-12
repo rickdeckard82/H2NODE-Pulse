@@ -84,6 +84,29 @@ const sections: {
     ),
   },
   {
+    id: "wiki",
+    title: "Wiki",
+    roles: everyone,
+    body: (
+      <>
+        <p>
+          Em <b>Wiki</b> ficam os guias e procedimentos da equipe. Use o menu
+          lateral para filtrar por tag ou a busca para achar uma página pelo
+          título. Todos leem; somente gestores e administradores criam, editam e
+          excluem páginas.
+        </p>
+        <p>
+          Gestores e administradores usam <b>Nova página</b>, informam título,
+          até 5 tags separadas por vírgula e o conteúdo. No conteúdo, use{" "}
+          <code># Título</code>, <code>- lista</code>, <code>1. passos</code>,{" "}
+          <code>**negrito**</code> e <code>[texto](https://link)</code>. Não
+          registre senhas nem dados de clientes. Criações, edições e exclusões
+          ficam no log do sistema.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "atender",
     title: "Atender chamados",
     roles: support,
