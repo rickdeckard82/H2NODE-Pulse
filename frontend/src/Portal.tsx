@@ -257,9 +257,9 @@ export function Portal({
               Prioridade
               <select name="priority">
                 <option value="">Todas</option>
-                {[1, 2, 3, 4].map((n) => (
-                  <option key={n} value={n}>
-                    P{n}
+                {priorities.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
@@ -306,14 +306,17 @@ export function Portal({
                     <small>
                       {t.requester_name} · {date(t.created_at)}
                     </small>
+                    <small>
+                      Responsável: {t.assignee_name || "Sem responsável"}
+                    </small>
                   </span>
                   <span className={`badge state-${t.state}`}>
                     {states[t.state]}
                   </span>
-                  <span>{priorityName(t.priority)}</span>
-                  <span className="row-assignee">
-                    {t.assignee_name || "Sem responsável"} →
+                  <span className={`badge priority-${t.priority}`}>
+                    {priorityName(t.priority)}
                   </span>
+                  <span aria-hidden="true">→</span>
                 </button>
               ))
             )}

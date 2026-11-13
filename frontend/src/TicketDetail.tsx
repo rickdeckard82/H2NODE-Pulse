@@ -447,7 +447,9 @@ export function TicketDetail({
                     Destino do atendimento
                     <select name="target" required defaultValue="">
                       <option value="" disabled>
-                        Selecione grupo e técnico
+                        {targets.length
+                          ? "Selecione grupo e técnico"
+                          : "Nenhum técnico disponível nos seus grupos"}
                       </option>
                       {targets.map((t) => (
                         <option

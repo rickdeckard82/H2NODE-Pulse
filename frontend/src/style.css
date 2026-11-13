@@ -899,8 +899,29 @@ input[type="checkbox"] {
   border-color: #f0a3a3;
   color: #a32020;
 }
-.row-assignee {
-  font-size: 0.8rem;
+.ticket-summary small + small {
+  margin-top: 2px;
+}
+/* Priority badges: hues kept apart from the state badges beside them. */
+.badge.priority-1 {
+  background: #ffe0e0;
+  border-color: #e87878;
+  color: #9b1111;
+}
+.badge.priority-2 {
+  background: #ffe8d6;
+  border-color: #f2a66b;
+  color: #9a4300;
+}
+.badge.priority-3 {
+  background: #fff7cc;
+  border-color: #e6cf5c;
+  color: #6f5800;
+}
+.badge.priority-4 {
+  background: #dcf4f1;
+  border-color: #83cfc4;
+  color: #0e6359;
 }
 .pagination {
   display: flex;
@@ -1081,9 +1102,6 @@ button[type="submit"] {
   }
   .page-heading {
     align-items: start;
-  }
-  .row-assignee {
-    display: none;
   }
   .ticket-row {
     flex-wrap: wrap;
