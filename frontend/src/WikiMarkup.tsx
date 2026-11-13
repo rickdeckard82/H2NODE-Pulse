@@ -85,7 +85,7 @@ const dashes = (s: string) =>
   s.replace(/[\u00A0\u202F]/g, " ").replace(/[\u2013\u2014\u2015\u2212]/g, "-");
 const isSeparator = (line: string) =>
   dashes(line).includes("-") &&
-  /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(dashes(line));
+  /^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/.test(dashes(line));
 
 function table(lines: string[], key: number): ReactNode {
   const align = cells(dashes(lines[1])).map((s): CSSProperties["textAlign"] =>

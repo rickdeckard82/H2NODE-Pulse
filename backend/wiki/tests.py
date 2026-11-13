@@ -11,7 +11,6 @@ from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
 from core.models import User
-from core.test_identity import PASSWORD
 from tickets.models import Ticket
 from tickets.tests import TicketHelpers
 from wiki.files import path_for
@@ -273,9 +272,7 @@ class UserRoleTests(TicketHelpers, TestCase):
     def test_registration_creates_user_role(self):
         from core import identity
 
-        identity.register(
-            {"email": "novo@company.test", "name": "Novo", "password": PASSWORD + "-Zx9"}
-        )
+        identity.register({"email": "novo@company.test", "name": "Novo"})
         self.assertEqual(User.objects.get(email="novo@company.test").role, "user")
 
     def test_user_role_reads_wiki_but_cannot_write(self):

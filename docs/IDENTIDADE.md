@@ -60,8 +60,8 @@ persistir senha, tokens ou segredo MFA em localStorage. Respostas privadas têm
 
 | Ação | Endpoint/método | Corpo/resultado |
 |---|---|---|
-| Cadastro | POST `/auth/register/` | `name`, `email`, `password`; resposta genérica |
-| Confirmar cadastro | POST `/auth/confirm/` | `token` do e-mail, uso único |
+| Cadastro | POST `/auth/register/` | `name`, `email`; resposta genérica com duração mínima fixa |
+| Confirmar cadastro | POST `/auth/confirm/` | `token` do e-mail (uso único) e `password`; a senha só é definida aqui, por quem recebeu o código, e o MFA/dispositivos anteriores são descartados |
 | Reenviar confirmação | POST `/auth/resend/` | `email`; invalida código anterior |
 | Login | POST `/auth/login/` | `email`, `password`; status `authenticated` ou `mfa_required` |
 | Confirmar MFA ou recuperar | POST `/auth/mfa/verify/` | `code` TOTP ou código de recuperação e `remember_device` opcional (false por padrão) |
