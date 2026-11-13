@@ -254,6 +254,18 @@ class TicketEvent(models.Model):
         ]
 
 
+class NotificationRead(models.Model):
+    """A bell item the user opened; it leaves that user's inbox."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    event = models.ForeignKey(TicketEvent, on_delete=models.CASCADE, related_name="reads")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "event"], name="notification_read_unique")
+        ]
+
+
 class AuditEvent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.OneToOneField(TicketEvent, on_delete=models.PROTECT)

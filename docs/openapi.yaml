@@ -1130,6 +1130,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/InboxOutput'
           description: ''
+  /api/v1/notifications/{event_id}/read/:
+    post:
+      operationId: notifications_read_create
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxOutput'
+          description: ''
   /api/v1/notifications/clear/:
     post:
       operationId: notifications_clear_create

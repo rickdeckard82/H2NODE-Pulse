@@ -17,6 +17,7 @@ from tickets.models import (
     IntegrationCheck,
     NotificationDelivery,
     NotificationOutbox,
+    NotificationRead,
     TicketEvent,
 )
 from tickets.permissions import can_read_internal, visible_tickets
@@ -174,6 +175,7 @@ class InboxView(NoStoreMixin, APIView):
         events = (
             TicketEvent.objects.filter(scope, ticket__in=visible_tickets(user))
             .exclude(actor=user)
+            .exclude(reads__user=user)
             .select_related("ticket", "actor")
             .distinct()
             .order_by("-created_at")
@@ -202,6 +204,16 @@ class InboxView(NoStoreMixin, APIView):
         request.user.notifications_muted = serializer.validated_data["muted"]
         request.user.save(update_fields=["notifications_muted"])
         return Response(self.payload(request.user))
+
+
+class InboxReadView(NoStoreMixin, APIView):
+    @extend_schema(request=None, responses=InboxOutput)
+    def post(self, request, event_id):
+        event = get_object_or_404(
+            TicketEvent, pk=event_id, ticket__in=visible_tickets(request.user)
+        )
+        NotificationRead.objects.get_or_create(user=request.user, event=event)
+        return Response(InboxView().payload(request.user))
 
 
 class InboxClearView(NoStoreMixin, APIView):

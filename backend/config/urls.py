@@ -14,6 +14,7 @@ from tickets.attachments import AttachmentView, DownloadView
 from tickets.audit_log import AuditLogView
 from tickets.notification_views import (
     InboxClearView,
+    InboxReadView,
     InboxView,
     IntegrationTestView,
     NotificationDiagnosticsView,
@@ -49,6 +50,7 @@ urlpatterns = [
     path("api/v1/settings/notifications/", NotificationDiagnosticsView.as_view()),
     path("api/v1/notifications/", InboxView.as_view()),
     path("api/v1/notifications/clear/", InboxClearView.as_view()),
+    path("api/v1/notifications/<uuid:event_id>/read/", InboxReadView.as_view()),
     path("api/v1/settings/notifications/test/", IntegrationTestView.as_view()),
     path(
         "api/v1/settings/notifications/<int:delivery_id>/retry/",
