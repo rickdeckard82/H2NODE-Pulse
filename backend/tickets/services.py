@@ -291,15 +291,15 @@ def transition(actor, ticket, data):
         )
     if data.get("resolution_class") and action != "resolve":
         raise ValidationError({"resolution_class": "Campo exclusivo da resolução."})
+    if data.get("rating") and action != "confirm":
+        raise ValidationError({"rating": "A avaliação é dada ao confirmar a solução."})
     if action in {"request_information", "request_test", "resolve"}:
         require_support(actor, ticket)
         if before != Ticket.State.ACTIVE:
             raise Conflict("Esta ação exige chamado em atendimento.")
         if action == "resolve":
-            if not data.get("resolution_class"):
-                raise ValidationError({"resolution_class": "Informe a classificação da solução."})
             ticket.state, ticket.resolved_at = Ticket.State.RESOLVED, timezone.now()
-            ticket.resolution_class = data["resolution_class"]
+            ticket.resolution_class = data.get("resolution_class", "")
         else:
             ticket.state = (
                 Ticket.State.INFORMATION if action == "request_information" else Ticket.State.TEST
@@ -309,6 +309,9 @@ def transition(actor, ticket, data):
             raise PermissionDenied("Somente o solicitante pode confirmar a solução.")
         if before != Ticket.State.RESOLVED:
             raise Conflict("Somente chamados resolvidos podem ser confirmados.")
+        if not data.get("rating"):
+            raise ValidationError({"rating": "Avalie a solução de 1 a 5 estrelas."})
+        ticket.rating = data["rating"]
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "close":
         if not owner and not member:
@@ -370,7 +373,11 @@ def transition(actor, ticket, data):
         action,
         before,
         comment=comment,
-        changes={"assignee": ticket.assignee_id, "resolution_class": ticket.resolution_class},
+        changes={
+            "assignee": ticket.assignee_id,
+            "resolution_class": ticket.resolution_class,
+            "rating": ticket.rating,
+        },
     )
 
 

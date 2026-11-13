@@ -158,6 +158,8 @@ class Ticket(models.Model):
     resolved_at = models.DateTimeField(null=True)
     closed_at = models.DateTimeField(null=True)
     resolution_class = models.CharField(max_length=80, blank=True)
+    # Requester's 1–5 star rating given when confirming the solution.
+    rating = models.PositiveSmallIntegerField(null=True, blank=True)
     reopen_policy = models.ForeignKey(ReopenPolicy, null=True, on_delete=models.PROTECT)
     sla_policy = models.ForeignKey(SlaPolicy, null=True, on_delete=models.PROTECT)
     related_ticket = models.ForeignKey("self", null=True, on_delete=models.PROTECT)
@@ -173,6 +175,10 @@ class Ticket(models.Model):
             models.Index(fields=["state", "created_at"]),
         ]
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(rating__isnull=True) | models.Q(rating__range=(1, 5)),
+                name="ticket_rating_range",
+            ),
             models.CheckConstraint(
                 condition=models.Q(
                     state__in=[

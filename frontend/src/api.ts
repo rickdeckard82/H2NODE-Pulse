@@ -39,6 +39,7 @@ export type Ticket = {
   client_os: string;
   state: string;
   priority: number;
+  rating: number | null;
   requester: number;
   requester_name: string;
   assignee: number | null;

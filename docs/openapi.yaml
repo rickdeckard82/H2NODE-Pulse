@@ -4717,6 +4717,10 @@ components:
         resolution_class:
           type: string
           readOnly: true
+        rating:
+          type: integer
+          readOnly: true
+          nullable: true
         reopen_policy:
           type: integer
           readOnly: true
@@ -4758,6 +4762,7 @@ components:
       - number
       - participants
       - priority
+      - rating
       - related_ticket
       - reopen_policy
       - requester
@@ -4841,6 +4846,10 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        rating:
+          type: integer
+          maximum: 5
+          minimum: 1
         assignee:
           type: integer
           minimum: 1

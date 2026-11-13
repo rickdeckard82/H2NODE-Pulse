@@ -40,6 +40,7 @@ class TransitionInput(VersionInput):
     )
     message = serializers.CharField(max_length=8000, required=False)
     resolution_class = serializers.CharField(max_length=80, required=False)
+    rating = serializers.IntegerField(min_value=1, max_value=5, required=False)
     assignee = serializers.IntegerField(min_value=1, required=False)
 
 
@@ -117,6 +118,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "resolved_at",
             "closed_at",
             "resolution_class",
+            "rating",
             "reopen_policy",
             "related_ticket",
             "client_ip",

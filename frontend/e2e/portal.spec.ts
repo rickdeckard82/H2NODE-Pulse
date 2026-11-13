@@ -56,10 +56,10 @@ async function action(page: Page, name: string, message?: string) {
   await page.getByRole("button", { name, exact: true }).click();
   if (message)
     await page.getByLabel("Mensagem pública", { exact: true }).fill(message);
-  if (name === "Resolver chamado")
+  if (name === "Confirmar solução")
     await page
-      .getByLabel("Classificação da solução")
-      .fill("Configuração de acesso");
+      .getByRole("radio", { name: /^5 estrelas/ })
+      .check({ force: true });
   await page
     .getByRole("button", { name: "Confirmar ação", exact: true })
     .click();
@@ -178,6 +178,7 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
   await owner.getByRole("button", { name: "Atualizar chamado" }).click();
   await action(owner, "Confirmar solução");
   await expect(owner.locator(".badge")).toHaveText("Fechado");
+  await expect(owner.getByText("5 de 5 · Ótima")).toBeVisible();
   await audit(owner);
   await owner.setViewportSize({ width: 390, height: 844 });
   await audit(owner);

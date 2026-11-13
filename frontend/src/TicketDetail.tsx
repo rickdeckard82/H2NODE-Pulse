@@ -354,6 +354,18 @@ export function TicketDetail({
               )}
               <dt>Prioridade</dt>
               <dd>{priorityName(ticket.priority)}</dd>
+              {ticket.rating && (
+                <>
+                  <dt>Avaliação do solicitante</dt>
+                  <dd>
+                    <span className="stars" aria-hidden="true">
+                      {"★".repeat(ticket.rating)}
+                      {"☆".repeat(5 - ticket.rating)}
+                    </span>{" "}
+                    {ticket.rating} de 5 · {ratingLabels[ticket.rating - 1]}
+                  </dd>
+                </>
+              )}
               <dt>Área na abertura</dt>
               <dd>{ticket.department_name || "Não informada"}</dd>
               <dt>Próxima ação</dt>
@@ -410,6 +422,8 @@ export function TicketDetail({
                   );
                   const target = String(values.target || "").split(":");
                   delete values.target;
+                  const rating = values.rating ? Number(values.rating) : null;
+                  delete values.rating;
                   const payload = {
                     ...values,
                     expected_version: ticket.version,
@@ -421,6 +435,7 @@ export function TicketDetail({
                       : ["claim", "join"].includes(action)
                         ? {}
                         : { action }),
+                    ...(rating ? { rating } : {}),
                   };
                   void send(
                     ["claim", "join", "transfer"].includes(action)
@@ -436,12 +451,7 @@ export function TicketDetail({
                     <textarea name="message" required maxLength={8000} />
                   </label>
                 )}
-                {action === "resolve" && (
-                  <label>
-                    Classificação da solução
-                    <input name="resolution_class" required maxLength={80} />
-                  </label>
-                )}
+                {action === "confirm" && <StarRating />}
                 {action === "transfer" && (
                   <label>
                     Destino do atendimento
@@ -479,5 +489,39 @@ export function TicketDetail({
         </aside>
       </div>
     </>
+  );
+}
+
+const ratingLabels = ["Ruim", "Fraca", "Regular", "Boa", "Ótima"];
+
+function StarRating() {
+  const [value, setValue] = useState(0);
+  return (
+    <fieldset className="star-rating">
+      <legend>Como foi a solução?</legend>
+      <div>
+        {ratingLabels.map((label, i) => (
+          <label key={label} className={i < value ? "on" : ""}>
+            <input
+              type="radio"
+              name="rating"
+              value={i + 1}
+              required
+              className="sr-only"
+              onChange={() => setValue(i + 1)}
+            />
+            <span aria-hidden="true">★</span>
+            <span className="sr-only">
+              {i + 1} {i ? "estrelas" : "estrela"} · {label}
+            </span>
+          </label>
+        ))}
+      </div>
+      <small aria-live="polite">
+        {value
+          ? ratingLabels[value - 1]
+          : "1 estrela = ruim · 5 estrelas = ótima"}
+      </small>
+    </fieldset>
   );
 }

@@ -100,9 +100,10 @@ Transições:
 - Resposta pública do solicitante pelo endpoint comments retoma Em atendimento
   quando aguardava informação/teste, mantendo o técnico. Correção de mensagem
   anterior não retoma o atendimento.
-- `resolve`: técnico, gestor ou administrador com acesso ao chamado, Em atendimento, `message` público com solução e
-  `resolution_class` obrigatórios.
-- `confirm`: solicitante, Resolvido → Fechado.
+- `resolve`: técnico, gestor ou administrador com acesso ao chamado, Em atendimento, `message` público com a solução
+  obrigatório (`resolution_class` passou a ser opcional e não aparece no portal).
+- `confirm`: solicitante, Resolvido → Fechado, com `rating` obrigatório de 1 a 5 estrelas
+  (1 = ruim, 5 = ótima). A nota aparece no detalhe do chamado e na coluna `avaliacao` do CSV.
 - `close`: solicitante encerra a qualquer momento após o atendimento começar
   (Em atendimento ou Aguardando) → Fechado; `message` obrigatório.
   Em Novo, o solicitante usa `cancel`; em Resolvido, `confirm`. Técnico, gestor e

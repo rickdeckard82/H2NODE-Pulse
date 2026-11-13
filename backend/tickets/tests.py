@@ -248,9 +248,10 @@ class TicketTests(TicketHelpers, TestCase):
             ticket.refresh_from_db()
             self.assertEqual(ticket.state, Ticket.State.ACTIVE)
             self.assertEqual(ticket.assignee_id, self.tech.pk)
-        self.transition(
-            ticket, self.tech, "resolve", message="Solução", resolution_class="configuration"
-        )
+        rated = {"action": "resolve", "message": "Solução", "rating": 5}
+        self.assertEqual(self.mutate(ticket, self.tech, "transitions", rated).status_code, 400)
+        # The free-text classification is no longer required to resolve.
+        self.transition(ticket, self.tech, "resolve", message="Solução")
         self.transition(ticket, self.owner, "reopen", message="Falha ainda ocorre")
         self.transition(
             ticket,
@@ -259,7 +260,13 @@ class TicketTests(TicketHelpers, TestCase):
             message="Solução corrigida",
             resolution_class="configuration",
         )
-        self.transition(ticket, self.owner, "confirm")
+        # The requester rates the solution with 1 to 5 stars when confirming.
+        for bad in [{}, {"rating": 0}, {"rating": 6}]:
+            response = self.mutate(ticket, self.owner, "transitions", {"action": "confirm", **bad})
+            self.assertEqual(response.status_code, 400, bad)
+        self.transition(ticket, self.owner, "confirm", rating=4)
+        self.assertEqual(ticket.rating, 4)
+        self.assertEqual(self.read(ticket, self.owner).json()["rating"], 4)
         self.assertEqual(ticket.state, Ticket.State.CLOSED)
         self.assertIsNotNone(ticket.closed_at)
         self.transition(ticket, self.owner, "reopen", message="Falha voltou")
@@ -523,7 +530,7 @@ class TicketTests(TicketHelpers, TestCase):
         )
         self.assertEqual(
             self.mutate(
-                ticket, self.tech, "transitions", {"action": "resolve", "message": "X"}
+                ticket, self.tech, "transitions", {"action": "resolve", "rating": 5}
             ).status_code,
             400,
         )
@@ -788,7 +795,7 @@ class TicketTests(TicketHelpers, TestCase):
     def test_reopening_policy_is_frozen_and_outside_window_allows_linked_ticket(self):
         ticket = self.create()
         self.resolve(ticket)
-        self.transition(ticket, self.owner, "confirm")
+        self.transition(ticket, self.owner, "confirm", rating=5)
         response = self.send(
             self.admin, "/api/v1/settings/reopen-policies/", {"hours": 1, "reason": "Nova política"}
         )
@@ -813,7 +820,7 @@ class TicketTests(TicketHelpers, TestCase):
             ReopenPolicy.objects.all().delete()
         ticket = self.create()
         self.resolve(ticket)
-        self.transition(ticket, self.owner, "confirm")
+        self.transition(ticket, self.owner, "confirm", rating=5)
         self.assertEqual(
             self.mutate(
                 ticket, self.owner, "transitions", {"action": "reopen", "message": "Motivo"}
