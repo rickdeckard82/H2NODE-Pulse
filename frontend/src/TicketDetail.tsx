@@ -151,7 +151,7 @@ export function TicketDetail({
           Atualizar chamado
         </button>
       </div>
-      {error && (
+      {error && !action && (
         <p role="alert" className="error">
           {error}
         </p>
@@ -374,6 +374,7 @@ export function TicketDetail({
                   key={a}
                   onClick={() => {
                     key.current = crypto.randomUUID();
+                    setError("");
                     setAction(a);
                   }}
                 >
@@ -383,8 +384,20 @@ export function TicketDetail({
             </div>
           </section>
           {action && (
-            <section className="panel">
-              <h2>{actions[action]}</h2>
+            <dialog
+              className="about-dialog"
+              aria-labelledby="action-title"
+              ref={(el) => {
+                if (el && !el.open) el.showModal();
+              }}
+              onClose={() => setAction("")}
+            >
+              <h2 id="action-title">{actions[action]}</h2>
+              {error && (
+                <p className="error" role="alert">
+                  {error}
+                </p>
+              )}
               <form
                 onChange={() => {
                   key.current = crypto.randomUUID();
@@ -458,7 +471,7 @@ export function TicketDetail({
                   Voltar
                 </button>
               </form>
-            </section>
+            </dialog>
           )}
         </aside>
       </div>
