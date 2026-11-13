@@ -7,6 +7,7 @@ import {
   detectOs,
   priorities,
   priorityName,
+  stateBadge,
   states,
   type Page,
   type Ticket,
@@ -311,8 +312,8 @@ export function Portal({
                       Responsável: {t.assignee_name || "Sem responsável"}
                     </small>
                   </span>
-                  <span className={`badge state-${t.state}`}>
-                    {states[t.state]}
+                  <span className={`badge state-${stateBadge(t)[0]}`}>
+                    {stateBadge(t)[1]}
                   </span>
                   <span className={`badge priority-${t.priority}`}>
                     {priorityName(t.priority)}

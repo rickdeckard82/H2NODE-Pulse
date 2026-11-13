@@ -76,6 +76,13 @@ export const states: Record<string, string> = {
   closed: "Fechado",
   cancelled: "Cancelado",
 };
+// Closed tickets show what the requester answered; staff closures stay "Fechado".
+export const stateBadge = (t: Ticket): [string, string] =>
+  t.state === "closed" && t.requester_solved !== null
+    ? t.requester_solved
+      ? ["closed-solved", "Resolvido"]
+      : ["closed-unsolved", "Não resolvido"]
+    : [t.state, states[t.state]];
 export const actions: Record<string, string> = {
   claim: "Assumir chamado",
   join: "Participar do atendimento",

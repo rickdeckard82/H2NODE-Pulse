@@ -901,6 +901,16 @@ input[type="radio"] {
   border-color: #c3cad5;
   color: #4a5568;
 }
+.badge.state-closed-solved {
+  background: #17693a;
+  border-color: #17693a;
+  color: white;
+}
+.badge.state-closed-unsolved {
+  background: #a32020;
+  border-color: #a32020;
+  color: white;
+}
 .badge.state-cancelled {
   background: #fde4e4;
   border-color: #f0a3a3;
