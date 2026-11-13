@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from core import identity
 from core.authentication import IsIdentityAdmin
 from core.identity_views import AdminWriteViewSet, NoStoreMixin, locked_actor
-from core.models import Membership, User
+from core.models import Membership, SupportGroup, User
 from tickets import services
 from tickets.client_ip import client_ip
 from tickets.models import Category, ReopenPolicy, Ticket
@@ -135,12 +135,17 @@ class TicketViewSet(
         member = membership(request.user, ticket)
         if not member or not member.can_transfer:
             raise PermissionDenied("Sem permissão de transferência.")
-        own = Membership.objects.filter(user=request.user, group__is_active=True)
-        if ticket.restricted:
-            own = own.filter(can_view_restricted=True)
+        if request.user.role == User.Role.ADMIN:
+            # Admins may transfer to any active group (services.transfer), member or not.
+            groups = SupportGroup.objects.filter(is_active=True).values("pk")
+        else:
+            own = Membership.objects.filter(user=request.user, group__is_active=True)
+            if ticket.restricted:
+                own = own.filter(can_view_restricted=True)
+            groups = own.values("group_id")
         candidates = (
             Membership.objects.filter(
-                group_id__in=own.values("group_id"),
+                group_id__in=groups,
                 user__is_active=True,
                 user__email_verified_at__isnull=False,
                 user__role__in=[User.Role.TECHNICIAN, User.Role.MANAGER],

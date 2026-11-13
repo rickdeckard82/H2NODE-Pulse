@@ -223,6 +223,10 @@ class TicketTests(TicketHelpers, TestCase):
         self.assertNotIn(self.tech2.pk, [m["user"] for m in response.json()["results"]])
         self.assertTrue(self.read(ticket, self.tech).json()["can_transfer"])
         self.assertFalse(self.read(ticket, self.owner).json()["can_transfer"])
+        # Admins belong to no group but may transfer anywhere: the list must not be empty.
+        self.assertFalse(Membership.objects.filter(user=self.admin).exists())
+        admin = self.read(ticket, self.admin, "transfer-options/").json()["results"]
+        self.assertIn(self.tech.pk, [m["user"] for m in admin])
 
     def test_full_cycle_information_test_resolution_close_and_reopen(self):
         ticket = self.create()
