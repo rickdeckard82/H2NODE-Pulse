@@ -35,6 +35,7 @@ from tickets.models import (
     NotificationAttempt,
     NotificationDelivery,
     NotificationOutbox,
+    NotificationRead,
     RetentionPolicy,
     Ticket,
     TicketEvent,
@@ -561,6 +562,7 @@ class RetentionTests(TicketHelpers, TestCase):
         comment = Comment.objects.create(
             ticket=ticket, actor=self.owner, body="SEGREDO", visibility="public"
         )
+        NotificationRead.objects.create(user=self.tech, event=ticket.events.first())
         with tempfile.TemporaryDirectory() as folder, override_settings(ATTACHMENT_ROOT=folder):
             key = uuid.uuid4()
             stored = path_for(key)
@@ -578,7 +580,7 @@ class RetentionTests(TicketHelpers, TestCase):
             self.assertFalse(stored.exists())
         self.assertEqual(result["removed"]["tickets"], 1)
         self.assertFalse(Ticket.objects.filter(pk=ticket.pk).exists())
-        for model in [Comment, TicketEvent, Attachment, NotificationOutbox]:
+        for model in [Comment, TicketEvent, Attachment, NotificationOutbox, NotificationRead]:
             self.assertFalse(model.objects.exists(), model)
         self.assertEqual(self.owner.pk, type(self.owner).objects.get(pk=self.owner.pk).pk)
 

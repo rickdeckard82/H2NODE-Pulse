@@ -110,6 +110,7 @@ export const Notifications = forwardRef<
                   event.currentTarget
                     .closest("details")
                     ?.removeAttribute("open");
+                  void load(api<Inbox>(`notifications/${n.id}/read/`, {}));
                   onOpen(n.ticket_id);
                 }}
               >

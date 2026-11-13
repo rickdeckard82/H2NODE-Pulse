@@ -28,6 +28,7 @@ from tickets.models import (
     NotificationAttempt,
     NotificationDelivery,
     NotificationOutbox,
+    NotificationRead,
     ReadGrant,
     RetentionPolicy,
     Ticket,
@@ -109,6 +110,7 @@ def purge_ticket(ticket):
         wipe(NotificationOutbox.objects.filter(event__ticket=ticket))
         wipe(IdempotencyRecord.objects.filter(event__ticket=ticket))
         wipe(AuditEvent.objects.filter(event__ticket=ticket))
+        wipe(NotificationRead.objects.filter(event__ticket=ticket))
         wipe(TicketEvent.objects.filter(ticket=ticket))
         wipe(Comment.objects.filter(ticket=ticket))
         wipe(Ticket.participants.through.objects.filter(ticket=ticket))

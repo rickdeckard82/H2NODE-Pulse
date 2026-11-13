@@ -5,6 +5,7 @@ import {
   api,
   ApiError,
   date,
+  priorityName,
   states,
   type Attachment,
   type Event,
@@ -352,7 +353,7 @@ export function TicketDetail({
                 </>
               )}
               <dt>Prioridade</dt>
-              <dd>P{ticket.priority}</dd>
+              <dd>{priorityName(ticket.priority)}</dd>
               <dt>Área na abertura</dt>
               <dd>{ticket.department_name || "Não informada"}</dd>
               <dt>Próxima ação</dt>

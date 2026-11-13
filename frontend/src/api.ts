@@ -1,9 +1,11 @@
 export const priorities: [string, string][] = [
-  ["1", "Crítica (P1)"],
-  ["2", "Alta (P2)"],
-  ["3", "Média (P3)"],
-  ["4", "Baixa (P4)"],
+  ["1", "Crítica"],
+  ["2", "Alta"],
+  ["3", "Média"],
+  ["4", "Baixa"],
 ];
+export const priorityName = (value: number) =>
+  priorities[value - 1]?.[1] ?? String(value);
 export type Company = {
   name: string;
   cnpj: string;

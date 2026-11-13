@@ -426,6 +426,18 @@ class TicketTests(TicketHelpers, TestCase):
         csrf = owner.get("/api/v1/auth/csrf/").json()["csrfToken"]
         cleared = owner.post("/api/v1/notifications/clear/", HTTP_X_CSRFTOKEN=csrf).json()
         self.assertEqual(cleared, {"muted": True, "results": []})
+        # Opening one item marks only it as read, and only for tickets the reader can see.
+        reader = self.client_as(self.tech2)
+        item = reader.get("/api/v1/notifications/").json()["results"][0]
+        token = reader.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        read = f"/api/v1/notifications/{item['id']}/read/"
+        peer_token = self.client_as(self.peer).get("/api/v1/auth/csrf/").json()["csrfToken"]
+        stranger = self.client_as(self.peer).post(read, HTTP_X_CSRFTOKEN=peer_token)
+        self.assertEqual(stranger.status_code, 404)
+        self.assertEqual(reader.post(read, HTTP_X_CSRFTOKEN=token).json()["results"], [])
+        self.assertEqual(reader.post(read, HTTP_X_CSRFTOKEN=token).status_code, 200)
+        unread = self.client_as(self.tech).get("/api/v1/notifications/").json()["results"]
+        self.assertIn(item["id"], [n["id"] for n in unread])
 
     def test_number_is_year_month_and_monthly_sequence(self):
         first, second = self.create(), self.create()

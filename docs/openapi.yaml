@@ -1091,8 +1091,10 @@ paths:
   /api/v1/notifications/:
     get:
       operationId: notifications_retrieve
-      description: Events by others on tickets the user requested or works on; support
-        also sees new tickets.
+      description: |-
+        Events by others on tickets the user requested or works on.
+
+        Support and admins also see new tickets.
       tags:
       - notifications
       security:
@@ -1106,8 +1108,10 @@ paths:
           description: ''
     patch:
       operationId: notifications_partial_update
-      description: Events by others on tickets the user requested or works on; support
-        also sees new tickets.
+      description: |-
+        Events by others on tickets the user requested or works on.
+
+        Support and admins also see new tickets.
       tags:
       - notifications
       requestBody:
@@ -1121,6 +1125,27 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedInboxInputRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxOutput'
+          description: ''
+  /api/v1/notifications/{event_id}/read/:
+    post:
+      operationId: notifications_read_create
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - notifications
       security:
       - cookieAuth: []
       responses:
