@@ -55,7 +55,14 @@ async function audit(page: Page) {
 async function action(page: Page, name: string, message?: string) {
   await page.getByRole("button", { name, exact: true }).click();
   if (message)
-    await page.getByLabel("Mensagem pública", { exact: true }).fill(message);
+    await page
+      .getByLabel(
+        name === "Pausar atendimento"
+          ? "Justificativa da pausa"
+          : "Mensagem pública",
+        { exact: true },
+      )
+      .fill(message);
   if (name === "Confirmar solução")
     await page
       .getByRole("radio", { name: /^5 estrelas/ })
@@ -174,6 +181,14 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
     path: "../work/etapa-04-console.png",
     fullPage: true,
   });
+  await action(
+    tech,
+    "Pausar atendimento",
+    "Aguardando liberação do fornecedor.",
+  );
+  await expect(tech.locator(".badge").first()).toHaveText("Pausado");
+  await expect(tech.getByText("Atendimento pausado")).toBeVisible();
+  await action(tech, "Retomar atendimento");
   await action(tech, "Resolver chamado", "Acesso configurado e validado.");
   await owner.getByRole("button", { name: "Atualizar chamado" }).click();
   await action(owner, "Confirmar solução");

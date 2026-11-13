@@ -891,6 +891,11 @@ input[type="radio"] {
   border-color: #c3a8f2;
   color: #5b2bb5;
 }
+.badge.state-paused {
+  background: #e4e9f0;
+  border-color: #8a97ab;
+  color: #2f3b4d;
+}
 .badge.state-resolved {
   background: #dcf5e6;
   border-color: #8fd3aa;

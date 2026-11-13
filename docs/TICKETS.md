@@ -102,6 +102,10 @@ Transições:
   anterior não retoma o atendimento.
 - `resolve`: técnico, gestor ou administrador com acesso ao chamado, Em atendimento, `message` público com a solução
   obrigatório (`resolution_class` passou a ser opcional e não aparece no portal).
+- `pause`: técnico, gestor ou administrador com acesso ao chamado, Em atendimento → Pausado, com
+  `message` público obrigatório (a justificativa fica no histórico). Pausado não conta tempo de
+  SLA, como os estados de espera; resposta do solicitante não retoma.
+- `resume`: equipe com acesso, Pausado → Em atendimento, sem mensagem obrigatória.
 - `confirm`: solicitante, Resolvido → Fechado, com `rating` obrigatório de 1 a 5 estrelas
   (1 = ruim, 5 = ótima); grava `requester_solved = true`. O `close` feito pelo solicitante exige
   `rating` e `solved` (resolvido ou não resolvido, gravado em `requester_solved`); o feito pela

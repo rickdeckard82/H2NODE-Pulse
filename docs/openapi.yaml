@@ -1789,6 +1789,7 @@ paths:
           - in_progress
           - waiting_information
           - waiting_test
+          - paused
           - resolved
           - closed
           - cancelled
@@ -1799,6 +1800,7 @@ paths:
           * `in_progress` - in_progress
           * `waiting_information` - waiting_information
           * `waiting_test` - waiting_test
+          * `paused` - paused
           * `resolved` - resolved
           * `closed` - closed
           * `cancelled` - cancelled
@@ -2571,6 +2573,8 @@ components:
       - reopen
       - cancel
       - return_queue
+      - pause
+      - resume
       type: string
       description: |-
         * `request_information` - request_information
@@ -2581,6 +2585,8 @@ components:
         * `reopen` - reopen
         * `cancel` - cancel
         * `return_queue` - return_queue
+        * `pause` - pause
+        * `resume` - resume
     Attachment:
       type: object
       properties:
@@ -3394,6 +3400,7 @@ components:
       - in_progress
       - waiting_information
       - waiting_test
+      - paused
       - resolved
       - closed
       - cancelled
@@ -3403,6 +3410,7 @@ components:
         * `in_progress` - in_progress
         * `waiting_information` - waiting_information
         * `waiting_test` - waiting_test
+        * `paused` - paused
         * `resolved` - resolved
         * `closed` - closed
         * `cancelled` - cancelled
@@ -4786,6 +4794,7 @@ components:
       - in_progress
       - waiting_information
       - waiting_test
+      - paused
       - resolved
       - closed
       - cancelled
@@ -4795,6 +4804,7 @@ components:
         * `in_progress` - Em atendimento
         * `waiting_information` - Aguardando informações
         * `waiting_test` - Aguardando teste
+        * `paused` - Pausado
         * `resolved` - Resolvido
         * `closed` - Fechado
         * `cancelled` - Cancelado

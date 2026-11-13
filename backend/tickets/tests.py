@@ -452,6 +452,30 @@ class TicketTests(TicketHelpers, TestCase):
         unread = self.client_as(self.tech).get("/api/v1/notifications/").json()["results"]
         self.assertIn(item["id"], [n["id"] for n in unread])
 
+    def test_technician_pauses_with_reason_and_resumes(self):
+        ticket = self.create()
+        self.claim(ticket)
+        pause = {"action": "pause"}
+        self.assertEqual(self.mutate(ticket, self.tech, "transitions", pause).status_code, 400)
+        reason = {**pause, "message": "Aguardando peça do fornecedor"}
+        self.assertEqual(self.mutate(ticket, self.owner, "transitions", reason).status_code, 403)
+        self.transition(ticket, self.tech, "pause", message="Aguardando peça do fornecedor")
+        self.assertEqual(ticket.state, "paused")
+        event = ticket.events.last()
+        self.assertEqual((event.action, event.to_state), ("pause", "paused"))
+        self.assertEqual(event.comment.body, "Aguardando peça do fornecedor")
+        self.assertEqual(event.visibility, "public")
+        # A requester reply does not lift the pause; only support resumes.
+        self.mutate(ticket, self.owner, "comments", {"body": "Ok"})
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.state, "paused")
+        self.assertEqual(self.mutate(ticket, self.tech, "transitions", reason).status_code, 409)
+        resume = {"action": "resume"}
+        self.assertEqual(self.mutate(ticket, self.owner, "transitions", resume).status_code, 403)
+        self.transition(ticket, self.tech, "resume")
+        self.assertEqual(ticket.state, "in_progress")
+        self.assertEqual(self.mutate(ticket, self.tech, "transitions", resume).status_code, 409)
+
     def test_number_is_year_month_and_monthly_sequence(self):
         first, second = self.create(), self.create()
         zone = ZoneInfo("America/Sao_Paulo")

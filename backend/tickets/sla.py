@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 RUNNING = {"new", "in_progress"}
-PAUSED = {"waiting_information", "waiting_test"}
+PAUSED = {"waiting_information", "waiting_test", "paused"}
 STOPPED = {"resolved", "closed", "cancelled"}
 
 

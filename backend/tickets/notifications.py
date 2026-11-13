@@ -53,6 +53,8 @@ ACTION_LABELS = {
     "reopen": "Chamado reaberto",
     "cancel": "Chamado cancelado",
     "return_queue": "Chamado devolvido à fila",
+    "pause": "Atendimento pausado",
+    "resume": "Atendimento retomado",
     "transfer": "Chamado transferido",
     "sla.breached": "Alerta de SLA",
 }

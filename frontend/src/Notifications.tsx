@@ -29,6 +29,8 @@ const labels: Record<string, string> = {
   request_test: "Teste solicitado",
   return_queue: "Chamado devolvido à fila",
   "participant.joined": "Novo participante",
+  pause: "Atendimento pausado",
+  resume: "Atendimento retomado",
 };
 
 export const Notifications = forwardRef<

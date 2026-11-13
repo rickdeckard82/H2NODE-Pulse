@@ -36,6 +36,8 @@ class TransitionInput(VersionInput):
             "reopen",
             "cancel",
             "return_queue",
+            "pause",
+            "resume",
         ]
     )
     message = serializers.CharField(max_length=8000, required=False)

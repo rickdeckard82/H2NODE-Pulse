@@ -90,6 +90,18 @@ class BusinessClockTests(SimpleTestCase):
         self.assertFalse(result["resolution_met"])
         self.assertEqual(result["reopens"], 1)
 
+    def test_technician_pause_stops_the_resolution_clock(self):
+        ticket = SimpleNamespace(sla_policy=policy(), priority=3, requester_id=1, state="resolved")
+        history = [
+            event(at(3, 9), "new", "created"),
+            event(at(3, 9, 30), "in_progress", "claimed"),
+            event(at(3, 10), "paused", "pause", public_by=2),
+            event(at(3, 15), "in_progress", "resume"),
+            event(at(3, 16), "resolved", "resolve", public_by=2),
+        ]
+        # 09:00-10:00 + 15:00-16:00 running; the 5 paused hours are excluded.
+        self.assertEqual(measure(ticket, history, at(9, 12))["resolution_seconds"], 7200)
+
     def test_unanswered_ticket_breaches_and_cancelled_is_excluded(self):
         ticket = SimpleNamespace(sla_policy=policy(), priority=3, requester_id=1, state="new")
         result = measure(ticket, [event(at(3, 9), "new", "created")], at(3, 12))

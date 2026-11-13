@@ -120,6 +120,7 @@ class Ticket(models.Model):
         ACTIVE = "in_progress", "Em atendimento"
         INFORMATION = "waiting_information", "Aguardando informações"
         TEST = "waiting_test", "Aguardando teste"
+        PAUSED = "paused", "Pausado"
         RESOLVED = "resolved", "Resolvido"
         CLOSED = "closed", "Fechado"
         CANCELLED = "cancelled", "Cancelado"
@@ -188,6 +189,7 @@ class Ticket(models.Model):
                         "in_progress",
                         "waiting_information",
                         "waiting_test",
+                        "paused",
                         "resolved",
                         "closed",
                         "cancelled",

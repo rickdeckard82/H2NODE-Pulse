@@ -231,7 +231,12 @@ def claim(actor, ticket, data):
 
 def join(actor, ticket, data):
     require_support(actor, ticket)
-    if ticket.state not in {Ticket.State.ACTIVE, Ticket.State.INFORMATION, Ticket.State.TEST}:
+    if ticket.state not in {
+        Ticket.State.ACTIVE,
+        Ticket.State.INFORMATION,
+        Ticket.State.TEST,
+        Ticket.State.PAUSED,
+    }:
         raise Conflict("Só é possível participar de chamados em atendimento.")
     if ticket.assignee_id == actor.pk or ticket.participants.filter(pk=actor.pk).exists():
         raise Conflict("Você já participa deste chamado.")
@@ -282,6 +287,7 @@ def transition(actor, ticket, data):
         "cancel",
         "return_queue",
         "close",
+        "pause",
     }
     if action in text_actions and not body:
         raise ValidationError({"message": "Informe o texto público obrigatório para esta ação."})
@@ -306,6 +312,17 @@ def transition(actor, ticket, data):
             ticket.state = (
                 Ticket.State.INFORMATION if action == "request_information" else Ticket.State.TEST
             )
+    elif action == "pause":
+        # The mandatory public message is the justification kept in the history.
+        require_support(actor, ticket)
+        if before != Ticket.State.ACTIVE:
+            raise Conflict("Só é possível pausar chamado em atendimento.")
+        ticket.state = Ticket.State.PAUSED
+    elif action == "resume":
+        require_support(actor, ticket)
+        if before != Ticket.State.PAUSED:
+            raise Conflict("O chamado não está pausado.")
+        ticket.state = Ticket.State.ACTIVE
     elif action == "confirm":
         if not owner:
             raise PermissionDenied("Somente o solicitante pode confirmar a solução.")
@@ -318,7 +335,12 @@ def transition(actor, ticket, data):
     elif action == "close":
         if not owner and not member:
             raise PermissionDenied("Encerramento não autorizado.")
-        closable = {Ticket.State.ACTIVE, Ticket.State.INFORMATION, Ticket.State.TEST}
+        closable = {
+            Ticket.State.ACTIVE,
+            Ticket.State.INFORMATION,
+            Ticket.State.TEST,
+            Ticket.State.PAUSED,
+        }
         if member:
             closable.add(Ticket.State.RESOLVED)
         if before not in closable:

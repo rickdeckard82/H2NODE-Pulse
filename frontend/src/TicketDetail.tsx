@@ -101,17 +101,18 @@ export function TicketDetail({
     ...(support && ticket.state === "new" ? ["claim"] : []),
     ...(support &&
     !working &&
-    ["in_progress", "waiting_information", "waiting_test"].includes(
+    ["in_progress", "waiting_information", "waiting_test", "paused"].includes(
       ticket.state,
     )
       ? ["join"]
       : []),
     ...(support && ticket.state === "in_progress"
-      ? ["request_information", "request_test", "resolve"]
+      ? ["request_information", "request_test", "pause", "resolve"]
       : []),
+    ...(support && ticket.state === "paused" ? ["resume"] : []),
     ...(owner && ticket.state === "resolved" ? ["confirm"] : []),
     ...(((owner || support) &&
-      ["in_progress", "waiting_information", "waiting_test"].includes(
+      ["in_progress", "waiting_information", "waiting_test", "paused"].includes(
         ticket.state,
       )) ||
     (support && ticket.state === "resolved")
@@ -197,17 +198,19 @@ export function TicketDetail({
                     ? "NOTA INTERNA · Apenas equipe autorizada"
                     : "Registro público"}{" "}
                   ·{" "}
-                  {actions[e.action] ||
-                    (
-                      {
-                        created: "Abertura",
-                        claimed: "Atribuição",
-                        "comment.added": "Comentário",
-                        "requester.replied": "Resposta do solicitante",
-                        "comment.corrected": "Correção",
-                        "sla.breached": "Alerta de SLA",
-                      } as Record<string, string>
-                    )[e.action] ||
+                  {(
+                    {
+                      created: "Abertura",
+                      claimed: "Atribuição",
+                      "comment.added": "Comentário",
+                      "requester.replied": "Resposta do solicitante",
+                      "comment.corrected": "Correção",
+                      "sla.breached": "Alerta de SLA",
+                      pause: "Atendimento pausado",
+                      resume: "Atendimento retomado",
+                    } as Record<string, string>
+                  )[e.action] ||
+                    actions[e.action] ||
                     e.action}
                 </p>
                 {e.comment && (
@@ -460,11 +463,18 @@ export function TicketDetail({
                   );
                 }}
               >
-                {!["claim", "join", "confirm"].includes(action) && (
+                {!["claim", "join", "confirm", "resume"].includes(action) && (
                   <label>
-                    Mensagem pública
+                    {action === "pause"
+                      ? "Justificativa da pausa"
+                      : "Mensagem pública"}
                     <textarea name="message" required maxLength={8000} />
                   </label>
+                )}
+                {action === "pause" && (
+                  <p className="field-hint">
+                    Enquanto pausado, o prazo de SLA não corre.
+                  </p>
                 )}
                 {action === "confirm" && (
                   <StarRating legend="Como foi a solução?" />

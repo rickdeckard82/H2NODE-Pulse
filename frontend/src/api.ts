@@ -72,6 +72,7 @@ export const states: Record<string, string> = {
   in_progress: "Em atendimento",
   waiting_information: "Aguardando informações",
   waiting_test: "Aguardando teste",
+  paused: "Pausado",
   resolved: "Resolvido",
   closed: "Fechado",
   cancelled: "Cancelado",
@@ -96,6 +97,8 @@ export const actions: Record<string, string> = {
   cancel: "Cancelar chamado",
   return_queue: "Devolver à fila",
   transfer: "Transferir chamado",
+  pause: "Pausar atendimento",
+  resume: "Retomar atendimento",
 };
 export const date = (value: string) =>
   new Intl.DateTimeFormat("pt-BR", {
