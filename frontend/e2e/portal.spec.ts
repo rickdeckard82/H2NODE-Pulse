@@ -101,7 +101,7 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
     .getByLabel("Categoria")
     .selectOption({ label: "Acessos e sistemas" });
   await expect(owner.getByLabel("Prioridade")).toHaveValue("3");
-  await owner.getByLabel("Prioridade").selectOption({ label: "Alta (P2)" });
+  await owner.getByLabel("Prioridade").selectOption({ label: "Alta" });
   await owner
     .getByLabel("Assunto", { exact: true })
     .fill("Acesso ao sistema de operações");
@@ -351,7 +351,7 @@ test("administração básica, configuração auditada e layout", async ({
   );
   const levels = ["Crítica", "Alta", "Média", "Baixa"];
   for (let p = 1; p <= 4; p++) {
-    const level = `${levels[p - 1]} (P${p})`;
+    const level = levels[p - 1];
     await page
       .getByLabel(`${level} · 1ª resposta (min úteis)`)
       .fill(String(60 * p));
@@ -360,7 +360,7 @@ test("administração básica, configuração auditada e layout", async ({
       .fill(String(240 * p));
   }
   await expect(
-    page.getByLabel("Crítica (P1) · resolução (min úteis)"),
+    page.getByLabel("Crítica · resolução (min úteis)"),
   ).toHaveAccessibleDescription(/Sugestão: 240 min \(4 h de expediente\)/);
   await page
     .getByLabel("Feriados (AAAA-MM-DD, separados por espaço)")

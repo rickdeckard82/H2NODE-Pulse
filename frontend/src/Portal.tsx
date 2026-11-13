@@ -6,6 +6,7 @@ import {
   date,
   detectOs,
   priorities,
+  priorityName,
   states,
   type Page,
   type Ticket,
@@ -299,7 +300,7 @@ export function Portal({
                   <span className={`badge state-${t.state}`}>
                     {states[t.state]}
                   </span>
-                  <span>P{t.priority}</span>
+                  <span>{priorityName(t.priority)}</span>
                   <span className="row-assignee">
                     {t.assignee_name || "Sem responsável"} →
                   </span>
