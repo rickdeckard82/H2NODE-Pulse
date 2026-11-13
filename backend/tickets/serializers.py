@@ -167,7 +167,8 @@ class EventSerializer(serializers.ModelSerializer):
 
 class QueueFilters(StrictSerializer):
     page = serializers.IntegerField(min_value=1, required=False)
-    state = serializers.ChoiceField(choices=Ticket.State, required=False)
+    # Comma-separated in the query string, e.g. state=new,in_progress.
+    state = serializers.MultipleChoiceField(choices=Ticket.State, required=False)
     priority = serializers.IntegerField(min_value=1, max_value=4, required=False)
     department = serializers.IntegerField(min_value=1, required=False)
     group = serializers.IntegerField(min_value=1, required=False)

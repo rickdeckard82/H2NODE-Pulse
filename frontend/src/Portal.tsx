@@ -14,6 +14,26 @@ import {
   type User,
 } from "./api";
 import { TicketDetail } from "./TicketDetail";
+
+// Default queue view: everything still waiting for someone to act.
+const openStates = [
+  "new",
+  "in_progress",
+  "waiting_information",
+  "waiting_test",
+  "paused",
+];
+function stateSummary(selected: string[]) {
+  if (!selected.length || selected.length === Object.keys(states).length)
+    return "Todos os estados";
+  if (selected.length === 1) return states[selected[0]];
+  if (
+    selected.length === openStates.length &&
+    openStates.every((s) => selected.includes(s))
+  )
+    return "Em aberto";
+  return `${selected.length} estados`;
+}
 type Category = {
   id: number;
   name: string;
@@ -36,7 +56,8 @@ export function Portal({
     window.dispatchEvent(new CustomEvent("pulse:page-change"));
   }, [selected]);
   const [page, setPage] = useState<Page<Ticket> | null>(null);
-  const [query, setQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState(openStates);
+  const [query, setQuery] = useState(`state=${openStates.join(",")}`);
   const [categories, setCategories] = useState<Category[]>([]);
   const [priority, setPriority] = useState("3");
   const [error, setError] = useState("");
@@ -236,6 +257,8 @@ export function Portal({
               values.forEach((v, k) => {
                 if (v) params.set(k, String(v));
               });
+              if (stateFilter.length)
+                params.set("state", stateFilter.join(","));
               setQuery(params.toString());
             }}
           >
@@ -243,17 +266,32 @@ export function Portal({
               Buscar
               <input name="search" placeholder="Assunto ou descrição" />
             </label>
-            <label>
-              Estado
-              <select name="state">
-                <option value="">Todos os estados</option>
-                {Object.entries(states).map(([v, label]) => (
-                  <option key={v} value={v}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="state-filter">
+              <span aria-hidden="true">Estado</span>
+              <details>
+                <summary aria-label={`Estado: ${stateSummary(stateFilter)}`}>
+                  {stateSummary(stateFilter)}
+                </summary>
+                <div className="state-filter-options">
+                  {Object.entries(states).map(([v, label]) => (
+                    <label className="checkbox" key={v}>
+                      <input
+                        type="checkbox"
+                        checked={stateFilter.includes(v)}
+                        onChange={(e) =>
+                          setStateFilter((current) =>
+                            e.target.checked
+                              ? [...current, v]
+                              : current.filter((s) => s !== v),
+                          )
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </div>
             <label>
               Prioridade
               <select name="priority">

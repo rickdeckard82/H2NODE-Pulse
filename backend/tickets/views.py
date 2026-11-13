@@ -57,9 +57,16 @@ class TicketViewSet(
         )
         if self.action != "list":
             return queryset
-        filters = QueueFilters(data=self.request.query_params.dict())
+        params = self.request.query_params.dict()
+        if "state" in params:
+            # Accepts state=a&state=b (as documented) and state=a,b (as the portal sends).
+            values = self.request.query_params.getlist("state")
+            params["state"] = [s for v in values for s in v.split(",") if s]
+        filters = QueueFilters(data=params)
         filters.is_valid(raise_exception=True)
         data = dict(filters.validated_data)
+        if states := data.pop("state", None):
+            data["state__in"] = states
         ordering = data.pop("ordering", "-created_at")
         search = data.pop("search", "")
         data.pop("page", None)

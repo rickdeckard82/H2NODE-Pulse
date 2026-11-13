@@ -123,6 +123,10 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
     owner.getByRole("heading", { name: "Acesso ao sistema de operações" }),
   ).toBeVisible();
   await tech.getByRole("button", { name: "Atualizar lista" }).click();
+  // The queue opens filtered to tickets still waiting for someone to act.
+  await expect(
+    tech.locator("summary[aria-label='Estado: Em aberto']"),
+  ).toBeVisible();
   await tech
     .getByRole("button")
     .filter({ hasText: "Acesso ao sistema de operações" })

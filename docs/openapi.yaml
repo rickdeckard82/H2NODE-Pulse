@@ -1784,26 +1784,27 @@ paths:
       - in: query
         name: state
         schema:
-          enum:
-          - new
-          - in_progress
-          - waiting_information
-          - waiting_test
-          - paused
-          - resolved
-          - closed
-          - cancelled
-          type: string
-          minLength: 1
-        description: |-
-          * `new` - new
-          * `in_progress` - in_progress
-          * `waiting_information` - waiting_information
-          * `waiting_test` - waiting_test
-          * `paused` - paused
-          * `resolved` - resolved
-          * `closed` - closed
-          * `cancelled` - cancelled
+          type: array
+          items:
+            enum:
+            - new
+            - in_progress
+            - waiting_information
+            - waiting_test
+            - paused
+            - resolved
+            - closed
+            - cancelled
+            type: string
+            description: |-
+              * `new` - new
+              * `in_progress` - in_progress
+              * `waiting_information` - waiting_information
+              * `waiting_test` - waiting_test
+              * `paused` - paused
+              * `resolved` - resolved
+              * `closed` - closed
+              * `cancelled` - cancelled
       tags:
       - tickets
       security:

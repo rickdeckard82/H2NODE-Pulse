@@ -886,8 +886,23 @@ class TicketTests(TicketHelpers, TestCase):
         self.assertEqual(result["count"], 2)
         self.assertEqual([x["priority"] for x in result["results"]], [2, 4])
         self.assertEqual(client.get("/api/v1/tickets/?priority=4").json()["count"], 1)
+        self.claim(Ticket.objects.get(subject="First"))
+        for states, count in [
+            ("new", 1),
+            ("new,in_progress", 2),
+            ("closed,paused", 0),
+            ("", 2),
+            ("new&state=in_progress", 2),
+        ]:
+            self.assertEqual(client.get(f"/api/v1/tickets/?state={states}").json()["count"], count)
         self.assertEqual(client.get("/api/v1/tickets/?page=2").status_code, 404)
-        for query in ["ordering=password", "state=invalid", "requester=2", "priority=0"]:
+        for query in [
+            "ordering=password",
+            "state=invalid",
+            "state=new,invalid",
+            "requester=2",
+            "priority=0",
+        ]:
             self.assertEqual(client.get("/api/v1/tickets/?" + query).status_code, 400)
 
     def test_mutation_and_creation_rollback_event_audit_outbox_and_idempotency(self):
