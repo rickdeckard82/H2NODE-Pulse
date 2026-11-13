@@ -451,7 +451,12 @@ export function TicketDetail({
                     <textarea name="message" required maxLength={8000} />
                   </label>
                 )}
-                {action === "confirm" && <StarRating />}
+                {action === "confirm" && (
+                  <StarRating legend="Como foi a solução?" />
+                )}
+                {action === "close" && owner && (
+                  <StarRating legend="Como foi o atendimento?" />
+                )}
                 {action === "transfer" && (
                   <label>
                     Destino do atendimento
@@ -494,11 +499,11 @@ export function TicketDetail({
 
 const ratingLabels = ["Ruim", "Fraca", "Regular", "Boa", "Ótima"];
 
-function StarRating() {
+function StarRating({ legend }: { legend: string }) {
   const [value, setValue] = useState(0);
   return (
     <fieldset className="star-rating">
-      <legend>Como foi a solução?</legend>
+      <legend>{legend}</legend>
       <div>
         {ratingLabels.map((label, i) => (
           <label key={label} className={i < value ? "on" : ""}>

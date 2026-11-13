@@ -291,8 +291,8 @@ def transition(actor, ticket, data):
         )
     if data.get("resolution_class") and action != "resolve":
         raise ValidationError({"resolution_class": "Campo exclusivo da resolução."})
-    if data.get("rating") and action != "confirm":
-        raise ValidationError({"rating": "A avaliação é dada ao confirmar a solução."})
+    if data.get("rating") and not (owner and action in {"confirm", "close"}):
+        raise ValidationError({"rating": "Só o solicitante avalia, ao confirmar ou encerrar."})
     if action in {"request_information", "request_test", "resolve"}:
         require_support(actor, ticket)
         if before != Ticket.State.ACTIVE:
@@ -321,6 +321,10 @@ def transition(actor, ticket, data):
             closable.add(Ticket.State.RESOLVED)
         if before not in closable:
             raise Conflict("Use cancelar em chamado novo e confirmar solução em resolvido.")
+        if owner:
+            if not data.get("rating"):
+                raise ValidationError({"rating": "Avalie o atendimento de 1 a 5 estrelas."})
+            ticket.rating = data["rating"]
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "reopen":
         if not owner and not member:

@@ -476,11 +476,13 @@ class TicketTests(TicketHelpers, TestCase):
             ).status_code,
             200,
         )
-        response = self.mutate(
-            ticket, self.owner, "transitions", {"action": "close", "message": "Resolvido por mim"}
-        )
+        closing = {"action": "close", "message": "Resolvido por mim"}
+        # The requester closing on their own also rates the service.
+        self.assertEqual(self.mutate(ticket, self.owner, "transitions", closing).status_code, 400)
+        response = self.mutate(ticket, self.owner, "transitions", {**closing, "rating": 2})
         self.assertEqual(response.status_code, 200, response.content)
         ticket.refresh_from_db()
+        self.assertEqual(ticket.rating, 2)
         self.assertEqual(ticket.state, "closed")
         self.assertIsNotNone(ticket.closed_at)
 

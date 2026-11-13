@@ -300,12 +300,13 @@ export function Portal({
                   key={t.id}
                   onClick={() => setSelected(t.id)}
                 >
-                  <span className="ticket-number">#{t.number}</span>
+                  <span className="ticket-number">
+                    #{t.number}
+                    <small>{date(t.created_at)}</small>
+                  </span>
                   <span className="ticket-summary">
                     <strong>{t.subject}</strong>
-                    <small>
-                      {t.requester_name} · {date(t.created_at)}
-                    </small>
+                    <small>{t.requester_name}</small>
                     <small>
                       Responsável: {t.assignee_name || "Sem responsável"}
                     </small>
