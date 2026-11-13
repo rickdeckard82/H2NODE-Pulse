@@ -143,6 +143,24 @@ def _lease_one():
         return item.pk, item.lease_token
 
 
+def _chat_text(event, ticket, label, link, recipient_id):
+    assignee = (
+        (ticket.assignee.first_name or ticket.assignee.email.split("@")[0])
+        if ticket.assignee_id
+        else ""
+    )
+    lines = [f"*{label}* · Chamado #{ticket.number}", f"Situação: {ticket.get_state_display()}"]
+    if recipient_id == ticket.requester_id:
+        lines.append(f"Atendente: {assignee or 'aguardando um atendente'}")
+        lines.append(f"Acompanhe seu chamado: {link}")
+    else:
+        lines.append(f"Responsável: {assignee or 'sem responsável'}")
+        if event.actor_id:
+            lines.append(f"Por: {event.actor.first_name}")
+        lines.append(f"Abrir o chamado: {link}")
+    return "\n".join(lines)
+
+
 def _message(delivery):
     outbox = delivery.outbox
     event, ticket = outbox.event, outbox.event.ticket
@@ -158,12 +176,12 @@ def _message(delivery):
         return None
     label = ACTION_LABELS.get(event.action, "Chamado atualizado")
     link = f"{settings.APP_BASE_URL.rstrip('/')}/tickets/{ticket.uuid}"
-    if delivery.channel == NotificationDelivery.Channel.CHAT:
-        return {"text": f"Chamado #{ticket.number} · {ticket.get_state_display()}\n{link}"}
-    if delivery.channel == NotificationDelivery.Channel.CHAT_DM:
-        # Never the comment body: restricted tickets and internal notes also reach this channel.
-        summary = f"{label} · Chamado #{ticket.number} · {ticket.get_state_display()}"
-        return {"text": f"{summary}\n{link}"}
+    if delivery.channel in (
+        NotificationDelivery.Channel.CHAT,
+        NotificationDelivery.Channel.CHAT_DM,
+    ):
+        # Never the subject or comment body: restricted tickets and internal notes reach chat too.
+        return {"text": _chat_text(event, ticket, label, link, delivery.recipient_id)}
     body = [
         f"{label} no chamado #{ticket.number}.",
         f"Estado atual: {ticket.get_state_display()}.",

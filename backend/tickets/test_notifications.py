@@ -173,6 +173,8 @@ class NotificationTests(TicketHelpers, TestCase):
         self.assertIn(f"#{ticket.number}", payload["text"])
         self.assertNotIn(ticket.subject, payload["text"])
         self.assertNotIn(ticket.description, payload["text"])
+        self.assertIn("*Chamado aberto*", payload["text"])
+        self.assertIn("Responsável: sem responsável", payload["text"])
 
         restricted = self.create(category=self.restricted_category.pk)
         self.drain()
@@ -448,6 +450,11 @@ class ChatAppTests(TicketHelpers, TestCase):
             self.assertEqual(request.full_url, "https://chat.googleapis.com/v1/spaces/DM1/messages")
             self.assertEqual(request.headers["Authorization"], "Bearer access")
             self.assertNotIn("SEGREDO", request.data.decode())
+        texts = [json.loads(request.data)["text"] for request in requests]
+        self.assertIn("*Nova resposta* · Chamado #", texts[-1])
+        self.assertIn("Situação: Em atendimento", texts[-1])
+        self.assertIn("Atendente: ", texts[-1])
+        self.assertIn("Acompanhe seu chamado: ", texts[-1])
 
     def test_unlinked_user_keeps_email_only(self):
         self.create(user=self.peer)
