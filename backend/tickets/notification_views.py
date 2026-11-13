@@ -165,11 +165,14 @@ class InboxInput(StrictSerializer):
 
 
 class InboxView(NoStoreMixin, APIView):
-    """Events by others on tickets the user requested or works on; support also sees new tickets."""
+    """Events by others on tickets the user requested or works on.
+
+    Support and admins also see new tickets.
+    """
 
     def payload(self, user):
         scope = Q(ticket__requester=user) | Q(ticket__assignee=user) | Q(ticket__participants=user)
-        if user.role in {User.Role.TECHNICIAN, User.Role.MANAGER}:
+        if user.role in {User.Role.TECHNICIAN, User.Role.MANAGER, User.Role.ADMIN}:
             scope |= Q(action="created")
         events = (
             TicketEvent.objects.filter(scope, ticket__in=visible_tickets(user))

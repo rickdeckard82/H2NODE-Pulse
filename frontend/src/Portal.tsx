@@ -50,6 +50,16 @@ export function Portal({
   }, [query]);
   useEffect(() => {
     void load();
+    // Keeps the queue current without reloading; skips hidden tabs and refreshes on return.
+    const refresh = () => {
+      if (!document.hidden) void load();
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [load]);
   useEffect(() => {
     all<Category>("categories/")

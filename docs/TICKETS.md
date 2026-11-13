@@ -61,7 +61,7 @@ gerado sob lock consultivo por mês. Chamados anteriores ao ajuste mantêm o nú
 | GET `/tickets/{id}/comments/` | Comentários visíveis, incluindo correções por acréscimo |
 | GET `/tickets/{id}/events/` | Timeline visível, ator, instante, transição e correlação |
 | GET `/categories/` | Categorias ativas para abertura; admin também vê inativas |
-| GET/PATCH `/notifications/`, POST `/notifications/clear/` | Sino do portal: até 20 eventos de outras pessoas em chamados que o usuário abriu, assumiu ou participa (técnicos também recebem chamados novos), respeitando notas internas; `muted` deixa o contador cinza; limpar descarta os eventos até agora |
+| GET/PATCH `/notifications/`, POST `/notifications/clear/` | Sino do portal: até 20 eventos de outras pessoas em chamados que o usuário abriu, assumiu ou participa (técnicos, gestores e administradores também recebem chamados novos), respeitando notas internas; `muted` deixa o contador cinza; limpar descarta os eventos até agora |
 
 Listas paginadas em 25 itens. Filtros da fila: `state`, `priority`, `department`,
 `group`, `assignee`, `number`, `search`; `ordering` aceita `created_at`,
