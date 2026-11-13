@@ -103,8 +103,10 @@ Transições:
 - `resolve`: técnico, gestor ou administrador com acesso ao chamado, Em atendimento, `message` público com a solução
   obrigatório (`resolution_class` passou a ser opcional e não aparece no portal).
 - `confirm`: solicitante, Resolvido → Fechado, com `rating` obrigatório de 1 a 5 estrelas
-  (1 = ruim, 5 = ótima). O `close` feito pelo solicitante também exige `rating`; o feito pela
-  equipe não aceita. A nota aparece no detalhe do chamado e na coluna `avaliacao` do CSV.
+  (1 = ruim, 5 = ótima); grava `requester_solved = true`. O `close` feito pelo solicitante exige
+  `rating` e `solved` (resolvido ou não resolvido, gravado em `requester_solved`); o feito pela
+  equipe não aceita esses campos. Reabrir limpa os dois. CSV: colunas `avaliacao` e
+  `resolvido_segundo_solicitante`. A nota aparece no detalhe do chamado e na coluna `avaliacao` do CSV.
 - `close`: solicitante encerra a qualquer momento após o atendimento começar
   (Em atendimento ou Aguardando) → Fechado; `message` obrigatório.
   Em Novo, o solicitante usa `cancel`; em Resolvido, `confirm`. Técnico, gestor e

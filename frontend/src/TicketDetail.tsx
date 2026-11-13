@@ -364,6 +364,16 @@ export function TicketDetail({
                     </span>{" "}
                     {ticket.rating} de 5 · {ratingLabels[ticket.rating - 1]}
                   </dd>
+                  {ticket.requester_solved !== null && (
+                    <>
+                      <dt>Segundo o solicitante</dt>
+                      <dd>
+                        {ticket.requester_solved
+                          ? "Resolvido"
+                          : "Não resolvido"}
+                      </dd>
+                    </>
+                  )}
                 </>
               )}
               <dt>Área na abertura</dt>
@@ -424,6 +434,10 @@ export function TicketDetail({
                   delete values.target;
                   const rating = values.rating ? Number(values.rating) : null;
                   delete values.rating;
+                  const solved = values.solved
+                    ? values.solved === "true"
+                    : null;
+                  delete values.solved;
                   const payload = {
                     ...values,
                     expected_version: ticket.version,
@@ -436,6 +450,7 @@ export function TicketDetail({
                         ? {}
                         : { action }),
                     ...(rating ? { rating } : {}),
+                    ...(solved === null ? {} : { solved }),
                   };
                   void send(
                     ["claim", "join", "transfer"].includes(action)
@@ -455,7 +470,25 @@ export function TicketDetail({
                   <StarRating legend="Como foi a solução?" />
                 )}
                 {action === "close" && owner && (
-                  <StarRating legend="Como foi o atendimento?" />
+                  <>
+                    <fieldset className="solved-choice">
+                      <legend>O problema foi resolvido?</legend>
+                      <label className="checkbox">
+                        <input
+                          type="radio"
+                          name="solved"
+                          value="true"
+                          required
+                        />
+                        Resolvido
+                      </label>
+                      <label className="checkbox">
+                        <input type="radio" name="solved" value="false" />
+                        Não resolvido
+                      </label>
+                    </fieldset>
+                    <StarRating legend="Como foi o atendimento?" />
+                  </>
                 )}
                 {action === "transfer" && (
                   <label>

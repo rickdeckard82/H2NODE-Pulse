@@ -270,6 +270,7 @@ def render_csv(user, rows):
         "decorrido_min",
         "reaberturas",
         "avaliacao",
+        "resolvido_segundo_solicitante",
     ]
     writer.writerow(header + (["responsavel"] if individual else []))
     for ticket, m in rows:
@@ -287,6 +288,7 @@ def render_csv(user, rows):
             minutes(m["elapsed_seconds"]),
             m["reopens"],
             ticket.rating or "",
+            {True: "sim", False: "nao"}.get(ticket.requester_solved, ""),
         ]
         if individual:
             line.append(ticket.assignee.first_name if ticket.assignee else "")

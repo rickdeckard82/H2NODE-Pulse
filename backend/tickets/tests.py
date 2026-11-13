@@ -265,12 +265,14 @@ class TicketTests(TicketHelpers, TestCase):
             response = self.mutate(ticket, self.owner, "transitions", {"action": "confirm", **bad})
             self.assertEqual(response.status_code, 400, bad)
         self.transition(ticket, self.owner, "confirm", rating=4)
-        self.assertEqual(ticket.rating, 4)
+        self.assertEqual((ticket.rating, ticket.requester_solved), (4, True))
+        self.assertEqual(self.read(ticket, self.owner).json()["requester_solved"], True)
         self.assertEqual(self.read(ticket, self.owner).json()["rating"], 4)
         self.assertEqual(ticket.state, Ticket.State.CLOSED)
         self.assertIsNotNone(ticket.closed_at)
         self.transition(ticket, self.owner, "reopen", message="Falha voltou")
         self.assertEqual(ticket.state, Ticket.State.ACTIVE)
+        self.assertEqual((ticket.rating, ticket.requester_solved), (None, None))
         events = list(ticket.events.all())
         self.assertEqual(len(events), ticket.version)
         self.assertEqual(list(range(1, ticket.version + 1)), [e.version for e in events])
@@ -479,10 +481,13 @@ class TicketTests(TicketHelpers, TestCase):
         closing = {"action": "close", "message": "Resolvido por mim"}
         # The requester closing on their own also rates the service.
         self.assertEqual(self.mutate(ticket, self.owner, "transitions", closing).status_code, 400)
-        response = self.mutate(ticket, self.owner, "transitions", {**closing, "rating": 2})
+        # ...and says whether the problem was solved.
+        rated = {**closing, "rating": 2}
+        self.assertEqual(self.mutate(ticket, self.owner, "transitions", rated).status_code, 400)
+        response = self.mutate(ticket, self.owner, "transitions", {**rated, "solved": False})
         self.assertEqual(response.status_code, 200, response.content)
         ticket.refresh_from_db()
-        self.assertEqual(ticket.rating, 2)
+        self.assertEqual((ticket.rating, ticket.requester_solved), (2, False))
         self.assertEqual(ticket.state, "closed")
         self.assertIsNotNone(ticket.closed_at)
 

@@ -4721,6 +4721,10 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        requester_solved:
+          type: boolean
+          readOnly: true
+          nullable: true
         reopen_policy:
           type: integer
           readOnly: true
@@ -4767,6 +4771,7 @@ components:
       - reopen_policy
       - requester
       - requester_name
+      - requester_solved
       - resolution_class
       - resolved_at
       - restricted
@@ -4850,6 +4855,8 @@ components:
           type: integer
           maximum: 5
           minimum: 1
+        solved:
+          type: boolean
         assignee:
           type: integer
           minimum: 1

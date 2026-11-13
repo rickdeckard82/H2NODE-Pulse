@@ -796,7 +796,8 @@ input[readonly] {
 input[type="file"] {
   font-size: 0.8rem;
 }
-input[type="checkbox"] {
+input[type="checkbox"],
+input[type="radio"] {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
@@ -1864,4 +1865,16 @@ button[type="submit"] {
 .stars {
   color: #d99a00;
   letter-spacing: 1px;
+}
+.solved-choice {
+  border: 0;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.solved-choice legend {
+  font-weight: 600;
+  margin-bottom: 6px;
 }

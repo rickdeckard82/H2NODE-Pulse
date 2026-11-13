@@ -293,6 +293,8 @@ def transition(actor, ticket, data):
         raise ValidationError({"resolution_class": "Campo exclusivo da resolução."})
     if data.get("rating") and not (owner and action in {"confirm", "close"}):
         raise ValidationError({"rating": "Só o solicitante avalia, ao confirmar ou encerrar."})
+    if "solved" in data and not (owner and action == "close"):
+        raise ValidationError({"solved": "Só o solicitante informa isso, ao encerrar."})
     if action in {"request_information", "request_test", "resolve"}:
         require_support(actor, ticket)
         if before != Ticket.State.ACTIVE:
@@ -311,7 +313,7 @@ def transition(actor, ticket, data):
             raise Conflict("Somente chamados resolvidos podem ser confirmados.")
         if not data.get("rating"):
             raise ValidationError({"rating": "Avalie a solução de 1 a 5 estrelas."})
-        ticket.rating = data["rating"]
+        ticket.rating, ticket.requester_solved = data["rating"], True
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "close":
         if not owner and not member:
@@ -324,7 +326,9 @@ def transition(actor, ticket, data):
         if owner:
             if not data.get("rating"):
                 raise ValidationError({"rating": "Avalie o atendimento de 1 a 5 estrelas."})
-            ticket.rating = data["rating"]
+            if "solved" not in data:
+                raise ValidationError({"solved": "Informe se o problema foi resolvido."})
+            ticket.rating, ticket.requester_solved = data["rating"], data["solved"]
         ticket.state, ticket.closed_at = Ticket.State.CLOSED, timezone.now()
     elif action == "reopen":
         if not owner and not member:
@@ -347,6 +351,8 @@ def transition(actor, ticket, data):
             ticket.assignee = user
         check_assignment(ticket)
         ticket.state = Ticket.State.ACTIVE
+        # A reopened ticket is rated again when it is next confirmed or closed.
+        ticket.rating = ticket.requester_solved = None
     elif action == "cancel":
         if not ((owner and before == Ticket.State.NEW) or (manager and member.can_cancel)):
             raise PermissionDenied("Cancelamento não autorizado.")
@@ -381,6 +387,7 @@ def transition(actor, ticket, data):
             "assignee": ticket.assignee_id,
             "resolution_class": ticket.resolution_class,
             "rating": ticket.rating,
+            "requester_solved": ticket.requester_solved,
         },
     )
 

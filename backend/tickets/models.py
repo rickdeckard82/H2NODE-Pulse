@@ -160,6 +160,8 @@ class Ticket(models.Model):
     resolution_class = models.CharField(max_length=80, blank=True)
     # Requester's 1–5 star rating given when confirming the solution.
     rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Requester's answer on closing: was the problem solved? Confirming implies yes.
+    requester_solved = models.BooleanField(null=True, blank=True)
     reopen_policy = models.ForeignKey(ReopenPolicy, null=True, on_delete=models.PROTECT)
     sla_policy = models.ForeignKey(SlaPolicy, null=True, on_delete=models.PROTECT)
     related_ticket = models.ForeignKey("self", null=True, on_delete=models.PROTECT)

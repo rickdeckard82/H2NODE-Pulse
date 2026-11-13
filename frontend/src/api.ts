@@ -40,6 +40,7 @@ export type Ticket = {
   state: string;
   priority: number;
   rating: number | null;
+  requester_solved: boolean | null;
   requester: number;
   requester_name: string;
   assignee: number | null;
