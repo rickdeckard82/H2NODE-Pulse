@@ -127,6 +127,16 @@ test("portal, MFA, console, isolamento, anexos e ciclo completo", async ({
   await expect(
     tech.locator("summary[aria-label='Estado: Em aberto']"),
   ).toBeVisible();
+  // The technician works the rest of the flow in the dark theme, so its contrast is audited too.
+  await tech.getByRole("button", { name: "Usar tema escuro" }).click();
+  await expect(tech.locator("html")).toHaveAttribute("data-theme", "dark");
+  // Rows fade their background; audit only after the transition settles.
+  await expect(tech.locator(".ticket-row").first()).toHaveCSS(
+    "background-color",
+    "rgb(27, 36, 51)",
+  );
+  await audit(tech);
+  await tech.screenshot({ path: "../work/tema-escuro.png" });
   await tech
     .getByRole("button")
     .filter({ hasText: "Acesso ao sistema de operações" })

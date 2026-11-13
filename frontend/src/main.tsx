@@ -22,6 +22,65 @@ const roleLabels: Record<string, string> = {
   admin: "Administrador",
 };
 
+function savedTheme() {
+  try {
+    const saved = localStorage.getItem("pulse-theme");
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    // Storage blocked: fall back to the system preference.
+  }
+  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+// Applied before the first render so the page never flashes the wrong theme.
+document.documentElement.dataset.theme = savedTheme();
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState(document.documentElement.dataset.theme);
+  const dark = theme === "dark";
+  return (
+    <button
+      type="button"
+      className="theme-toggle"
+      aria-label={dark ? "Usar tema claro" : "Usar tema escuro"}
+      title={dark ? "Tema claro" : "Tema escuro"}
+      onClick={() => {
+        const next = dark ? "light" : "dark";
+        document.documentElement.dataset.theme = next;
+        try {
+          localStorage.setItem("pulse-theme", next);
+        } catch {
+          // Not persisted; the choice still holds for this visit.
+        }
+        setTheme(next);
+      }}
+    >
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        {dark ? (
+          // Sun: shown in dark mode, switches to light.
+          <g
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          >
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+          </g>
+        ) : (
+          // Moon: shown in light mode, switches to dark.
+          <path
+            d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+    </button>
+  );
+}
+
 function Waves() {
   return (
     <div className="waves" aria-hidden="true">
@@ -213,6 +272,7 @@ function App() {
               </button>
             </nav>
             {company?.name && <CompanyBadge company={company} />}
+            <ThemeToggle />
             {!wikiOnly && (
               <Notifications
                 ref={bell}
