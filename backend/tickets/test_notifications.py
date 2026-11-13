@@ -287,7 +287,8 @@ class NotificationTests(TicketHelpers, TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertNotIn("t1", response.content.decode())
         stored = ChatConfiguration.objects.get()
-        self.assertNotIn("t1", stored.encrypted_webhook)
+        # Ciphertext is random base64: a bare "t1" may appear by chance, "token=t1" cannot.
+        self.assertNotIn("token=t1", stored.encrypted_webhook)
         self.assertEqual(active_webhook(), webhook)
 
     @patch("tickets.notifications._send_chat", side_effect=RetryableDelivery("chat_x"))
