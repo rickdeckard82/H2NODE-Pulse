@@ -155,7 +155,7 @@ export function Auth({
                   />
                 </label>
               )}
-              {["login", "register", "reset"].includes(mode) && (
+              {["login", "confirm", "reset"].includes(mode) && (
                 <label>
                   Senha
                   <input
@@ -172,7 +172,7 @@ export function Auth({
                   />
                 </label>
               )}
-              {["register", "reset"].includes(mode) && (
+              {["confirm", "reset"].includes(mode) && (
                 <small id="password-hint" className="field-hint">
                   Use pelo menos 8 caracteres e evite senhas comuns, somente
                   números ou parecidas com seu nome ou e-mail.

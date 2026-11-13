@@ -618,7 +618,6 @@ test("cadastro e recuperação conduzem às confirmações contextuais", async (
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await page.getByLabel("Nome").fill("Novo Colaborador");
   await page.getByLabel("E-mail corporativo").fill("new-signup@company.test");
-  await page.getByLabel("Senha", { exact: true }).fill(fixture.password);
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Confirme seu cadastro" }),
@@ -733,7 +732,7 @@ test("gestor consulta relatórios e exporta CSV com prazo", async ({ page }) => 
   ]);
   expect(download.suggestedFilename()).toMatch(/^chamados-.*\.csv$/);
   const content = readFileSync(await download.path(), "utf8");
-  expect(content).toContain("numero,aberto_em,estado");
+  expect(content).toContain('"numero","aberto_em","estado"');
   await audit(page);
   await page.screenshot({
     path: "../work/etapa-06-relatorios.png",

@@ -27,7 +27,7 @@ class LoginInput(EmailInput):
     password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
 
 
-class RegisterInput(LoginInput):
+class RegisterInput(EmailInput):
     name = serializers.CharField(max_length=150)
 
 

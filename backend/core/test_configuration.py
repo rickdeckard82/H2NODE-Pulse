@@ -295,7 +295,7 @@ class ConfigurationTests(HTTPHelpers, TestCase):
         response = self.post(
             anonymous,
             "/api/v1/auth/register/",
-            {"name": "New User", "email": "new@new.company.test", "password": PASSWORD},
+            {"name": "New User", "email": "new@new.company.test"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(User.objects.get(email="new@new.company.test").email_verified_at)

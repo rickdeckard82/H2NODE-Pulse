@@ -102,7 +102,7 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.client = self.client_for_test()
 
     def test_registration_confirmation_login_logout_and_argon2id(self):
-        data = {"email": " New@COMPANY.test ", "name": "Pessoa sintética", "password": PASSWORD}
+        data = {"email": " New@COMPANY.test ", "name": "Pessoa sintética"}
         response = self.post(self.client, "/api/v1/auth/register/", data)
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(email="new@company.test")
@@ -111,7 +111,7 @@ class IdentityTests(HTTPHelpers, TestCase):
             1,
         )
         self.assertIsNone(IdentityMail.objects.get(token__user=user).sent_at)
-        self.assertTrue(user.password.startswith("argon2$argon2id$"))
+        self.assertFalse(user.has_usable_password())
         self.assertEqual(user.role, User.Role.USER)
         self.assertFalse(user.is_staff or user.is_superuser)
         login_data = {"email": user.email, "password": PASSWORD}
@@ -120,11 +120,19 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.assertNotIn(raw, response.content.decode())
         self.assertNotEqual(token.digest, raw)
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": raw}).status_code, 200
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": raw, "password": PASSWORD}
+            ).status_code,
+            200,
         )
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": raw}).status_code, 400
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": raw, "password": PASSWORD}
+            ).status_code,
+            400,
         )
+        user.refresh_from_db()
+        self.assertTrue(user.password.startswith("argon2$argon2id$"))
         self.login(user, self.client)
         self.assertEqual(self.client.get("/api/v1/auth/me/").json()["id"], user.pk)
         self.assertEqual(self.client.get("/api/v1/auth/me/")["Cache-Control"], "no-store")
@@ -143,11 +151,7 @@ class IdentityTests(HTTPHelpers, TestCase):
             response = self.post(
                 self.client,
                 "/api/v1/auth/register/",
-                {
-                    "email": email,
-                    "name": "Synthetic",
-                    "password": PASSWORD,
-                },
+                {"email": email, "name": "Synthetic"},
             )
             self.assertEqual(response.status_code, 200)
             expected = expected or response.json()
@@ -157,51 +161,66 @@ class IdentityTests(HTTPHelpers, TestCase):
         response = self.post(
             self.client,
             "/api/v1/auth/register/",
-            {
-                "email": "new@company.test",
-                "name": "Synthetic",
-                "password": PASSWORD,
-            },
+            {"email": "new@company.test", "name": "Synthetic"},
         )
         self.assertEqual(response.json(), expected)
         self.assertEqual(User.objects.count(), 3)
 
     def test_registration_rejects_privilege_and_weak_password_fields(self):
-        data = {"email": "new@company.test", "name": "Synthetic", "password": PASSWORD}
-        for field, value in [("role", "admin"), ("is_staff", True), ("is_superuser", True)]:
+        data = {"email": "new@company.test", "name": "Synthetic"}
+        for field, value in [
+            ("role", "admin"),
+            ("is_staff", True),
+            ("is_superuser", True),
+            ("password", PASSWORD),
+        ]:
             self.assertEqual(
                 self.post(
-                    self.client,
-                    "/api/v1/auth/register/",
-                    {
-                        **data,
-                        field: value,
-                    },
+                    self.client, "/api/v1/auth/register/", {**data, field: value}
                 ).status_code,
                 400,
             )
-        self.assertEqual(
-            self.post(
-                self.client,
-                "/api/v1/auth/register/",
-                {
-                    **data,
-                    "password": "12345678",
-                },
-            ).status_code,
-            400,
-        )
         self.assertEqual(User.objects.count(), 3)
+        self.post(self.client, "/api/v1/auth/register/", data)
+        user = User.objects.get(email="new@company.test")
+        _, raw = self.latest_token(user, "verify")
+        weak = {"token": raw, "password": "12345678"}
+        self.assertEqual(self.post(self.client, "/api/v1/auth/confirm/", weak).status_code, 400)
+        user.refresh_from_db()
+        self.assertIsNone(user.email_verified_at)
+
+    def test_signup_by_non_owner_never_holds_the_password(self):
+        # Someone without the mailbox signs up first; the owner confirms with their own password.
+        data = {"email": "victim@company.test", "name": "Synthetic"}
+        self.post(self.client_for_test(), "/api/v1/auth/register/", data)
+        user = User.objects.get(email="victim@company.test")
+        user.mfa_enabled, user.mfa_secret = True, "planted"
+        user.save()
+        self.post(self.client_for_test(), "/api/v1/auth/register/", data)
+        _, raw = self.latest_token(user, "verify")
+        confirm = {"token": raw, "password": NEW_PASSWORD}
+        self.assertEqual(self.post(self.client, "/api/v1/auth/confirm/", confirm).status_code, 200)
+        user.refresh_from_db()
+        self.assertFalse(user.mfa_enabled)
+        login = "/api/v1/auth/login/"
+        attempt = {"email": user.email, "password": PASSWORD}
+        self.assertEqual(self.post(self.client_for_test(), login, attempt).status_code, 403)
+        self.login(user, password=NEW_PASSWORD)
 
     def test_expired_wrong_purpose_and_removed_domain_tokens_fail(self):
         identity.issue_token(self.alice, "reset")
         token, raw = self.latest_token(self.alice, "reset")
-        error = self.post(self.client, "/api/v1/auth/confirm/", {"token": raw})
+        error = self.post(
+            self.client, "/api/v1/auth/confirm/", {"token": raw, "password": PASSWORD}
+        )
         self.assertEqual(error.status_code, 400)
         self.assertEqual(error.json()["detail"], "Dados inválidos.")
         self.assertIn("errors", error.json())
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": raw}).status_code, 400
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": raw, "password": PASSWORD}
+            ).status_code,
+            400,
         )
         token.expires_at = timezone.now() - timedelta(seconds=1)
         token.save()
@@ -221,7 +240,10 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.domain.is_active = False
         self.domain.save()
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": raw}).status_code, 400
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": raw, "password": PASSWORD}
+            ).status_code,
+            400,
         )
 
     def test_resend_invalidates_previous_token(self):
@@ -232,10 +254,16 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.post(self.client, "/api/v1/auth/resend/", {"email": self.alice.email})
         _, second = self.latest_token(self.alice, "verify")
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": first}).status_code, 400
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": first, "password": PASSWORD}
+            ).status_code,
+            400,
         )
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": second}).status_code, 200
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": second, "password": PASSWORD}
+            ).status_code,
+            200,
         )
 
     def test_authenticated_password_change_requires_current_and_revokes_session(self):
@@ -758,7 +786,7 @@ class IdentityTests(HTTPHelpers, TestCase):
         self.assertTrue(IdentityEvent.objects.filter(action="account.created").exists())
 
     def test_area_change_keeps_pending_code_but_role_change_revokes_it(self):
-        data = {"email": "late@company.test", "name": "Pessoa", "password": PASSWORD}
+        data = {"email": "late@company.test", "name": "Pessoa"}
         self.assertEqual(self.post(self.client, "/api/v1/auth/register/", data).status_code, 200)
         user = User.objects.get(email="late@company.test")
         _, raw = self.latest_token(user, "verify")
@@ -770,12 +798,18 @@ class IdentityTests(HTTPHelpers, TestCase):
         _, raw = self.latest_token(user, "verify")
         self.assertNotEqual(old, raw)
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": old}).status_code, 400
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": old, "password": PASSWORD}
+            ).status_code,
+            400,
         )
         update = {"department": self.department.pk, "reason": "Área"}
         self.assertEqual(self.patch(admin, path, update).status_code, 200)
         self.assertEqual(
-            self.post(self.client, "/api/v1/auth/confirm/", {"token": raw}).status_code, 200
+            self.post(
+                self.client, "/api/v1/auth/confirm/", {"token": raw, "password": PASSWORD}
+            ).status_code,
+            200,
         )
         user.refresh_from_db()
         self.assertIsNotNone(user.email_verified_at)
@@ -1034,11 +1068,7 @@ class ConcurrencyTests(HTTPHelpers, TransactionTestCase):
             return self.post(
                 self.client_for_test(),
                 "/api/v1/auth/register/",
-                {
-                    "name": "Synthetic",
-                    "email": "new@company.test",
-                    "password": PASSWORD,
-                },
+                {"name": "Synthetic", "email": "new@company.test"},
             ).status_code
 
         self.assertEqual(self.parallel([register, register]), [200, 200])

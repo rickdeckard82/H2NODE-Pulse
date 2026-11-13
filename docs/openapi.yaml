@@ -12,13 +12,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenInputRequest'
+              $ref: '#/components/schemas/ResetInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TokenInputRequest'
+              $ref: '#/components/schemas/ResetInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TokenInputRequest'
+              $ref: '#/components/schemas/ResetInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -4198,11 +4198,6 @@ components:
           format: email
           minLength: 1
           maxLength: 254
-        password:
-          type: string
-          writeOnly: true
-          minLength: 1
-          maxLength: 256
         name:
           type: string
           minLength: 1
@@ -4210,7 +4205,6 @@ components:
       required:
       - email
       - name
-      - password
     ReopenPolicy:
       type: object
       properties:
@@ -4769,16 +4763,6 @@ components:
         * `resolved` - Resolvido
         * `closed` - Fechado
         * `cancelled` - Cancelado
-    TokenInputRequest:
-      type: object
-      properties:
-        token:
-          type: string
-          writeOnly: true
-          minLength: 1
-          maxLength: 128
-      required:
-      - token
     TransferInputRequest:
       type: object
       properties:

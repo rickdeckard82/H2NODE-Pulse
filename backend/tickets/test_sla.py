@@ -205,6 +205,7 @@ class SlaReportTests(TicketHelpers, TestCase):
     def test_export_escapes_formulas_expires_and_is_owner_only(self):
         self.create(subject='=HYPERLINK("http://x")')
         self.create(subject="@SUM(1)")
+        self.create(subject="Impressora;=1+1;ok")
         manager = self.client_as(self.manager)
         response = self.post(
             manager,
@@ -219,7 +220,9 @@ class SlaReportTests(TicketHelpers, TestCase):
         rows = list(csv.reader(io.StringIO(download.content.decode("utf-8-sig"))))
         self.assertIn("responsavel", rows[0])
         subjects = {row[rows[0].index("assunto")] for row in rows[1:]}
-        self.assertEqual(subjects, {'\'=HYPERLINK("http://x")', "'@SUM(1)"})
+        self.assertEqual(subjects, {'\'=HYPERLINK("http://x")', "'@SUM(1)", "Impressora;=1+1;ok"})
+        # Every field is quoted, so a ";" list separator cannot start a new formula cell.
+        self.assertIn('"Impressora;=1+1;ok"', download.content.decode("utf-8-sig"))
         for user in [self.admin, self.tech]:
             self.assertIn(
                 self.client_as(user).get(f"/api/v1/reports/exports/{export_id}/").status_code,

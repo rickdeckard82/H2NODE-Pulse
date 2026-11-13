@@ -38,11 +38,12 @@ from core.serializers import (
     RegisterInput,
     ResetInput,
     StrictSerializer,
-    TokenInput,
     UserCreateInput,
     UserSerializer,
     UserUpdateInput,
 )
+
+MAIL_RESPONSE_SECONDS = 0.25
 
 
 class NoStoreMixin:
@@ -86,10 +87,15 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
             key = request.session.session_key or request.META.get("REMOTE_ADDR", "unknown")
         identity.rate_limit(self.action, key, settings.IDENTITY_RATE_LIMIT)
         result = {"detail": "Se os dados forem elegíveis, enviaremos um código por e-mail."}
-        if self.action == "register":
-            identity.register(data)
-        elif self.action in {"resend", "forgot"}:
-            identity.request_token(data["email"], "verify" if self.action == "resend" else "reset")
+        if self.action in {"register", "resend", "forgot"}:
+            started = time.monotonic()
+            if self.action == "register":
+                identity.register(data)
+            else:
+                purpose = "verify" if self.action == "resend" else "reset"
+                identity.request_token(data["email"], purpose)
+            # Fixed minimum duration: database work for existing accounts must not reveal them.
+            time.sleep(max(0, MAIL_RESPONSE_SECONDS - (time.monotonic() - started)))
         elif self.action in {"confirm", "reset"}:
             purpose = {"confirm": "verify", "reset": "reset"}[self.action]
             identity.redeem_token(data["token"], purpose, data.get("password"))
@@ -126,7 +132,7 @@ class ForgotView(AuthActionView):
 
 
 class ConfirmView(AuthActionView):
-    action, serializer_class = "confirm", TokenInput
+    action, serializer_class = "confirm", ResetInput
 
 
 class ResetView(AuthActionView):

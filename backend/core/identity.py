@@ -121,7 +121,6 @@ def issue_token(user, purpose, email=None):
 def register(data):
     identity_lock()
     email = normalize_email(data["email"])
-    hashed = password_hash(data["password"], User(email=email, first_name=data["name"]))
     existing = User.objects.filter(email__iexact=email).first()
     if not domain_allowed(email) or existing:
         # Same generic answer either way; repeating sign-up only resends a pending confirmation.
@@ -137,7 +136,9 @@ def register(data):
         username=uuid.uuid4().hex,
         email=email,
         first_name=data["name"],
-        password=hashed,
+        # The password is chosen when the mailed code is redeemed, so whoever signs up first
+        # without owning the mailbox never holds a usable credential.
+        password=make_password(None),
     )
     issue_token(user, "verify")
     audit(user, "account.registered", user.pk)
@@ -184,7 +185,12 @@ def redeem_token(raw, purpose, password=None):
             # Redeeming the mailed invite proves possession of the address.
             user.email_verified_at = now
     else:
+        user.password = password_hash(password, user)
         user.email_verified_at = now
+        # Nothing set before mailbox ownership was proven survives confirmation.
+        user.mfa_enabled, user.mfa_secret = False, ""
+        user.mfa_last_counter, user.recovery_hashes = -1, []
+        TrustedDevice.objects.filter(user=user).delete()
     user.session_version += 1
     user.save()
     token.used_at = now

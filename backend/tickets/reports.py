@@ -254,7 +254,8 @@ def yes_no(value):
 def render_csv(user, rows):
     individual = user.role in {User.Role.MANAGER, User.Role.ADMIN}
     out = io.StringIO()
-    writer = csv.writer(out)
+    # Quoting every field keeps a regional ";" separator from opening new (formula) cells.
+    writer = csv.writer(out, quoting=csv.QUOTE_ALL)
     header = [
         "numero",
         "aberto_em",
