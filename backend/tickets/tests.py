@@ -416,6 +416,8 @@ class TicketTests(TicketHelpers, TestCase):
             for n in self.client_as(self.tech2).get("/api/v1/notifications/").json()["results"]
         ]
         self.assertEqual(tech2, ["created"])
+        admin = self.client_as(self.admin).get("/api/v1/notifications/").json()["results"]
+        self.assertIn("created", [n["action"] for n in admin])
         peer = self.client_as(self.peer).get("/api/v1/notifications/").json()
         self.assertEqual(peer["results"], [])
         self.assertTrue(
