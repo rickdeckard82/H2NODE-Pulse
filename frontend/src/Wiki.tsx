@@ -13,6 +13,7 @@ type Summary = {
   id: string;
   title: string;
   tags: string[];
+  groups: { id: number; name: string }[];
   author_name: string;
   created_at: string;
   updated_at: string;
@@ -46,6 +47,14 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
+  const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
+  const [picked, setPicked] = useState<number[]>([]);
+  useEffect(() => {
+    if (canEdit)
+      api<{ id: number; name: string }[]>("wiki/groups/")
+        .then(setGroups)
+        .catch(() => setGroups([]));
+  }, [canEdit]);
 
   const load = useCallback(async () => {
     try {
@@ -94,6 +103,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
+      groups: picked,
     };
     try {
       const saved =
@@ -134,6 +144,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
           onClick={() => {
             setOpen(null);
             setDraft("");
+            setPicked([]);
             setEditing("new");
           }}
         >
@@ -194,6 +205,29 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
             Tags (separadas por vírgula, até 5)
             <input name="tags" defaultValue={page?.tags.join(", ")} />
           </label>
+          <fieldset className="wiki-groups">
+            <legend>Visível para os grupos</legend>
+            {groups.map((g) => (
+              <label key={g.id} className="check">
+                <input
+                  type="checkbox"
+                  checked={picked.includes(g.id)}
+                  onChange={(e) =>
+                    setPicked(
+                      e.target.checked
+                        ? [...picked, g.id]
+                        : picked.filter((id) => id !== g.id),
+                    )
+                  }
+                />
+                {g.name}
+              </label>
+            ))}
+            <small className="field-hint">
+              Sem nenhum grupo marcado, a página fica visível para todos.
+              Gestores e administradores sempre veem todas as páginas.
+            </small>
+          </fieldset>
           <p className="editor-label">Conteúdo</p>
           <WikiEditor value={draft} onChange={setDraft} />
           <small className="field-hint">
@@ -224,7 +258,10 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
         </button>
         <h2>{open.title}</h2>
         <p className="muted">
-          <Tags tags={open.tags} /> {open.author_name} · {date(open.created_at)}
+          <Tags tags={open.tags} />{" "}
+          {open.groups.length > 0 &&
+            `🔒 ${open.groups.map((g) => g.name).join(", ")} · `}
+          {open.author_name} · {date(open.created_at)}
           {open.updated_by_name &&
             ` · editado por ${open.updated_by_name} em ${date(open.updated_at)}`}
         </p>
@@ -234,6 +271,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
             <button
               onClick={() => {
                 setDraft(open.body);
+                setPicked(open.groups.map((g) => g.id));
                 setEditing(open);
               }}
             >

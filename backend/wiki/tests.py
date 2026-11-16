@@ -95,6 +95,78 @@ class WikiTests(TicketHelpers, TestCase):
             )
 
 
+class GroupVisibilityTests(WikiTests):
+    # Reuses the helpers; the inherited tests run again (cheap) and must stay green.
+    def test_page_visible_only_to_listed_groups(self):
+        body = {"title": "Interna", "body": "X", "groups": [self.group.pk, self.other_group.pk]}
+        created = self.call(self.manager, "post", "/api/v1/wiki/", body)
+        self.assertEqual(created.status_code, 201, created.content)
+        self.assertEqual(len(created.json()["groups"]), 2)
+        open_page = WikiPage.objects.create(title="Aberta", body="Y", author=self.manager)
+        only_infra = self.call(
+            self.manager,
+            "post",
+            "/api/v1/wiki/",
+            {"title": "Infra", "body": "Z", "groups": [self.other_group.pk]},
+        ).json()
+
+        # tech2 belongs only to the first group; owner to none.
+        def titles(user):
+            return sorted(p["title"] for p in self.client_as(user).get("/api/v1/wiki/").json())
+
+        self.assertEqual(titles(self.tech2), ["Aberta", "Interna"])
+        self.assertEqual(titles(self.owner), ["Aberta"])
+        self.assertEqual(titles(self.outsider), ["Aberta", "Infra", "Interna"])
+        self.assertEqual(titles(self.admin), ["Aberta", "Infra", "Interna"])
+        self.assertEqual(
+            self.client_as(self.tech2).get(f"/api/v1/wiki/{only_infra['id']}/").status_code, 404
+        )
+        self.assertEqual(
+            self.client_as(self.owner).get(f"/api/v1/wiki/{only_infra['id']}/").status_code, 404
+        )
+        self.assertEqual(
+            self.client_as(self.owner).get(f"/api/v1/wiki/{open_page.uuid}/").status_code, 200
+        )
+
+    def test_group_changes_and_inactive_or_unknown_groups(self):
+        page = self.call(
+            self.manager,
+            "post",
+            "/api/v1/wiki/",
+            {"title": "T", "body": "B", "groups": [self.group.pk]},
+        ).json()
+        path = f"/api/v1/wiki/{page['id']}/"
+        self.assertEqual(self.client_as(self.owner).get(path).status_code, 404)
+        self.assertEqual(
+            self.call(self.manager, "patch", path, {"title": "T2"}).json()["groups"][0]["id"],
+            self.group.pk,
+        )
+        done = self.call(self.manager, "patch", path, {"groups": []})
+        self.assertEqual(done.json()["groups"], [])
+        self.assertEqual(self.client_as(self.owner).get(path).status_code, 200)
+        for bad in ([999999], ["x"]):
+            response = self.call(self.manager, "patch", path, {"groups": bad})
+            self.assertEqual(response.status_code, 400)
+        # A non-editor cannot restrict or list groups.
+        self.assertEqual(
+            self.call(self.tech, "patch", path, {"groups": [self.group.pk]}).status_code, 403
+        )
+        self.assertEqual(self.client_as(self.tech).get("/api/v1/wiki/groups/").status_code, 403)
+        self.assertEqual(len(self.client_as(self.manager).get("/api/v1/wiki/groups/").json()), 2)
+
+    def test_deactivated_group_does_not_publish_the_page(self):
+        page = WikiPage.objects.create(title="R", body="B", author=self.manager)
+        page.groups.add(self.group)
+        self.group.is_active = False
+        self.group.save(update_fields=["is_active"])
+        self.assertEqual(
+            self.client_as(self.tech2).get(f"/api/v1/wiki/{page.uuid}/").status_code, 404
+        )
+        self.assertEqual(
+            self.client_as(self.manager).get(f"/api/v1/wiki/{page.uuid}/").status_code, 200
+        )
+
+
 class ImportTests(TicketHelpers, TestCase):
     @classmethod
     def setUpTestData(cls):
