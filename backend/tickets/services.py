@@ -198,6 +198,14 @@ def require_support(actor, ticket):
     return member
 
 
+def require_participation(actor, ticket):
+    """Technicians act on a ticket only as its assignee or a participant (claim/join first)."""
+    if actor.role == User.Role.TECHNICIAN and not (
+        ticket.assignee_id == actor.pk or ticket.participants.filter(pk=actor.pk).exists()
+    ):
+        raise PermissionDenied("Assuma ou participe do atendimento para realizar esta ação.")
+
+
 def valid_assignee(user, group, restricted, requester_id):
     if (
         not eligible(user)
@@ -250,10 +258,9 @@ def join(actor, ticket, data):
 def add_comment(actor, ticket, data):
     visibility = data["visibility"]
     owner = ticket.requester_id == actor.pk
-    if visibility == Comment.Visibility.INTERNAL:
+    if visibility == Comment.Visibility.INTERNAL or not owner:
         require_support(actor, ticket)
-    elif not owner:
-        require_support(actor, ticket)
+        require_participation(actor, ticket)
     correction = None
     if data.get("corrects"):
         correction = get_object_or_404(
@@ -289,6 +296,8 @@ def transition(actor, ticket, data):
         "close",
         "pause",
     }
+    if member and action in text_actions | {"resume"}:
+        require_participation(actor, ticket)
     if action in text_actions and not body:
         raise ValidationError({"message": "Informe o texto público obrigatório para esta ação."})
     if data.get("assignee") and not (action == "reopen" and manager):
@@ -416,6 +425,7 @@ def transition(actor, ticket, data):
 
 def transfer(actor, ticket, data):
     member = require_support(actor, ticket)
+    require_participation(actor, ticket)
     if not member.can_transfer:
         raise PermissionDenied("Sem permissão de transferência.")
     if ticket.state in {Ticket.State.CLOSED, Ticket.State.CANCELLED}:

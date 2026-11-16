@@ -95,6 +95,10 @@ Transições:
 - Participantes agem como o técnico atribuído nas transições abaixo; transferir e
   cancelar continuam exigindo vínculo ao grupo com `can_transfer`/`can_cancel`.
   Devolver à fila remove os participantes.
+- Um técnico (perfil Técnico) só responde, escreve nota, pausa, retoma, resolve,
+  encerra, reabre, transfere ou devolve à fila se for o responsável ou participante
+  do chamado (assumir/participar primeiro); sem isso a API responde 403. Gestores
+  e administradores não têm essa restrição. A tela esconde essas ações.
 - `request_information` / `request_test`: técnico atribuído, Em atendimento,
   `message` público com pergunta/instruções.
 - Resposta pública do solicitante pelo endpoint comments retoma Em atendimento

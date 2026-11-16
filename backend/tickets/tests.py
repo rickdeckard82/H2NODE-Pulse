@@ -306,6 +306,7 @@ class TicketTests(TicketHelpers, TestCase):
 
     def test_internal_note_never_appears_in_requester_history_search_or_outbox(self):
         ticket = self.create()
+        self.claim(ticket)
         result = self.mutate(
             ticket,
             self.tech,
@@ -353,6 +354,8 @@ class TicketTests(TicketHelpers, TestCase):
     def test_technician_acts_on_unassigned_ticket_closes_and_reopens(self):
         ticket = self.create()
         self.claim(ticket)
+        for user in [self.tech2, self.outsider]:
+            self.assertEqual(self.mutate(ticket, user, "join").status_code, 200)
         self.assertEqual(
             self.mutate(
                 ticket,
@@ -379,6 +382,42 @@ class TicketTests(TicketHelpers, TestCase):
             ).status_code,
             404,
         )
+
+    def test_technician_must_be_assignee_or_participant_to_act(self):
+        ticket = self.create()
+        note = {"body": "Nota", "visibility": "internal"}
+        # Not yet in the ticket: no reply, note, transition or transfer.
+        for user in [self.tech, self.tech2]:
+            self.assertEqual(self.mutate(ticket, user, "comments", note).status_code, 403)
+            self.assertEqual(
+                self.mutate(
+                    ticket, user, "comments", {"body": "Oi", "visibility": "public"}
+                ).status_code,
+                403,
+            )
+        self.claim(ticket)
+        outsider_actions = [
+            ("transitions", {"action": "pause", "message": "X"}),
+            ("transitions", {"action": "return_queue", "message": "X"}),
+            ("transitions", {"action": "close", "message": "X"}),
+            ("comments", note),
+            (
+                "transfer",
+                {"group": self.other_group.pk, "assignee": self.outsider.pk, "message": "X"},
+            ),
+        ]
+        for path, data in outsider_actions:
+            response = self.mutate(ticket, self.tech2, path, data)
+            self.assertEqual(response.status_code, 403, (path, response.content))
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.state, "in_progress")
+        # Joining enables the actions; the assignee always could act.
+        self.assertEqual(self.mutate(ticket, self.tech, "comments", note).status_code, 201)
+        self.assertEqual(self.mutate(ticket, self.tech2, "join").status_code, 200)
+        self.assertEqual(self.mutate(ticket, self.tech2, "comments", note).status_code, 201)
+        self.transition(ticket, self.tech2, "pause", message="Aguardando peça")
+        # Managers and administrators are not bound by this rule.
+        self.transition(ticket, self.manager, "resume")
 
     def test_manager_only_reaches_tickets_of_own_groups(self):
         foreign = SupportGroup.objects.create(name="Grupo de outro gestor")
@@ -552,7 +591,7 @@ class TicketTests(TicketHelpers, TestCase):
             self.mutate(
                 ticket, self.tech, "transitions", {"action": "request_test", "message": "X"}
             ).status_code,
-            409,
+            403,
         )
         self.claim(ticket)
         self.assertEqual(
@@ -719,6 +758,7 @@ class TicketTests(TicketHelpers, TestCase):
 
     def test_correction_appends_and_cannot_change_author_or_visibility(self):
         ticket = self.create()
+        self.claim(ticket)
         self.mutate(ticket, self.tech, "comments", {"body": "Original", "visibility": "internal"})
         original = ticket.comments.get()
         self.assertEqual(
@@ -733,6 +773,7 @@ class TicketTests(TicketHelpers, TestCase):
         original.refresh_from_db()
         self.assertEqual(original.body, "Original")
         self.assertEqual(ticket.comments.count(), 2)
+        self.assertEqual(self.mutate(ticket, self.tech2, "join").status_code, 200)
         self.assertEqual(
             self.mutate(
                 ticket,

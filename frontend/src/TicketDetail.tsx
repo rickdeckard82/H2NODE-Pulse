@@ -97,6 +97,8 @@ export function TicketDetail({
   const working =
     ticket.assignee === user.id ||
     ticket.participants.some((p) => p.id === user.id);
+  // Technicians act only as assignee or participant; claim and join are how they enter.
+  const engaged = user.role !== "technician" || working;
   const available = [
     ...(support && ticket.state === "new" ? ["claim"] : []),
     ...(support &&
@@ -106,26 +108,27 @@ export function TicketDetail({
     )
       ? ["join"]
       : []),
-    ...(support && ticket.state === "in_progress"
+    ...(support && engaged && ticket.state === "in_progress"
       ? ["request_information", "request_test", "pause", "resolve"]
       : []),
-    ...(support && ticket.state === "paused" ? ["resume"] : []),
+    ...(support && engaged && ticket.state === "paused" ? ["resume"] : []),
     ...(owner && ticket.state === "resolved" ? ["confirm"] : []),
-    ...(((owner || support) &&
+    ...(((owner || (support && engaged)) &&
       ["in_progress", "waiting_information", "waiting_test", "paused"].includes(
         ticket.state,
       )) ||
-    (support && ticket.state === "resolved")
+    (support && engaged && ticket.state === "resolved")
       ? ["close"]
       : []),
-    ...((owner || support) && ["resolved", "closed"].includes(ticket.state)
+    ...((owner || (support && engaged)) &&
+    ["resolved", "closed"].includes(ticket.state)
       ? ["reopen"]
       : []),
     ...((owner && ticket.state === "new") ||
-    (support && ticket.can_cancel && !terminal)
+    (support && engaged && ticket.can_cancel && !terminal)
       ? ["cancel"]
       : []),
-    ...(support && ticket.can_transfer && !terminal
+    ...(support && engaged && ticket.can_transfer && !terminal
       ? ["transfer", ...(ticket.state !== "new" ? ["return_queue"] : [])]
       : []),
   ];
@@ -246,7 +249,7 @@ export function TicketDetail({
               </article>
             ))}
           </section>
-          {!terminal && (owner || support) && (
+          {!terminal && (owner || (support && engaged)) && (
             <section
               className={`panel ${visibility === "internal" ? "internal" : ""}`}
             >
