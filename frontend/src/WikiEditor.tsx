@@ -95,6 +95,8 @@ export function WikiEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [image, setImage] = useState<Uploaded | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const urlOk = /^https:\/\/[^\s()]+$/i.test(imageUrl.trim());
   const [alt, setAlt] = useState("");
   const [width, setWidth] = useState("640");
 
@@ -189,7 +191,7 @@ export function WikiEditor({
       setBusy(false);
     }
   }
-  const imageMarkup = (file: Uploaded, text: string, size: string) =>
+  const imageMarkup = (file: { url: string }, text: string, size: string) =>
     `![${text.replace(/[\][]/g, "")}](${file.url}${size ? ` =${size}x` : ""})`;
 
   async function attach(file: File | undefined) {
@@ -412,10 +414,19 @@ export function WikiEditor({
                   }}
                 />
               </label>
-              {image && (
+              <label className="img-field">
+                <span>ou endereço da imagem (https://…)</span>
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+              </label>
+              {(image || urlOk) && (
                 <img
                   className="img-thumb"
-                  src={image.url}
+                  src={urlOk ? imageUrl.trim() : image!.url}
                   alt="Pré-visualização"
                 />
               )}
@@ -442,10 +453,17 @@ export function WikiEditor({
               <div className="wiki-actions">
                 <button
                   type="button"
-                  disabled={!image}
+                  disabled={!image && !urlOk}
                   onClick={() => {
-                    insert(imageMarkup(image!, alt, width));
+                    insert(
+                      imageMarkup(
+                        urlOk ? { url: imageUrl.trim() } : image!,
+                        alt,
+                        width,
+                      ),
+                    );
                     setImage(null);
+                    setImageUrl("");
                     setAlt("");
                     setPopover("");
                   }}
