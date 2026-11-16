@@ -125,6 +125,32 @@ class NotificationTests(TicketHelpers, TestCase):
         self.assertEqual(len(mail.outbox), 3)
 
     @patch("tickets.notifications.active_webhook", return_value=None)
+    def test_user_can_opt_out_of_notification_emails(self, unused):
+        self.assertEqual(
+            self.client_as(self.tech2).get("/api/v1/auth/me/").json()["email_notifications"], True
+        )
+        client = self.client_as(self.tech2)
+        csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        response = client.patch(
+            "/api/v1/auth/me/",
+            {"email_notifications": False},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(response.json()["email_notifications"])
+        ticket = self.create()
+        self.drain()
+        recipients = {message.to[0] for message in mail.outbox}
+        self.assertNotIn(self.tech2.email, recipients)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertFalse(
+            NotificationOutbox.objects.get(event__ticket=ticket)
+            .deliveries.filter(recipient=self.tech2)
+            .exists()
+        )
+
+    @patch("tickets.notifications.active_webhook", return_value=None)
     def test_internal_note_never_targets_requester(self, unused):
         ticket = self.create()
         self.claim(ticket)

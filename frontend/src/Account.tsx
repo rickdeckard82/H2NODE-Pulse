@@ -74,6 +74,9 @@ export function Account({
                 {
                   first_name: new FormData(e.currentTarget).get("first_name"),
                   avatar,
+                  email_notifications:
+                    new FormData(e.currentTarget).get("email_notifications") ===
+                    "on",
                 },
                 "PATCH",
               );
@@ -137,6 +140,18 @@ export function Account({
               O e-mail da conta não pode ser alterado.
             </small>
           </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              name="email_notifications"
+              defaultChecked={user.email_notifications}
+            />
+            Receber por e-mail as notificações dos chamados
+          </label>
+          <small>
+            Não afeta e-mails de segurança da conta, como confirmação de
+            cadastro e redefinição de senha. O sino do portal continua ativo.
+          </small>
           <button disabled={busy}>
             {busy ? "Salvando…" : "Salvar perfil"}
           </button>

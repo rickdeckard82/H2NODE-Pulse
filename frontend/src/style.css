@@ -2507,3 +2507,39 @@ button[type="submit"] {
 :root[data-theme="dark"] .solved-choice {
   border: 0;
 }
+.wiki-groups {
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  margin: 0 0 14px;
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.wiki-groups legend {
+  font-weight: 650;
+  padding: 0 6px;
+}
+.wiki-groups label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.wiki-groups input {
+  width: auto;
+}
+.wiki-groups small {
+  flex-basis: 100%;
+}
+label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+label.check input {
+  width: auto;
+}

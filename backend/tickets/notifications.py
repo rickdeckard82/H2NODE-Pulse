@@ -101,7 +101,7 @@ def _materialize(outbox):
     app = active_app()
     for recipient in recipients:
         projection = outbox_projection(outbox, recipient)
-        if projection and recipient.email:
+        if projection and recipient.email and recipient.email_notifications:
             NotificationDelivery.objects.get_or_create(
                 outbox=outbox,
                 channel=NotificationDelivery.Channel.EMAIL,
@@ -173,6 +173,12 @@ def _message(delivery):
         }
     )
     if delivery.recipient_id and projection is None:
+        return None
+    if (
+        delivery.channel == NotificationDelivery.Channel.EMAIL
+        and delivery.recipient_id
+        and not delivery.recipient.email_notifications
+    ):
         return None
     label = ACTION_LABELS.get(event.action, "Chamado atualizado")
     link = f"{settings.APP_BASE_URL.rstrip('/')}/tickets/{ticket.uuid}"

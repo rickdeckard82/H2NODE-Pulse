@@ -24,6 +24,8 @@ class User(AbstractUser):
     # In-app bell: events up to this instant are cleared; muted hides the unread badge.
     notifications_cleared_at = models.DateTimeField(null=True, blank=True)
     notifications_muted = models.BooleanField(default=False)
+    # Ticket notification e-mails only; account mails (verification, reset) always go out.
+    email_notifications = models.BooleanField(default=True)
     # Direct message with the Chat app, learned from its installation event.
     chat_space = models.CharField(max_length=128, blank=True)
     # Kept by a database trigger from is_active; drives data retention.

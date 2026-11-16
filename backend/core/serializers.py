@@ -79,7 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ProfileSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
-        fields = [*UserSerializer.Meta.fields, "avatar"]
+        fields = [*UserSerializer.Meta.fields, "avatar", "email_notifications"]
         read_only_fields = fields
 
 
@@ -87,6 +87,7 @@ class ProfileInput(StrictSerializer):
     """E-mail is deliberately absent: it identifies the corporate account and cannot change."""
 
     first_name = serializers.CharField(max_length=150, required=False)
+    email_notifications = serializers.BooleanField(required=False)
     avatar = serializers.CharField(
         max_length=AVATAR_MAX_BYTES * 4 // 3 + 64, required=False, allow_blank=True
     )

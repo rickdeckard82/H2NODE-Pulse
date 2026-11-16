@@ -20,6 +20,7 @@ export type User = {
   email: string;
   role: string;
   avatar: string;
+  email_notifications: boolean;
   mfa_enabled: boolean;
 };
 export type Page<T> = {

@@ -2562,6 +2562,22 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/wiki/groups/:
+    get:
+      operationId: wiki_groups_list
+      tags:
+      - wiki
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupOption'
+          description: ''
 components:
   schemas:
     ActionEnum:
@@ -3168,6 +3184,16 @@ components:
       required:
       - id
       - name
+    GroupOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
     GroupRequest:
       type: object
       properties:
@@ -3452,6 +3478,12 @@ components:
           readOnly: true
         tags:
           readOnly: true
+        groups:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         author_name:
           type: string
           readOnly: true
@@ -3474,6 +3506,7 @@ components:
       - author_name
       - body
       - created_at
+      - groups
       - id
       - tags
       - title
@@ -3497,6 +3530,11 @@ components:
             minLength: 1
             maxLength: 30
           maxItems: 5
+        groups:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
       required:
       - body
       - title
@@ -3512,6 +3550,12 @@ components:
           readOnly: true
         tags:
           readOnly: true
+        groups:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         author_name:
           type: string
           readOnly: true
@@ -3526,6 +3570,7 @@ components:
       required:
       - author_name
       - created_at
+      - groups
       - id
       - tags
       - title
@@ -4030,6 +4075,11 @@ components:
             minLength: 1
             maxLength: 30
           maxItems: 5
+        groups:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
     PatchedProfileInputRequest:
       type: object
       description: 'E-mail is deliberately absent: it identifies the corporate account
@@ -4039,6 +4089,8 @@ components:
           type: string
           minLength: 1
           maxLength: 150
+        email_notifications:
+          type: boolean
         avatar:
           type: string
           maxLength: 136597
@@ -4206,10 +4258,14 @@ components:
         avatar:
           type: string
           readOnly: true
+        email_notifications:
+          type: boolean
+          readOnly: true
       required:
       - avatar
       - department
       - email
+      - email_notifications
       - first_name
       - id
       - is_active
