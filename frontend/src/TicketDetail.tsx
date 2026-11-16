@@ -186,7 +186,8 @@ export function TicketDetail({
               <article
                 key={e.id}
                 className={
-                  e.visibility === "internal" ? "event internal" : "event"
+                  (e.visibility === "internal" ? "event internal" : "event") +
+                  (e.action === "pause" ? " paused" : "")
                 }
               >
                 <div>

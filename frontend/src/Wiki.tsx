@@ -141,7 +141,6 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
         </button>
       )}
       <button
-        className={`wiki-menu${!tag && !open && !editing ? " active" : ""}`}
         onClick={() => {
           setTag("");
           setOpen(null);
@@ -245,6 +244,17 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
             </button>
           </div>
         )}
+        <div className="wiki-actions wiki-footer">
+          <button
+            className="link"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            ↑ Voltar ao topo
+          </button>
+          <button className="link" onClick={() => setOpen(null)}>
+            ← Voltar para todas as páginas
+          </button>
+        </div>
       </article>
     );
   } else {

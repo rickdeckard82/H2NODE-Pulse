@@ -1076,6 +1076,28 @@ small {
   border-left: 3px solid #946000;
   border-radius: 4px;
 }
+.event.paused {
+  background: #fff1f0;
+  border-left-color: #c0392b;
+  padding: 18px;
+  border-radius: 4px;
+}
+.event.paused .event-label {
+  color: #a8271b;
+  font-weight: 800;
+}
+.wiki-footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid #dbe3ee;
+}
+:root[data-theme="dark"] .event.paused {
+  background: #3a1f1c;
+  border-left-color: #ff7b6e;
+}
+:root[data-theme="dark"] .event.paused .event-label {
+  color: #ff9d92;
+}
 .attachment {
   display: flex;
   flex-direction: column;
