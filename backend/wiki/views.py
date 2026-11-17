@@ -10,9 +10,9 @@ from rest_framework.views import APIView
 
 from core import identity
 from core.identity_views import NoStoreMixin, locked_actor
-from core.models import Department, Membership, SupportGroup, User
+from core.models import Department, User
 from core.serializers import StrictSerializer
-from wiki.models import WikiPage, WikiPageDepartment, WikiPageGroup
+from wiki.models import WikiPage, WikiPageDepartment
 
 EDITORS = {User.Role.MANAGER, User.Role.ADMIN}
 
@@ -22,13 +22,6 @@ class PageInput(StrictSerializer):
     body = serializers.CharField(max_length=50000)
     tags = serializers.ListField(
         child=serializers.CharField(max_length=30), max_length=5, required=False
-    )
-    groups = serializers.ListField(
-        child=serializers.PrimaryKeyRelatedField(
-            queryset=SupportGroup.objects.filter(is_active=True)
-        ),
-        max_length=50,
-        required=False,
     )
     departments = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(
@@ -50,11 +43,7 @@ class PageInput(StrictSerializer):
 
 class PageSummary(serializers.ModelSerializer):
     id = serializers.UUIDField(source="uuid", read_only=True)
-    groups = serializers.SerializerMethodField()
     departments = serializers.SerializerMethodField()
-
-    def get_groups(self, obj) -> list[dict]:
-        return [{"id": g.pk, "name": g.name} for g in obj.groups.all()]
 
     def get_departments(self, obj) -> list[dict]:
         return [{"id": d.pk, "name": d.name} for d in obj.departments.all()]
@@ -67,7 +56,6 @@ class PageSummary(serializers.ModelSerializer):
             "id",
             "title",
             "tags",
-            "groups",
             "departments",
             "author_name",
             "created_at",
@@ -87,32 +75,20 @@ class PageDetail(PageSummary):
 
 
 def pages(user):
-    """Pages this user may see: unrestricted ones, or those of a group they belong to or
-    of their own area (department).
+    """Pages this user may see: unrestricted ones, or those listing the user's own area.
 
     Managers and administrators (the editors) see everything.
     """
-    query = WikiPage.objects.select_related("author", "updated_by").prefetch_related(
-        "groups", "departments"
-    )
+    query = WikiPage.objects.select_related("author", "updated_by").prefetch_related("departments")
     if user.role in EDITORS:
         return query
-    mine = Membership.objects.filter(user=user, group__is_active=True).values("group")
     return query.filter(
-        Q(groups__isnull=True, departments__isnull=True)
-        | Q(wikipagegroup__group__in=mine)
-        | Q(wikipagedepartment__department=user.department_id)
+        Q(departments__isnull=True) | Q(wikipagedepartment__department=user.department_id)
     ).distinct()
 
 
-def set_groups(page, data):
-    """Replace the page audience (groups and areas) when the request carries them."""
-    if "groups" in data:
-        groups = data.pop("groups")
-        page.groups.clear()
-        WikiPageGroup.objects.bulk_create(
-            WikiPageGroup(page=page, group=g) for g in dict.fromkeys(groups)
-        )
+def set_departments(page, data):
+    """Replace the page audience (areas) when the request carries it."""
     if "departments" in data:
         departments = data.pop("departments")
         page.departments.clear()
@@ -122,22 +98,13 @@ def set_groups(page, data):
     return data
 
 
-class GroupOption(serializers.Serializer):
+class AreaOption(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
 
 
-class GroupListView(NoStoreMixin, APIView):
-    @extend_schema(responses=GroupOption(many=True))
-    def get(self, request):
-        if request.user.role not in EDITORS:
-            raise PermissionDenied("Somente gestores e administradores editam a wiki.")
-        rows = SupportGroup.objects.filter(is_active=True).order_by("name")
-        return Response([{"id": g.pk, "name": g.name} for g in rows])
-
-
 class DepartmentListView(NoStoreMixin, APIView):
-    @extend_schema(responses=GroupOption(many=True))
+    @extend_schema(responses=AreaOption(many=True))
     def get(self, request):
         if request.user.role not in EDITORS:
             raise PermissionDenied("Somente gestores e administradores editam a wiki.")
@@ -157,18 +124,14 @@ class PageListView(NoStoreMixin, APIView):
     def post(self, request):
         actor = editor(request)
         data = validated(request)
-        audience = {k: data.pop(k, []) for k in ("groups", "departments")}
+        departments = data.pop("departments", [])
         page = WikiPage.objects.create(author=actor, **data)
-        set_groups(page, dict(audience))
+        set_departments(page, {"departments": departments})
         identity.audit(
             actor,
             "wiki.created",
             page.uuid,
-            {
-                "title": page.title,
-                "groups": [g.pk for g in audience["groups"]],
-                "departments": [d.pk for d in audience["departments"]],
-            },
+            {"title": page.title, "departments": [d.pk for d in departments]},
         )
         return Response(PageDetail(page).data, status=201)
 
@@ -184,15 +147,14 @@ class PageView(NoStoreMixin, APIView):
         actor = editor(request)
         page = get_object_or_404(pages(actor).select_for_update(of=("self",)), uuid=page_id)
         data = validated(request)
-        changed = "groups" in data or "departments" in data
-        set_groups(page, data)
+        changed = "departments" in data
+        set_departments(page, data)
         for field, value in data.items():
             setattr(page, field, value)
         page.updated_by, page.updated_at = actor, timezone.now()
         page.save()
         details = {"title": page.title}
         if changed:
-            details["groups"] = [g.pk for g in page.groups.all()]
             details["departments"] = [d.pk for d in page.departments.all()]
         identity.audit(actor, "wiki.updated", page.uuid, details)
         return Response(PageDetail(page).data)
