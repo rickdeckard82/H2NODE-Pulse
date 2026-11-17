@@ -167,3 +167,16 @@ banco e não substitui backup/arquivo protegido de auditoria.
 Cada chamado congela a política vigente na abertura. As definições de primeira
 resposta, pausas, reabertura, coorte do período e denominadores estão em
 `docs/validacoes/etapa-06.md`. A quebra por técnico aparece para gestores e administradores.
+
+## Senhas ocultas
+
+Texto no formato `senha: valor` (também `password`/`passwd`, com `:` ou `=`) em descrição,
+respostas, notas internas e mensagens de transição é cifrado em `HiddenSecret` e
+substituído por `[[oculta:<id>]]` antes de gravar. Histórico, busca, e-mails e exportações
+só veem o marcador. `POST /tickets/{id}/secrets/{secret_id}/reveal/` devolve o valor apenas
+a quem pode ler aquele texto (nota interna continua restrita à equipe) e informa a própria
+senha de acesso; o limite é de 20 tentativas por 15 minutos e cada revelação é auditada
+(`ticket.secret_revealed`, sem o valor). A tela esconde o valor de novo após 30 s.
+Limitações: só o padrão `senha: valor` é reconhecido (valor de uma palavra, sem espaços);
+textos anteriores a esta função não são alterados; anexos não são inspecionados; quem
+já viu o valor pode copiá-lo.

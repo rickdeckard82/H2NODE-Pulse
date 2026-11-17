@@ -218,6 +218,17 @@ class Ticket(models.Model):
         ]
 
 
+class HiddenSecret(models.Model):
+    """A password typed into a ticket, encrypted; the visible text only keeps a placeholder."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="secrets")
+    # Null when it came from the ticket description.
+    comment = models.ForeignKey("Comment", null=True, on_delete=models.CASCADE)
+    ciphertext = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+
 class Comment(models.Model):
     class Visibility(models.TextChoices):
         PUBLIC = "public", "Resposta pública"

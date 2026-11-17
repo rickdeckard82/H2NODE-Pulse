@@ -23,6 +23,7 @@ from tickets.models import (
     TicketEvent,
 )
 from tickets.permissions import can_read_internal, membership, visible_tickets
+from tickets.secrets import redact, store
 
 
 class Conflict(APIException):
@@ -161,6 +162,7 @@ def create_ticket(actor, unused, data, client_ip=None):
                 "Um chamado vinculado a conteúdo restrito deve continuar restrito."
             )
     share = bool(data.get("share_device_info"))
+    description, hidden = redact(data["description"])
     ticket = Ticket.objects.create(
         requester=actor,
         department=actor.department,
@@ -169,7 +171,7 @@ def create_ticket(actor, unused, data, client_ip=None):
         group=category.group,
         restricted=category.restricted,
         subject=data["subject"],
-        description=data["description"],
+        description=description,
         priority=data.get("priority", category.priority),
         reopen_policy=ReopenPolicy.objects.order_by("-pk").first(),
         sla_policy=SlaPolicy.objects.order_by("-pk").first(),
@@ -177,6 +179,7 @@ def create_ticket(actor, unused, data, client_ip=None):
         client_ip=client_ip if share else None,
         client_os=clean_os(data.get("client_os", "")) if share else "",
     )
+    store(ticket, hidden)
     return emit(
         ticket,
         actor,
@@ -273,9 +276,11 @@ def add_comment(actor, ticket, data):
     if owner and not correction and ticket.state in {Ticket.State.INFORMATION, Ticket.State.TEST}:
         check_assignment(ticket)
         ticket.state, action = Ticket.State.ACTIVE, "requester.replied"
+    body, hidden = redact(data["body"])
     comment = Comment.objects.create(
-        ticket=ticket, actor=actor, body=data["body"], visibility=visibility, corrects=correction
+        ticket=ticket, actor=actor, body=body, visibility=visibility, corrects=correction
     )
+    store(ticket, hidden, comment)
     advance(ticket)
     return emit(ticket, actor, action, before, comment=comment)
 
@@ -400,13 +405,13 @@ def transition(actor, ticket, data):
         ticket.participants.clear()
     else:
         raise ValidationError({"action": "Ação desconhecida."})
-    comment = (
-        Comment.objects.create(
-            ticket=ticket, actor=actor, body=body, visibility=Comment.Visibility.PUBLIC
+    comment = None
+    if body:
+        text, hidden = redact(body)
+        comment = Comment.objects.create(
+            ticket=ticket, actor=actor, body=text, visibility=Comment.Visibility.PUBLIC
         )
-        if body
-        else None
-    )
+        store(ticket, hidden, comment)
     advance(ticket)
     return emit(
         ticket,
@@ -447,8 +452,10 @@ def transfer(actor, ticket, data):
     ticket.group, ticket.assignee = group, assignee
     if before == Ticket.State.NEW:
         ticket.state = Ticket.State.ACTIVE
+    text, hidden = redact(data["message"])
     comment = Comment.objects.create(
-        ticket=ticket, actor=actor, body=data["message"], visibility=Comment.Visibility.PUBLIC
+        ticket=ticket, actor=actor, body=text, visibility=Comment.Visibility.PUBLIC
     )
+    store(ticket, hidden, comment)
     advance(ticket)
     return emit(ticket, actor, "transferred", before, comment=comment, changes=changes)

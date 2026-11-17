@@ -9,6 +9,7 @@ from core.company_settings import CompanyLegalView, CompanySettingsView
 from core.smtp_settings import SmtpSettingsView
 from core.views import LiveView, ReadyView
 from tickets import reports
+from tickets import secrets as ticket_secrets
 from tickets import views as tickets
 from tickets.attachments import AttachmentView, DownloadView
 from tickets.audit_log import AuditLogView
@@ -56,6 +57,10 @@ urlpatterns = [
     path(
         "api/v1/settings/notifications/<int:delivery_id>/retry/",
         NotificationRetryView.as_view(),
+    ),
+    path(
+        "api/v1/tickets/<uuid:ticket_id>/secrets/<uuid:secret_id>/reveal/",
+        ticket_secrets.RevealView.as_view(),
     ),
     path("api/v1/tickets/<uuid:ticket_id>/attachments/", AttachmentView.as_view()),
     path(

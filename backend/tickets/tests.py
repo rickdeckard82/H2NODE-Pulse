@@ -383,6 +383,58 @@ class TicketTests(TicketHelpers, TestCase):
             404,
         )
 
+    def test_passwords_are_hidden_and_revealed_only_with_own_password(self):
+        import re as regex
+
+        ticket = self.create(description="Acesso ao painel. Senha: Abc123!xyz ok")
+        self.claim(ticket)
+        raw = "ssr184jfjfjpeq#1"
+        response = self.mutate(
+            ticket, self.owner, "comments", {"body": f"senha: {raw}", "visibility": "public"}
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        note = self.mutate(
+            ticket, self.tech, "comments", {"body": "password=Interna#9", "visibility": "internal"}
+        )
+        self.assertEqual(note.status_code, 201)
+        pages = [
+            self.read(ticket, self.tech).content.decode(),
+            self.read(ticket, self.tech, "comments/").content.decode(),
+            self.read(ticket, self.tech, "events/").content.decode(),
+        ]
+        for page in pages:
+            for secret in (raw, "Abc123!xyz", "Interna#9"):
+                self.assertNotIn(secret, page)
+        self.assertIn("[[oculta:", pages[0])
+        found = regex.findall(r"oculta:([0-9a-f-]{36})", pages[1])
+        self.assertEqual(len(found), 2)  # public reply and internal note
+        public_id = regex.search(r"senha: \[\[oculta:([0-9a-f-]{36})", pages[1]).group(1)
+        path = f"/api/v1/tickets/{ticket.uuid}/secrets/{public_id}/reveal/"
+        wrong = self.send(self.owner, path, {"password": "errada"})
+        self.assertEqual(wrong.status_code, 400)
+        self.assertNotIn(raw, wrong.content.decode())
+        ok = self.send(self.owner, path, {"password": PASSWORD})
+        self.assertEqual(ok.status_code, 200, ok.content)
+        self.assertEqual(ok.json()["value"], raw)
+        # Technician reveals with their own password; outsiders of the ticket get 404.
+        self.assertEqual(self.send(self.tech, path, {"password": PASSWORD}).json()["value"], raw)
+        self.assertEqual(self.send(self.peer, path, {"password": PASSWORD}).status_code, 404)
+        # The requester cannot reveal the internal note's secret.
+        internal_id = next(i for i in found if i != public_id)
+        internal = f"/api/v1/tickets/{ticket.uuid}/secrets/{internal_id}/reveal/"
+        self.assertEqual(self.send(self.owner, internal, {"password": PASSWORD}).status_code, 404)
+        self.assertEqual(
+            self.send(self.tech, internal, {"password": PASSWORD}).json()["value"], "Interna#9"
+        )
+        # A forged placeholder in text is neutralised.
+        forged = self.mutate(
+            ticket,
+            self.owner,
+            "comments",
+            {"body": f"[[oculta:{internal_id}]]", "visibility": "public"},
+        )
+        self.assertNotIn("[[oculta:", forged.content.decode() + ticket.comments.last().body)
+
     def test_technician_must_be_assignee_or_participant_to_act(self):
         ticket = self.create()
         note = {"body": "Nota", "visibility": "internal"}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { WikiLinkPicker, linkify } from "./WikiLinkPicker";
+import { WikiLinkPicker } from "./WikiLinkPicker";
+import { SecretText } from "./SecretText";
 import {
   actions,
   all,
@@ -179,7 +180,9 @@ export function TicketDetail({
         <div>
           <section className="panel">
             <h2>Solicitação</h2>
-            <p className="preserve">{ticket.description}</p>
+            <p className="preserve">
+              <SecretText text={ticket.description} ticketId={id} />
+            </p>
             <p className="muted">
               {ticket.requester_name} · {date(ticket.created_at)}
             </p>
@@ -231,7 +234,7 @@ export function TicketDetail({
                     {e.comment.corrects && (
                       <strong>Correção de comentário anterior: </strong>
                     )}
-                    {linkify(e.comment.body)}
+                    <SecretText text={e.comment.body} ticketId={id} />
                   </p>
                 )}
                 {files
@@ -346,7 +349,9 @@ export function TicketDetail({
                 </label>
                 <small>
                   TXT, PDF, PNG ou JPEG, até 5 MiB. Disponível somente após
-                  verificação. Não envie senhas ou dados desnecessários.
+                  verificação. Se precisar informar uma senha, escreva “senha:
+                  valor”: ela fica oculta e só é exibida a quem digitar a
+                  própria senha de acesso. Não envie dados desnecessários.
                 </small>
                 {visibility === "internal" && (
                   <label className="checkbox">

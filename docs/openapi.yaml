@@ -1937,6 +1937,45 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/v1/tickets/{ticket_id}/secrets/{secret_id}/reveal/:
+    post:
+      operationId: tickets_secrets_reveal_create
+      parameters:
+      - in: path
+        name: secret_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: ticket_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevealInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RevealInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RevealInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevealOutput'
+          description: ''
   /api/v1/tickets/{uuid}/:
     get:
       operationId: tickets_retrieve
@@ -4410,6 +4449,23 @@ components:
           maxLength: 300
       required:
       - reason
+    RevealInputRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 256
+      required:
+      - password
+    RevealOutput:
+      type: object
+      properties:
+        value:
+          type: string
+      required:
+      - value
     SlaPolicy:
       type: object
       properties:
