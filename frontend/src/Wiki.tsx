@@ -38,7 +38,13 @@ function Tags({ tags }: { tags: string[] }) {
   );
 }
 
-export function Wiki({ canEdit }: { canEdit: boolean }) {
+export function Wiki({
+  canEdit,
+  initialPage,
+}: {
+  canEdit: boolean;
+  initialPage?: string;
+}) {
   const [pages, setPages] = useState<Summary[] | null>(null);
   const [tag, setTag] = useState("");
   const [search, setSearch] = useState("");
@@ -66,6 +72,10 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (initialPage) void show(initialPage);
+  }, [initialPage]);
 
   const tags = useMemo(() => {
     const count = new Map<string, number>();

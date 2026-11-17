@@ -125,7 +125,11 @@ function CompanyBadge({ company }: { company: Company }) {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [requested, setView] = useState("portal");
+  // Links like /wiki/<id> (shared in ticket replies) open that wiki page.
+  const wikiLink = /^\/wiki\/([0-9a-f-]{36})\/?$/.exec(
+    window.location.pathname,
+  );
+  const [requested, setView] = useState(wikiLink ? "wiki" : "portal");
   const [error, setError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
   // The "Usuário" role only has the wiki (plus profile, password and help); the API enforces it.
@@ -391,7 +395,10 @@ function App() {
         ) : !user ? (
           <Auth onLogin={load} initialNotice={authNotice} />
         ) : view === "wiki" ? (
-          <Wiki canEdit={["manager", "admin"].includes(user.role)} />
+          <Wiki
+            canEdit={["manager", "admin"].includes(user.role)}
+            initialPage={wikiLink?.[1]}
+          />
         ) : view === "reports" ? (
           <Reports />
         ) : view === "admin" ? (

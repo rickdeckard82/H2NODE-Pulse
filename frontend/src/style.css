@@ -2543,3 +2543,18 @@ label.check {
 label.check input {
   width: auto;
 }
+.wiki-picker {
+  margin-bottom: 12px;
+}
+.wiki-picker-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wiki-picker-list button {
+  width: 100%;
+  text-align: left;
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { WikiLinkPicker, linkify } from "./WikiLinkPicker";
 import {
   actions,
   all,
@@ -35,6 +36,14 @@ export function TicketDetail({
   const [action, setAction] = useState("");
   const [visibility, setVisibility] = useState("public");
   const key = useRef(crypto.randomUUID());
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  function insertWikiLink(text: string) {
+    const area = bodyRef.current;
+    if (!area) return;
+    area.value = (area.value ? area.value.trimEnd() + "\n\n" : "") + text;
+    key.current = crypto.randomUUID();
+    area.focus();
+  }
   const load = useCallback(async () => {
     const [t, e, f] = await Promise.all([
       api<Ticket>(`tickets/${id}/`),
@@ -222,7 +231,7 @@ export function TicketDetail({
                     {e.comment.corrects && (
                       <strong>Correção de comentário anterior: </strong>
                     )}
-                    {e.comment.body}
+                    {linkify(e.comment.body)}
                   </p>
                 )}
                 {files
@@ -316,8 +325,17 @@ export function TicketDetail({
                 )}
                 <label>
                   Mensagem
-                  <textarea name="body" required rows={4} maxLength={8000} />
+                  <textarea
+                    name="body"
+                    ref={bodyRef}
+                    required
+                    rows={4}
+                    maxLength={8000}
+                  />
                 </label>
+                {support && engaged && (
+                  <WikiLinkPicker onPick={insertWikiLink} />
+                )}
                 <label>
                   Anexo opcional
                   <input
