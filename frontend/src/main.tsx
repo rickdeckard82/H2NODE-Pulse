@@ -158,6 +158,27 @@ function App() {
   useEffect(load, []);
   useEffect(() => {
     if (!user) return;
+    const expired = () => {
+      setAuthNotice("Sua sessão expirou. Entre novamente.");
+      setUser(null);
+      setView("portal");
+    };
+    // Also notice an expired session while the tab sat idle, not only on the next click.
+    const check = () => {
+      if (document.visibilityState === "visible")
+        api<User>("auth/me/").catch(() => undefined);
+    };
+    const timer = window.setInterval(check, 60_000);
+    window.addEventListener("pulse:session-expired", expired);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("pulse:session-expired", expired);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [user]);
+  useEffect(() => {
+    if (!user) return;
     const refresh = () => {
       api<Company>("settings/company/")
         .then(setCompany)

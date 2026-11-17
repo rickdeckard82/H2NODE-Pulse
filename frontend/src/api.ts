@@ -157,6 +157,14 @@ export async function api<T>(
   });
   const data =
     response.status === 204 ? {} : await response.json().catch(() => ({}));
+  // Expired or revoked session: the app returns to the login screen. Ignored while
+  // signed out, so wrong-password answers during login are unaffected.
+  if (
+    response.status === 401 ||
+    (response.status === 403 &&
+      /credenciais de autentica/i.test(String(data.detail ?? "")))
+  )
+    window.dispatchEvent(new Event("pulse:session-expired"));
   if (!response.ok)
     throw new ApiError(
       response.status,
