@@ -2520,6 +2520,22 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/wiki/departments/:
+    get:
+      operationId: wiki_departments_list
+      tags:
+      - wiki
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupOption'
+          description: ''
   /api/v1/wiki/files/:
     post:
       operationId: wiki_files_create
@@ -3484,6 +3500,12 @@ components:
             type: object
             additionalProperties: {}
           readOnly: true
+        departments:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         author_name:
           type: string
           readOnly: true
@@ -3506,6 +3528,7 @@ components:
       - author_name
       - body
       - created_at
+      - departments
       - groups
       - id
       - tags
@@ -3535,6 +3558,11 @@ components:
           items:
             type: integer
           maxItems: 50
+        departments:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
       required:
       - body
       - title
@@ -3556,6 +3584,12 @@ components:
             type: object
             additionalProperties: {}
           readOnly: true
+        departments:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         author_name:
           type: string
           readOnly: true
@@ -3570,6 +3604,7 @@ components:
       required:
       - author_name
       - created_at
+      - departments
       - groups
       - id
       - tags
@@ -4076,6 +4111,11 @@ components:
             maxLength: 30
           maxItems: 5
         groups:
+          type: array
+          items:
+            type: integer
+          maxItems: 50
+        departments:
           type: array
           items:
             type: integer

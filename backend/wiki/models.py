@@ -23,6 +23,11 @@ class WikiPage(models.Model):
     groups = models.ManyToManyField(
         "core.SupportGroup", through="WikiPageGroup", related_name="wiki_pages", blank=True
     )
+    # Same rule for areas (departments), which is how collaborators belong to the audience:
+    # they cannot be members of support groups.
+    departments = models.ManyToManyField(
+        "core.Department", through="WikiPageDepartment", related_name="wiki_pages", blank=True
+    )
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(default=timezone.now, editable=False)
 
@@ -36,6 +41,16 @@ class WikiPageGroup(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["page", "group"], name="wiki_page_group")]
+
+
+class WikiPageDepartment(models.Model):
+    page = models.ForeignKey(WikiPage, on_delete=models.CASCADE)
+    department = models.ForeignKey("core.Department", on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["page", "department"], name="wiki_page_department")
+        ]
 
 
 class WikiFile(models.Model):

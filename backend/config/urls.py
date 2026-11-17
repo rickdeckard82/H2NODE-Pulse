@@ -38,6 +38,7 @@ router.register("settings/sla-policies", reports.SlaPolicyViewSet, basename="sla
 urlpatterns = [
     path("api/v1/integrations/google-chat/events/", ChatEventsView.as_view()),
     path("api/v1/wiki/", wiki.PageListView.as_view()),
+    path("api/v1/wiki/departments/", wiki.DepartmentListView.as_view()),
     path("api/v1/wiki/groups/", wiki.GroupListView.as_view()),
     path("api/v1/wiki/files/", wiki_files.FileUploadView.as_view()),
     path("api/v1/wiki/files/<uuid:file_id>/", wiki_files.FileView.as_view()),

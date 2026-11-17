@@ -14,6 +14,7 @@ type Summary = {
   title: string;
   tags: string[];
   groups: { id: number; name: string }[];
+  departments: { id: number; name: string }[];
   author_name: string;
   created_at: string;
   updated_at: string;
@@ -49,11 +50,16 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
   const [draft, setDraft] = useState("");
   const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
+  const [areas, setAreas] = useState<{ id: number; name: string }[]>([]);
+  const [pickedAreas, setPickedAreas] = useState<number[]>([]);
   useEffect(() => {
-    if (canEdit)
-      api<{ id: number; name: string }[]>("wiki/groups/")
-        .then(setGroups)
-        .catch(() => setGroups([]));
+    if (!canEdit) return;
+    api<{ id: number; name: string }[]>("wiki/groups/")
+      .then(setGroups)
+      .catch(() => setGroups([]));
+    api<{ id: number; name: string }[]>("wiki/departments/")
+      .then(setAreas)
+      .catch(() => setAreas([]));
   }, [canEdit]);
 
   const load = useCallback(async () => {
@@ -104,6 +110,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
         .map((t) => t.trim())
         .filter(Boolean),
       groups: picked,
+      departments: pickedAreas,
     };
     try {
       const saved =
@@ -145,6 +152,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
             setOpen(null);
             setDraft("");
             setPicked([]);
+            setPickedAreas([]);
             setEditing("new");
           }}
         >
@@ -206,7 +214,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
             <input name="tags" defaultValue={page?.tags.join(", ")} />
           </label>
           <fieldset className="wiki-groups">
-            <legend>Visível para os grupos</legend>
+            <legend>Visível para os grupos (técnicos e gestores)</legend>
             {groups.map((g) => (
               <label key={g.id} className="check">
                 <input
@@ -223,9 +231,30 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
                 {g.name}
               </label>
             ))}
+          </fieldset>
+          <fieldset className="wiki-groups">
+            <legend>Visível para as áreas (colaboradores)</legend>
+            {areas.map((d) => (
+              <label key={d.id} className="check">
+                <input
+                  type="checkbox"
+                  checked={pickedAreas.includes(d.id)}
+                  onChange={(e) =>
+                    setPickedAreas(
+                      e.target.checked
+                        ? [...pickedAreas, d.id]
+                        : pickedAreas.filter((id) => id !== d.id),
+                    )
+                  }
+                />
+                {d.name}
+              </label>
+            ))}
             <small className="field-hint">
-              Sem nenhum grupo marcado, a página fica visível para todos.
-              Gestores e administradores sempre veem todas as páginas.
+              Sem grupo nem área marcados, a página fica visível para todos. Com
+              marcações, só veem quem é membro de um grupo marcado ou pertence a
+              uma área marcada. Gestores e administradores sempre veem todas as
+              páginas.
             </small>
           </fieldset>
           <p className="editor-label">Conteúdo</p>
@@ -259,8 +288,8 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
         <h2>{open.title}</h2>
         <p className="muted">
           <Tags tags={open.tags} />{" "}
-          {open.groups.length > 0 &&
-            `🔒 ${open.groups.map((g) => g.name).join(", ")} · `}
+          {open.groups.length + open.departments.length > 0 &&
+            `🔒 ${[...open.groups, ...open.departments].map((g) => g.name).join(", ")} · `}
           {open.author_name} · {date(open.created_at)}
           {open.updated_by_name &&
             ` · editado por ${open.updated_by_name} em ${date(open.updated_at)}`}
@@ -272,6 +301,7 @@ export function Wiki({ canEdit }: { canEdit: boolean }) {
               onClick={() => {
                 setDraft(open.body);
                 setPicked(open.groups.map((g) => g.id));
+                setPickedAreas(open.departments.map((d) => d.id));
                 setEditing(open);
               }}
             >

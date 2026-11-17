@@ -10,9 +10,9 @@ from rest_framework.views import APIView
 
 from core import identity
 from core.identity_views import NoStoreMixin, locked_actor
-from core.models import Membership, SupportGroup, User
+from core.models import Department, Membership, SupportGroup, User
 from core.serializers import StrictSerializer
-from wiki.models import WikiPage, WikiPageGroup
+from wiki.models import WikiPage, WikiPageDepartment, WikiPageGroup
 
 EDITORS = {User.Role.MANAGER, User.Role.ADMIN}
 
@@ -26,6 +26,13 @@ class PageInput(StrictSerializer):
     groups = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(
             queryset=SupportGroup.objects.filter(is_active=True)
+        ),
+        max_length=50,
+        required=False,
+    )
+    departments = serializers.ListField(
+        child=serializers.PrimaryKeyRelatedField(
+            queryset=Department.objects.filter(is_active=True)
         ),
         max_length=50,
         required=False,
@@ -44,15 +51,28 @@ class PageInput(StrictSerializer):
 class PageSummary(serializers.ModelSerializer):
     id = serializers.UUIDField(source="uuid", read_only=True)
     groups = serializers.SerializerMethodField()
+    departments = serializers.SerializerMethodField()
 
     def get_groups(self, obj) -> list[dict]:
         return [{"id": g.pk, "name": g.name} for g in obj.groups.all()]
+
+    def get_departments(self, obj) -> list[dict]:
+        return [{"id": d.pk, "name": d.name} for d in obj.departments.all()]
 
     author_name = serializers.CharField(source="author.first_name", read_only=True)
 
     class Meta:
         model = WikiPage
-        fields = ["id", "title", "tags", "groups", "author_name", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "title",
+            "tags",
+            "groups",
+            "departments",
+            "author_name",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = fields
 
 
@@ -67,23 +87,37 @@ class PageDetail(PageSummary):
 
 
 def pages(user):
-    """Pages this user may see: unrestricted ones, or those of a group they belong to.
+    """Pages this user may see: unrestricted ones, or those of a group they belong to or
+    of their own area (department).
 
     Managers and administrators (the editors) see everything.
     """
-    query = WikiPage.objects.select_related("author", "updated_by").prefetch_related("groups")
+    query = WikiPage.objects.select_related("author", "updated_by").prefetch_related(
+        "groups", "departments"
+    )
     if user.role in EDITORS:
         return query
     mine = Membership.objects.filter(user=user, group__is_active=True).values("group")
-    return query.filter(Q(groups__isnull=True) | Q(wikipagegroup__group__in=mine)).distinct()
+    return query.filter(
+        Q(groups__isnull=True, departments__isnull=True)
+        | Q(wikipagegroup__group__in=mine)
+        | Q(wikipagedepartment__department=user.department_id)
+    ).distinct()
 
 
 def set_groups(page, data):
+    """Replace the page audience (groups and areas) when the request carries them."""
     if "groups" in data:
         groups = data.pop("groups")
         page.groups.clear()
         WikiPageGroup.objects.bulk_create(
             WikiPageGroup(page=page, group=g) for g in dict.fromkeys(groups)
+        )
+    if "departments" in data:
+        departments = data.pop("departments")
+        page.departments.clear()
+        WikiPageDepartment.objects.bulk_create(
+            WikiPageDepartment(page=page, department=d) for d in dict.fromkeys(departments)
         )
     return data
 
@@ -102,6 +136,15 @@ class GroupListView(NoStoreMixin, APIView):
         return Response([{"id": g.pk, "name": g.name} for g in rows])
 
 
+class DepartmentListView(NoStoreMixin, APIView):
+    @extend_schema(responses=GroupOption(many=True))
+    def get(self, request):
+        if request.user.role not in EDITORS:
+            raise PermissionDenied("Somente gestores e administradores editam a wiki.")
+        rows = Department.objects.filter(is_active=True).order_by("name")
+        return Response([{"id": d.pk, "name": d.name} for d in rows])
+
+
 class PageListView(NoStoreMixin, APIView):
     """Every signed-in user reads; only managers and administrators write."""
 
@@ -114,14 +157,18 @@ class PageListView(NoStoreMixin, APIView):
     def post(self, request):
         actor = editor(request)
         data = validated(request)
-        groups = data.pop("groups", [])
+        audience = {k: data.pop(k, []) for k in ("groups", "departments")}
         page = WikiPage.objects.create(author=actor, **data)
-        set_groups(page, {"groups": groups})
+        set_groups(page, dict(audience))
         identity.audit(
             actor,
             "wiki.created",
             page.uuid,
-            {"title": page.title, "groups": [g.pk for g in groups]},
+            {
+                "title": page.title,
+                "groups": [g.pk for g in audience["groups"]],
+                "departments": [d.pk for d in audience["departments"]],
+            },
         )
         return Response(PageDetail(page).data, status=201)
 
@@ -137,7 +184,7 @@ class PageView(NoStoreMixin, APIView):
         actor = editor(request)
         page = get_object_or_404(pages(actor).select_for_update(of=("self",)), uuid=page_id)
         data = validated(request)
-        changed = "groups" in data
+        changed = "groups" in data or "departments" in data
         set_groups(page, data)
         for field, value in data.items():
             setattr(page, field, value)
@@ -146,6 +193,7 @@ class PageView(NoStoreMixin, APIView):
         details = {"title": page.title}
         if changed:
             details["groups"] = [g.pk for g in page.groups.all()]
+            details["departments"] = [d.pk for d in page.departments.all()]
         identity.audit(actor, "wiki.updated", page.uuid, details)
         return Response(PageDetail(page).data)
 

@@ -154,6 +154,38 @@ class GroupVisibilityTests(WikiTests):
         self.assertEqual(self.client_as(self.tech).get("/api/v1/wiki/groups/").status_code, 403)
         self.assertEqual(len(self.client_as(self.manager).get("/api/v1/wiki/groups/").json()), 2)
 
+    def test_collaborator_sees_page_of_own_area_only(self):
+        from core.models import Department
+
+        other = Department.objects.create(name="Outra área sintética")
+        mine = self.call(
+            self.manager,
+            "post",
+            "/api/v1/wiki/",
+            {"title": "Da área", "body": "X", "departments": [self.department.pk]},
+        )
+        self.assertEqual(mine.status_code, 201, mine.content)
+        self.assertEqual(mine.json()["departments"][0]["id"], self.department.pk)
+        self.call(
+            self.manager,
+            "post",
+            "/api/v1/wiki/",
+            {"title": "De outra", "body": "Y", "departments": [other.pk]},
+        )
+        self.call(self.manager, "post", "/api/v1/wiki/", {"title": "Aberta", "body": "Z"})
+        titles = sorted(p["title"] for p in self.client_as(self.owner).get("/api/v1/wiki/").json())
+        self.assertEqual(titles, ["Aberta", "Da área"])
+        self.assertEqual(
+            self.client_as(self.manager).get("/api/v1/wiki/departments/").status_code, 200
+        )
+        self.assertEqual(
+            self.client_as(self.owner).get("/api/v1/wiki/departments/").status_code, 403
+        )
+        done = self.call(
+            self.manager, "patch", f"/api/v1/wiki/{mine.json()['id']}/", {"departments": []}
+        )
+        self.assertEqual(done.json()["departments"], [])
+
     def test_deactivated_group_does_not_publish_the_page(self):
         page = WikiPage.objects.create(title="R", body="B", author=self.manager)
         page.groups.add(self.group)
