@@ -74,6 +74,16 @@ remote_sets() { # conjuntos completos (têm SHA256SUMS), mais antigos primeiro
   rm -f "$rc"
 }
 
+remote_size() { # tamanho via comando SIZE do FTP; cai para a listagem; vazio se o servidor não informar
+  local name=$1 f=$2 size
+  size=$(ftp "cd \"$FTP_DIR/$name\"; quote SIZE $f" 2>/dev/null | tr -d '\r' | awk '$1 == 213 {print $2; exit}') || true
+  if [ -z "$size" ]; then
+    size=$(ftp "cd \"$FTP_DIR/$name\"; ls" 2>/dev/null | tr -d '\r' \
+      | awk -v f="$f" '$NF == f { print $(NF-4) }' | grep -E '^[0-9]+$' | head -n1) || true
+  fi
+  echo "$size"
+}
+
 do_backup() {
   local ts name dir
   ts=$(date -u +%Y%m%dT%H%M%SZ); name=pulse-$ts; dir=$WORK/$name
@@ -99,14 +109,15 @@ do_backup() {
   ftp "mkdir -p -f \"$FTP_DIR/$name\"; cd \"$FTP_DIR/$name\"; lcd \"$dir\"; \
 put db.dump.gpg attachments.tar.gpg config.tar.gpg backup.info; put SHA256SUMS"
   log "conferindo tamanhos no servidor"
-  local remote f want got
-  remote=$(ftp "cd \"$FTP_DIR/$name\"; ls")
+  local f want got
   for f in db.dump.gpg attachments.tar.gpg config.tar.gpg SHA256SUMS; do
     want=$(stat -c %s "$dir/$f")
-    # Aceita listagem estilo Unix e estilo DOS/IIS: o nome é o último campo e o tamanho é um dos anteriores.
-    printf '%s\n' "$remote" | tr -d '\r' | awk -v f="$f" -v s="$want" \
-      '$NF==f { for (i = 1; i < NF; i++) if ($i == s) ok = 1 } END { exit !ok }' \
-      || { log "listagem remota: $(printf '%s' "$remote" | grep -F "$f" | head -n1)"; die "tamanho remoto de $f não confere ($want bytes)"; }
+    got=$(remote_size "$name" "$f")
+    if [ -z "$got" ]; then
+      log "AVISO: o servidor FTP não informou o tamanho de $f; rode 'verify' para conferir a integridade"
+    elif [ "$got" != "$want" ]; then
+      die "tamanho remoto de $f não confere (local $want, remoto $got bytes)"
+    fi
   done
   log "backup $name concluído"
   date -u +%s >"$WORK/last_success"
