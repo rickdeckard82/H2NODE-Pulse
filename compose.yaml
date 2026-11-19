@@ -98,6 +98,8 @@ services:
 
   api:
     <<: *backend
+    # Saída somente para verificar o Cloudflare Turnstile (siteverify). Sem ela o login falha.
+    networks: [private, turnstile_egress]
     volumes: [attachments:/var/lib/pulse/attachments]
     restart: unless-stopped
     depends_on:
@@ -193,6 +195,7 @@ services:
 networks:
   edge: {}
   mail_egress: {}
+  turnstile_egress: {}
   scanner_updates: {}
   private:
     internal: true
