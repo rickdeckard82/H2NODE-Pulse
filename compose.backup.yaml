@@ -1,0 +1,74 @@
+# Opt-in: backup cifrado para FTP/FTPS. Uso:
+#   docker compose -f compose.yaml [-f compose.production.yaml] -f compose.backup.yaml up -d --build backup
+# Requer secrets/backup_passphrase.txt e secrets/backup_ftp_password.txt (ver docs/BACKUP.md).
+x-backup: &backup
+  image: pulse-services-backup:0.1.0
+  build:
+    context: .
+    dockerfile: infra/backup/Dockerfile
+  environment: &backup-env
+    POSTGRES_HOST: db
+    POSTGRES_USER: pulse
+    POSTGRES_DB: ${POSTGRES_DB:-pulse}
+    POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    BACKUP_PASSPHRASE_FILE: /run/secrets/backup_passphrase
+    BACKUP_FTP_PASSWORD_FILE: /run/secrets/backup_ftp_password
+    BACKUP_FTP_HOST: ${BACKUP_FTP_HOST:?Defina BACKUP_FTP_HOST}
+    BACKUP_FTP_PORT: ${BACKUP_FTP_PORT:-21}
+    BACKUP_FTP_USER: ${BACKUP_FTP_USER:?Defina BACKUP_FTP_USER}
+    BACKUP_FTP_DIR: ${BACKUP_FTP_DIR:-/pulse-backups}
+    BACKUP_FTP_TLS: ${BACKUP_FTP_TLS:-true}
+    BACKUP_FTP_VERIFY_CERT: ${BACKUP_FTP_VERIFY_CERT:-true}
+    BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    BACKUP_AT: ${BACKUP_AT:-03:00}
+  secrets: [postgres_password, backup_passphrase, backup_ftp_password]
+  networks: [private, backup_egress]
+  # Root só para ler secrets/ (0700 do operador) e preservar donos dos anexos; sem outras capacidades.
+  user: "0:0"
+  cap_drop: [ALL]
+  cap_add: [DAC_READ_SEARCH, CHOWN, FOWNER, DAC_OVERRIDE]
+  security_opt: [no-new-privileges:true]
+  read_only: true
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+  mem_limit: 512m
+  cpus: 1.0
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+services:
+  backup:
+    <<: *backup
+    volumes:
+      - attachments:/data/attachments:ro
+      - ./secrets:/backup-src/secrets:ro
+      - ./.env:/backup-src/.env:ro
+      - backup_work:/work
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+
+  # Verificação e restauração sob demanda: docker compose ... run --rm backup-tools verify|list|restore
+  backup-tools:
+    <<: *backup
+    profiles: [tools]
+    restart: "no"
+    environment:
+      <<: *backup-env
+      CONFIRM_RESTORE: ${CONFIRM_RESTORE:-no}
+    volumes:
+      - attachments:/data/attachments
+      - backup_work:/work
+      - ./work/restore:/restore-out
+
+networks:
+  backup_egress: {}
+
+volumes:
+  backup_work:
+
+secrets:
+  backup_passphrase:
+    file: ./secrets/backup_passphrase.txt
+  backup_ftp_password:
+    file: ./secrets/backup_ftp_password.txt

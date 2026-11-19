@@ -28,7 +28,7 @@ Não passar overrides dev junto de produção. O proxy usa esquema fixo HTTPS em
 
 ## Atualização e dados
 
-Backup e teste de restauração são requisitos da homologação futura. Antes de qualquer migração sobre dados reais, criar backup externo cifrado e verificar restauração. Não inventar rollback de schema: voltar imagem só é seguro quando a migração é compatível. `docker compose down` preserva volumes. Não usar `down -v` nem remover volumes sem autorização explícita.
+Backup cifrado via FTP e restauração estão em [BACKUP.md](BACKUP.md). O teste de restauração continua sendo requisito da homologação. Antes de qualquer migração sobre dados reais, criar backup externo cifrado e verificar restauração. Não inventar rollback de schema: voltar imagem só é seguro quando a migração é compatível. `docker compose down` preserva volumes. Não usar `down -v` nem remover volumes sem autorização explícita.
 
 O script inicial da role proprietária `pulse` roda apenas quando o volume está
 vazio. Sua senha e a do administrador exigem rotação explícita no PostgreSQL.
