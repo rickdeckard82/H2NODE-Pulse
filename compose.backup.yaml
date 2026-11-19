@@ -58,6 +58,8 @@ services:
       CONFIRM_RESTORE: ${CONFIRM_RESTORE:-no}
     volumes:
       - attachments:/data/attachments
+      - ./secrets:/backup-src/secrets:ro
+      - ./.env:/backup-src/.env:ro
       - backup_work:/work
       - ./work/restore:/restore-out
 
