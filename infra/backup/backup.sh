@@ -103,8 +103,10 @@ put db.dump.gpg attachments.tar.gpg config.tar.gpg backup.info; put SHA256SUMS"
   remote=$(ftp "cd \"$FTP_DIR/$name\"; ls")
   for f in db.dump.gpg attachments.tar.gpg config.tar.gpg SHA256SUMS; do
     want=$(stat -c %s "$dir/$f")
-    printf '%s\n' "$remote" | awk -v f="$f" -v s="$want" '$NF==f && $5==s {ok=1} END{exit !ok}' \
-      || die "tamanho remoto de $f não confere ($want bytes)"
+    # Aceita listagem estilo Unix e estilo DOS/IIS: o nome é o último campo e o tamanho é um dos anteriores.
+    printf '%s\n' "$remote" | tr -d '\r' | awk -v f="$f" -v s="$want" \
+      '$NF==f { for (i = 1; i < NF; i++) if ($i == s) ok = 1 } END { exit !ok }' \
+      || { log "listagem remota: $(printf '%s' "$remote" | grep -F "$f" | head -n1)"; die "tamanho remoto de $f não confere ($want bytes)"; }
   done
   log "backup $name concluído"
   date -u +%s >"$WORK/last_success"
