@@ -152,6 +152,7 @@ export function Auth({
             const data: Record<string, unknown> = Object.fromEntries(
               new FormData(e.currentTarget),
             );
+            delete data["cf-turnstile-response"];
             if (needsTs) {
               if (!tsToken) {
                 setError("Conclua a verificação de segurança.");
