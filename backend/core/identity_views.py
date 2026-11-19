@@ -16,7 +16,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from core import identity
+from core import identity, turnstile
 from core.authentication import IsIdentityAdmin
 from core.models import AllowedDomain, Department, Membership, SupportGroup, User
 from core.serializers import (
@@ -44,6 +44,7 @@ from core.serializers import (
 )
 
 MAIL_RESPONSE_SECONDS = 0.25
+TURNSTILE_ACTIONS = {"login", "register", "forgot"}
 
 
 class NoStoreMixin:
@@ -59,7 +60,12 @@ class CsrfView(NoStoreMixin, generics.GenericAPIView):
 
     @extend_schema(responses=IdentityResult, auth=[])
     def get(self, request):
-        return Response({"csrfToken": get_token(request)})
+        return Response(
+            {
+                "csrfToken": get_token(request),
+                "turnstileSiteKey": settings.TURNSTILE_SITE_KEY if settings.TURNSTILE_ENABLED else "",
+            }
+        )
 
 
 @method_decorator(csrf_protect, name="dispatch")
@@ -77,9 +83,16 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
         }
     )
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
+        raw = request.data
+        token = None
+        if self.action in TURNSTILE_ACTIONS and isinstance(raw, dict):
+            raw = {k: v for k, v in raw.items() if k != "turnstile_token"}
+            token = request.data.get("turnstile_token")
+        serializer = self.get_serializer(data=raw)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if self.action in TURNSTILE_ACTIONS:
+            turnstile.verify(token, request.META.get("REMOTE_ADDR"))
         # REMOTE_ADDR is deliberately used until the trusted proxy chain is homologated.
         identity.rate_limit("source", request.META.get("REMOTE_ADDR", "unknown"), 500)
         key = data.get("email") or str(request.session.get("pending_identity", {}).get("id", ""))

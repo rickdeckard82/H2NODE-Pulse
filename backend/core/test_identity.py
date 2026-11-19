@@ -1115,3 +1115,41 @@ class ConcurrencyTests(HTTPHelpers, TransactionTestCase):
         self.assertEqual(
             AuthRateBucket.objects.get(key=identity.digest("concurrency:same")).count, 5
         )
+
+
+@override_settings(TURNSTILE_ENABLED=True, TURNSTILE_SITE_KEY="site", TURNSTILE_SECRET_KEY="sec")
+class TurnstileTests(TestCase):
+    def post(self, data):
+        client = Client(enforce_csrf_checks=True)
+        csrf = client.get("/api/v1/auth/csrf/").json()
+        self.assertEqual(csrf["turnstileSiteKey"], "site")
+        return client.post(
+            "/api/v1/auth/login/",
+            data,
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf["csrfToken"],
+        )
+
+    def test_missing_token_rejected(self):
+        response = self.post({"email": "a@x.test", "password": "x"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_failed_verification_rejected(self):
+        with patch("core.turnstile.urllib.request.urlopen", side_effect=OSError):
+            response = self.post({"email": "a@x.test", "password": "x", "turnstile_token": "t"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_valid_token_reaches_login(self):
+        class Ok:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self, *a):
+                return b'{"success": true}'
+
+        with patch("core.turnstile.urllib.request.urlopen", return_value=Ok()):
+            response = self.post({"email": "a@x.test", "password": "x", "turnstile_token": "t"})
+        self.assertEqual(response.status_code, 403)

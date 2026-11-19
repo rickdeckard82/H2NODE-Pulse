@@ -1,5 +1,86 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
+type TurnstileApi = {
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      callback: (token: string) => void;
+      "expired-callback": () => void;
+      "error-callback": () => void;
+    },
+  ) => string;
+  reset: (id?: string) => void;
+  remove: (id?: string) => void;
+};
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+const TURNSTILE_MODES = ["login", "register", "forgot"];
+const TURNSTILE_SRC =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+function loadTurnstile(): Promise<TurnstileApi> {
+  return new Promise((resolve, reject) => {
+    if (window.turnstile) return resolve(window.turnstile);
+    let script = document.querySelector<HTMLScriptElement>(
+      `script[src="${TURNSTILE_SRC}"]`,
+    );
+    if (!script) {
+      script = document.createElement("script");
+      script.src = TURNSTILE_SRC;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+    script.addEventListener("load", () =>
+      window.turnstile ? resolve(window.turnstile) : reject(new Error("x")),
+    );
+    script.addEventListener("error", () => reject(new Error("x")));
+  });
+}
+function TurnstileWidget({
+  siteKey,
+  onToken,
+  resetSignal,
+}: {
+  siteKey: string;
+  onToken: (token: string) => void;
+  resetSignal: number;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const widget = useRef<string | undefined>(undefined);
+  const cb = useRef(onToken);
+  useEffect(() => {
+    cb.current = onToken;
+  });
+  useEffect(() => {
+    let cancelled = false;
+    loadTurnstile()
+      .then((t) => {
+        if (cancelled || !box.current) return;
+        widget.current = t.render(box.current, {
+          sitekey: siteKey,
+          callback: (token) => cb.current(token),
+          "expired-callback": () => cb.current(""),
+          "error-callback": () => cb.current(""),
+        });
+      })
+      .catch(() => cb.current(""));
+    return () => {
+      cancelled = true;
+      if (widget.current !== undefined)
+        window.turnstile?.remove(widget.current);
+    };
+  }, [siteKey]);
+  useEffect(() => {
+    if (resetSignal && widget.current !== undefined) {
+      cb.current("");
+      window.turnstile?.reset(widget.current);
+    }
+  }, [resetSignal]);
+  return <div ref={box} className="turnstile" />;
+}
 const modes: Record<string, string> = {
   login: "Entrar",
   register: "Criar conta",
@@ -20,6 +101,16 @@ export function Auth({
   const [notice, setNotice] = useState(initialNotice);
   const [busy, setBusy] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [siteKey, setSiteKey] = useState("");
+  const [tsToken, setTsToken] = useState("");
+  const [tsReset, setTsReset] = useState(0);
+  useEffect(() => {
+    fetch("/api/v1/auth/csrf/", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setSiteKey(d.turnstileSiteKey || ""))
+      .catch(() => undefined);
+  }, []);
+  const needsTs = !!siteKey && !mfa && TURNSTILE_MODES.includes(mode);
   return (
     <div className="auth-layout">
       <section className="welcome">
@@ -61,6 +152,14 @@ export function Auth({
             const data: Record<string, unknown> = Object.fromEntries(
               new FormData(e.currentTarget),
             );
+            if (needsTs) {
+              if (!tsToken) {
+                setError("Conclua a verificação de segurança.");
+                setBusy(false);
+                return;
+              }
+              data.turnstile_token = tsToken;
+            }
             if (mfa) data.remember_device = data.remember_device === "on";
             try {
               const result = await api<{
@@ -97,6 +196,7 @@ export function Auth({
               setError((err as Error).message);
             } finally {
               setBusy(false);
+              if (needsTs) setTsReset((n) => n + 1);
             }
           }}
         >
@@ -180,7 +280,14 @@ export function Auth({
               )}
             </>
           )}
-          <button disabled={busy}>
+          {needsTs && (
+            <TurnstileWidget
+              siteKey={siteKey}
+              onToken={setTsToken}
+              resetSignal={tsReset}
+            />
+          )}
+          <button disabled={busy || (needsTs && !tsToken)}>
             {busy ? "Aguarde…" : mfa ? "Verificar código" : modes[mode]}
           </button>
         </form>

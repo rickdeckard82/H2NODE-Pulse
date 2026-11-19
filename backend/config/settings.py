@@ -78,6 +78,17 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
 ]
 IDENTITY_RATE_LIMIT = 10
+# Cloudflare Turnstile: ativo somente quando as duas chaves estão configuradas.
+TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "").strip()
+_turnstile_file = os.environ.get("TURNSTILE_SECRET_KEY_FILE")
+TURNSTILE_SECRET_KEY = (
+    Path(_turnstile_file).read_text().strip()
+    if _turnstile_file
+    else os.environ.get("TURNSTILE_SECRET_KEY", "").strip()
+)
+TURNSTILE_ENABLED = bool(TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY)
+if ENVIRONMENT == "production" and bool(TURNSTILE_SITE_KEY) != bool(TURNSTILE_SECRET_KEY):
+    raise ImproperlyConfigured("Configure TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY together")
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
