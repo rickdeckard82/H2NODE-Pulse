@@ -7,7 +7,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import transaction
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
@@ -20,7 +20,7 @@ from core import identity
 from core.identity_views import NoStoreMixin
 from tickets.attachments import scan
 from wiki.models import WikiFile
-from wiki.views import editor
+from wiki.views import EDITORS, editor, pages
 
 LIMIT = 5 * 1024 * 1024
 OFFICE = "application/vnd.openxmlformats-officedocument."
@@ -128,6 +128,14 @@ class FileView(NoStoreMixin, APIView):
     @extend_schema(responses={(200, "application/octet-stream"): bytes})
     def get(self, request, file_id):
         item = get_object_or_404(WikiFile, pk=file_id)
+        # Readers get a file only through a page they can see; editors see every page anyway.
+        if (
+            request.user.role not in EDITORS
+            and not pages(request.user)
+            .filter(body__contains=f"/api/v1/wiki/files/{item.pk}/")
+            .exists()
+        ):
+            raise Http404
         try:
             stream = path_for(item.pk).open("rb")
         except FileNotFoundError:

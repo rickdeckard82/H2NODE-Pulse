@@ -31,6 +31,7 @@ from tickets.models import (
     Attachment,
     Category,
     Comment,
+    HiddenSecret,
     IntegrationCheck,
     NotificationAttempt,
     NotificationDelivery,
@@ -47,6 +48,7 @@ from tickets.notifications import (
     refresh_chat_certs,
 )
 from tickets.retention import run_retention
+from tickets.secrets import redact, store
 from tickets.tests import TicketHelpers
 
 EVENTS = "/api/v1/integrations/google-chat/events/"
@@ -593,9 +595,11 @@ class RetentionTests(TicketHelpers, TestCase):
 
     def test_expired_ticket_is_erased_with_every_trace_and_file(self):
         ticket = self.closed_ticket()
+        body, hidden = redact("SEGREDO senha: x")
         comment = Comment.objects.create(
-            ticket=ticket, actor=self.owner, body="SEGREDO", visibility="public"
+            ticket=ticket, actor=self.owner, body=body, visibility="public"
         )
+        store(ticket, hidden, comment)
         NotificationRead.objects.create(user=self.tech, event=ticket.events.first())
         with tempfile.TemporaryDirectory() as folder, override_settings(ATTACHMENT_ROOT=folder):
             key = uuid.uuid4()
@@ -614,7 +618,14 @@ class RetentionTests(TicketHelpers, TestCase):
             self.assertFalse(stored.exists())
         self.assertEqual(result["removed"]["tickets"], 1)
         self.assertFalse(Ticket.objects.filter(pk=ticket.pk).exists())
-        for model in [Comment, TicketEvent, Attachment, NotificationOutbox, NotificationRead]:
+        for model in [
+            Comment,
+            TicketEvent,
+            Attachment,
+            NotificationOutbox,
+            NotificationRead,
+            HiddenSecret,
+        ]:
             self.assertFalse(model.objects.exists(), model)
         self.assertEqual(self.owner.pk, type(self.owner).objects.get(pk=self.owner.pk).pk)
 

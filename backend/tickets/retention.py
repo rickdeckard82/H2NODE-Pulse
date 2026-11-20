@@ -23,6 +23,7 @@ from tickets.models import (
     AuditEvent,
     Category,
     Comment,
+    HiddenSecret,
     IdempotencyRecord,
     IntegrationCheck,
     NotificationAttempt,
@@ -112,6 +113,7 @@ def purge_ticket(ticket):
         wipe(AuditEvent.objects.filter(event__ticket=ticket))
         wipe(NotificationRead.objects.filter(event__ticket=ticket))
         wipe(TicketEvent.objects.filter(ticket=ticket))
+        wipe(HiddenSecret.objects.filter(ticket=ticket))
         wipe(Comment.objects.filter(ticket=ticket))
         wipe(Ticket.participants.through.objects.filter(ticket=ticket))
         wipe(Ticket.objects.filter(pk=ticket.pk))

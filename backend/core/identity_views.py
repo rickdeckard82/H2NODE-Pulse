@@ -42,6 +42,7 @@ from core.serializers import (
     UserSerializer,
     UserUpdateInput,
 )
+from tickets.client_ip import client_ip
 
 MAIL_RESPONSE_SECONDS = 0.25
 TURNSTILE_ACTIONS = {"login", "register", "forgot"}
@@ -63,7 +64,9 @@ class CsrfView(NoStoreMixin, generics.GenericAPIView):
         return Response(
             {
                 "csrfToken": get_token(request),
-                "turnstileSiteKey": settings.TURNSTILE_SITE_KEY if settings.TURNSTILE_ENABLED else "",
+                "turnstileSiteKey": settings.TURNSTILE_SITE_KEY
+                if settings.TURNSTILE_ENABLED
+                else "",
             }
         )
 
@@ -91,13 +94,14 @@ class AuthActionView(NoStoreMixin, generics.GenericAPIView):
         serializer = self.get_serializer(data=raw)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        # Behind the proxies REMOTE_ADDR is the gateway, shared by everyone (TRUSTED_PROXY_COUNT).
+        source = client_ip(request) or request.META.get("REMOTE_ADDR", "unknown")
         if self.action in TURNSTILE_ACTIONS:
-            turnstile.verify(token, request.META.get("REMOTE_ADDR"))
-        # REMOTE_ADDR is deliberately used until the trusted proxy chain is homologated.
-        identity.rate_limit("source", request.META.get("REMOTE_ADDR", "unknown"), 500)
+            turnstile.verify(token, source)
+        identity.rate_limit("source", source, 500)
         key = data.get("email") or str(request.session.get("pending_identity", {}).get("id", ""))
         if not key:
-            key = request.session.session_key or request.META.get("REMOTE_ADDR", "unknown")
+            key = request.session.session_key or source
         identity.rate_limit(self.action, key, settings.IDENTITY_RATE_LIMIT)
         result = {"detail": "Se os dados forem elegíveis, enviaremos um código por e-mail."}
         if self.action in {"register", "resend", "forgot"}:
@@ -282,9 +286,7 @@ class MfaReplaceView(NoStoreMixin, generics.GenericAPIView):
             return Response(
                 {
                     "secret": raw,
-                    "uri": pyotp.TOTP(raw).provisioning_uri(
-                        user.email, issuer_name="H2NODE Pulse"
-                    ),
+                    "uri": pyotp.TOTP(raw).provisioning_uri(user.email, issuer_name="H2NODE Pulse"),
                 }
             )
         encrypted = request.session.get("replacement_secret")

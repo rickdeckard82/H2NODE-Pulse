@@ -346,7 +346,9 @@ def deliver_one():
     outbox = NotificationOutbox.objects.select_related(
         "event__ticket", "event__actor", "event__comment"
     ).get(pk=outbox_id)
-    _materialize(outbox)
+    # Once per event: recipients are re-authorized at send time by _message.
+    if not outbox.deliveries.exists():
+        _materialize(outbox)
     delivery = (
         outbox.deliveries.filter(
             status__in=["pending", "retry"], next_attempt_at__lte=timezone.now()

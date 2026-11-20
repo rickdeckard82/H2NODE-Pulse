@@ -10,11 +10,11 @@ from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
-from core.models import User
+from core.models import Department, User
 from tickets.models import Ticket
 from tickets.tests import TicketHelpers
 from wiki.files import path_for
-from wiki.models import WikiFile, WikiPage
+from wiki.models import WikiFile, WikiPage, WikiPageDepartment
 
 
 class WikiTests(TicketHelpers, TestCase):
@@ -226,6 +226,14 @@ class FileTests(TicketHelpers, TestCase):
             HTTP_X_CSRFTOKEN=csrf,
         )
 
+    def publish(self, *urls, department=None):
+        page = WikiPage.objects.create(
+            title="Guia", body=" ".join(f"[arquivo]({url})" for url in urls), author=self.manager
+        )
+        if department:
+            WikiPageDepartment.objects.create(page=page, department=department)
+        return page
+
     def stored(self):
         return [p for p in Path(self.temp.name).rglob("*") if p.is_file()]
 
@@ -234,12 +242,13 @@ class FileTests(TicketHelpers, TestCase):
         self.assertEqual(response.status_code, 201, response.content)
         body = response.json()
         self.assertEqual(body["url"], f"/api/v1/wiki/files/{body['id']}/")
+        pdf = self.upload(self.admin, b"%PDF-1.4 x", "guia.pdf", "application/pdf").json()
+        self.publish(body["url"], pdf["url"])
         image = self.client_as(self.owner).get(body["url"])
         self.assertEqual(image["Content-Type"], "image/png")
         self.assertTrue(image["Content-Disposition"].startswith("inline"))
         self.assertEqual(image["X-Content-Type-Options"], "nosniff")
         self.assertIn("sandbox", image["Content-Security-Policy"])
-        pdf = self.upload(self.admin, b"%PDF-1.4 x", "guia.pdf", "application/pdf").json()
         download = self.client_as(self.tech).get(pdf["url"])
         self.assertTrue(download["Content-Disposition"].startswith("attachment"))
         self.assertEqual(download["Content-Type"], "application/octet-stream")
@@ -280,8 +289,18 @@ class FileTests(TicketHelpers, TestCase):
         self.assertEqual(WikiFile.objects.count(), 0)
         self.assertEqual(self.stored(), [])
 
+    def test_reader_gets_file_only_through_a_visible_page(self):
+        url = self.upload(self.manager).json()["url"]
+        self.assertEqual(self.client_as(self.owner).get(url).status_code, 404)
+        self.publish(url, department=Department.objects.create(name="Outra área"))
+        self.assertEqual(self.client_as(self.owner).get(url).status_code, 404)
+        self.assertEqual(self.client_as(self.manager).get(url).status_code, 200)
+        self.publish(url)
+        self.assertEqual(self.client_as(self.owner).get(url).status_code, 200)
+
     def test_tampered_file_is_never_served(self):
         item = WikiFile.objects.get(pk=self.upload(self.manager).json()["id"])
+        self.publish(f"/api/v1/wiki/files/{item.pk}/")
         path_for(item.pk).write_bytes(PNG + b"x")
         self.assertEqual(
             self.client_as(self.owner).get(f"/api/v1/wiki/files/{item.pk}/").status_code, 400

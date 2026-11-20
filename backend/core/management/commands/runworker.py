@@ -36,8 +36,8 @@ class Command(BaseCommand):
                 cursor.execute("SELECT 1")
             heartbeat.touch()
             cleanup()
-            deliver_one()
-            scan_one()
+            busy = deliver_one()
+            busy = scan_one() or busy
             integration_check()
             refresh_chat_certs()
             cleanup_exports()
@@ -45,9 +45,11 @@ class Command(BaseCommand):
                 alert_breaches()
                 last_sla = time.monotonic()
             # Bounded so identity mail, scans and the heartbeat keep running under backlog.
-            for _ in range(20):
-                if stopping or not deliver_ticket_notification():
-                    break
+            sent = 0
+            while sent < 20 and not stopping and deliver_ticket_notification():
+                sent += 1
+            if busy or sent == 20:
+                continue  # Backlog: next round right away instead of sleeping.
             for _ in range(10):
                 if stopping:
                     break
