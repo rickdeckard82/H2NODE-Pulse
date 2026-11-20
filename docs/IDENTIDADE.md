@@ -163,5 +163,3 @@ Substituir o autenticador exige MFA recente: um login com dispositivo lembrado
 não cumpre esse requisito. Use **Sair e esquecer dispositivo** e faça login com
 MFA/recuperação antes da substituição. Não confundir confiança no navegador com
 confirmação de domínio corporativo ou recuperação de senha.
-
-Evidências em [ajuste-mfa-dispositivo.md](validacoes/ajuste-mfa-dispositivo.md).

@@ -164,9 +164,7 @@ banco e não substitui backup/arquivo protegido de auditoria.
 | Gerar CSV | POST `/reports/exports/` com `start` e `end` | Mesmos perfis; auditado |
 | Baixar CSV | GET `/reports/exports/<id>/` | Só o autor, por 15 minutos |
 
-Cada chamado congela a política vigente na abertura. As definições de primeira
-resposta, pausas, reabertura, coorte do período e denominadores estão em
-`docs/validacoes/etapa-06.md`. A quebra por técnico aparece para gestores e administradores.
+Cada chamado congela a política vigente na abertura. A quebra por técnico aparece para gestores e administradores.
 
 ## Senhas ocultas
 

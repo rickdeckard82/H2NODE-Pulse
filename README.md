@@ -7,12 +7,9 @@ Gestão interna de chamados de TI. Backend Django/DRF, frontend React/TypeScript
 > **Antes chamado Pulse Services.** Quem já tem uma instalação: veja
 > [docs/migracao-h2node.md](docs/migracao-h2node.md) — banco, anexos e contas continuam os mesmos.
 
-**Status:** etapas 1 a 4 aprovadas tecnicamente no escopo local: portal, console, administração e anexos privados com ClamAV implementados. Próxima etapa: e-mail e Google Chat (5). Consulte [o registro da etapa 4](docs/validacoes/etapa-04.md). Notificações externas e produção ainda não estão homologadas.
-
 ## Documentação
 
 - [Migração Pulse Services → H2NODE Pulse](docs/migracao-h2node.md)
-- [Plano e critérios por etapa](docs/PLANO_DE_EXECUCAO.md)
 - [Decisões iniciais](docs/decisoes/0001-fundacao.md)
 - [Decisões de identidade](docs/decisoes/0002-identidade.md)
 - [Operação e API de identidade](docs/IDENTIDADE.md)
@@ -50,8 +47,7 @@ Frontend em `http://localhost:5173`, API pelo proxy do Vite. Não use o override
 O startup pode provisionar o primeiro administrador via `BOOTSTRAP_ADMIN_*` no
 `.env`, sem senha padrão e sem redefinir a senha em reinícios. Depois de entrar,
 ative o MFA em **Perfil** e acesse **Administração → SMTP** e **Domínios de confiança**. Consulte
-[as instruções de configuração](docs/CONFIGURACOES.md) e
-[a validação incremental](docs/validacoes/ajuste-bootstrap-smtp.md).
+[as instruções de configuração](docs/CONFIGURACOES.md).
 
 ## Checks locais
 
@@ -86,7 +82,7 @@ Python: entradas em `backend/requirements*.in`, locks completos com hashes em `b
 
 Pipeline em `.gitea/workflows/ci.yml`: checks backend, contrato, frontend, topologia Compose, build, migrações reais e persistência. A existência do workflow não comprova execução no Gitea; confirmar resultado antes de aprovar a etapa.
 
-O Gitea Actions está habilitado e possui runner dedicado no servidor Docker, com label `ubuntu-latest`. Consulte o [registro de validação](docs/validacoes/etapa-01.md) para os resultados e a [documentação do Gitea Actions](https://docs.gitea.com/usage/actions/quickstart/) para os requisitos.
+O Gitea Actions está habilitado e possui runner dedicado no servidor Docker, com label `ubuntu-latest`. Consulte a [documentação do Gitea Actions](https://docs.gitea.com/usage/actions/quickstart/) para os requisitos.
 
 O E2E cria o projeto Docker separado `pulse-e2e`, usa banco tmpfs e contas sintéticas
 com credenciais temporárias. A porta 8081 deve estar livre. Logs, relatórios e screenshots

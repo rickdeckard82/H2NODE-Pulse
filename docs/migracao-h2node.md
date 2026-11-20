@@ -35,4 +35,4 @@ O Proxy Host do NPM não muda (mesmo IP e porta do gateway).
 - Caminho `/var/lib/pulse/attachments`, usuário `pulse` do container e arquivos de heartbeat.
 - Contas já cadastradas no autenticador continuam aparecendo como "Pulse Services"; só os
   novos cadastros de MFA aparecem como "H2NODE Pulse". Os códigos funcionam igual.
-- Registros antigos (`docs/validacoes/`, `docs/decisoes/`, auditoria) ficam como foram escritos.
+- Registros antigos (`docs/decisoes/`, auditoria) ficam como foram escritos.
