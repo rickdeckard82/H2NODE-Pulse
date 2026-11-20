@@ -1409,9 +1409,9 @@ button[type="submit"] {
 }
 
 .pulse-intro-title-pulse {
-  font-size: 44px;
+  font-size: 26px;
   font-weight: 850;
-  letter-spacing: -2px;
+  letter-spacing: -0.6px;
   color: #174dcc;
   line-height: 1;
   animation: pulseBeatAnim 1.6s cubic-bezier(0.25, 1, 0.5, 1) both;
@@ -1447,9 +1447,9 @@ button[type="submit"] {
 }
 
 .pulse-intro-title-services {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.6px;
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2px;
   color: #33435b;
   line-height: 1;
   animation: servicesFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
