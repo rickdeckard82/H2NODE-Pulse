@@ -1,11 +1,17 @@
-# Pulse Services
+# H2NODE Pulse
+
+![Fila de chamados do H2NODE Pulse](docs/images/painel.png)
 
 Gestão interna de chamados de TI. Backend Django/DRF, frontend React/TypeScript e PostgreSQL, com Docker Compose e acesso de produção por Nginx Proxy Manager.
+
+> **Antes chamado Pulse Services.** Quem já tem uma instalação: veja
+> [docs/migracao-h2node.md](docs/migracao-h2node.md) — banco, anexos e contas continuam os mesmos.
 
 **Status:** etapas 1 a 4 aprovadas tecnicamente no escopo local: portal, console, administração e anexos privados com ClamAV implementados. Próxima etapa: e-mail e Google Chat (5). Consulte [o registro da etapa 4](docs/validacoes/etapa-04.md). Notificações externas e produção ainda não estão homologadas.
 
 ## Documentação
 
+- [Migração Pulse Services → H2NODE Pulse](docs/migracao-h2node.md)
 - [Plano e critérios por etapa](docs/PLANO_DE_EXECUCAO.md)
 - [Decisões iniciais](docs/decisoes/0001-fundacao.md)
 - [Decisões de identidade](docs/decisoes/0002-identidade.md)
@@ -87,3 +93,7 @@ O E2E cria o projeto Docker separado `pulse-e2e`, usa banco tmpfs e contas sint�
 com credenciais temporárias. A porta 8081 deve estar livre. Logs, relatórios e screenshots
 ficam em `work/` (ignorado pelo Git); o runner encerra os containers e remove a fixture
 de credenciais ao terminar. No CI Linux, instalar Chromium com `--with-deps`.
+
+## Licença
+
+[MIT](LICENSE).

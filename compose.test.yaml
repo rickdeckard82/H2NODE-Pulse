@@ -20,7 +20,7 @@ services:
       timeout: 5s
       retries: 30
   identity-tests:
-    image: pulse-services-backend:0.1.0
+    image: h2node-pulse-backend:0.2.0
     environment:
       APP_ENV: test
       POSTGRES_HOST: identity-db

@@ -1,7 +1,7 @@
-name: pulse-services
+name: h2node-pulse
 
 x-backend: &backend
-  image: pulse-services-backend:0.1.0
+  image: h2node-pulse-backend:0.2.0
   build:
     context: .
     dockerfile: backend/Dockerfile
@@ -162,7 +162,7 @@ services:
       options: {max-size: 10m, max-file: "3"}
 
   gateway:
-    image: pulse-services-frontend:0.1.0
+    image: h2node-pulse-frontend:0.2.0
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -200,10 +200,16 @@ networks:
   private:
     internal: true
 
+# Nomes fixos dos volumes. Instalações de antes do rebranding (projeto "pulse-services")
+# usam VOLUME_PREFIX=pulse-services no .env para manter banco, anexos e definições do
+# ClamAV (ver docs/migracao-h2node.md).
 volumes:
   postgres_data:
+    name: ${VOLUME_PREFIX:-h2node-pulse}_postgres_data
   attachments:
+    name: ${VOLUME_PREFIX:-h2node-pulse}_attachments
   clamav_data:
+    name: ${VOLUME_PREFIX:-h2node-pulse}_clamav_data
 
 secrets:
   postgres_admin_password:

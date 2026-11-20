@@ -72,8 +72,8 @@ export function PulseIntro({ onFinish }: { onFinish?: () => void }) {
                 x2="100%"
                 y2="100%"
               >
-                <stop offset="0%" stopColor="#1a4fd8" />
-                <stop offset="100%" stopColor="#123ca1" />
+                <stop offset="0%" stopColor="#0b1022" />
+                <stop offset="100%" stopColor="#1e1b4b" />
               </linearGradient>
               <linearGradient
                 id="pulse-ecg-gradient"
@@ -82,9 +82,9 @@ export function PulseIntro({ onFinish }: { onFinish?: () => void }) {
                 x2="100%"
                 y2="0%"
               >
-                <stop offset="0%" stopColor="#93c5fd" />
-                <stop offset="50%" stopColor="#ffffff" />
-                <stop offset="100%" stopColor="#bfdbfe" />
+                <stop offset="0%" stopColor="#a78bfa" />
+                <stop offset="50%" stopColor="#e0f2fe" />
+                <stop offset="100%" stopColor="#22d3ee" />
               </linearGradient>
               <filter
                 id="pulse-glow"
@@ -117,13 +117,16 @@ export function PulseIntro({ onFinish }: { onFinish?: () => void }) {
               strokeLinejoin="round"
               filter="url(#pulse-glow)"
             />
+            {/* Nós H2NODE nas pontas do pulso */}
+            <circle cx="13" cy="34" r="3.6" fill="#a78bfa" />
+            <circle cx="51" cy="34" r="3.6" fill="#22d3ee" />
           </svg>
         </div>
 
         {/* Brand name */}
         <div className="pulse-intro-brand">
-          <span className="pulse-intro-title-pulse">Pulse</span>
-          <span className="pulse-intro-title-services">Services</span>
+          <span className="pulse-intro-title-pulse">H2NODE</span>
+          <span className="pulse-intro-title-services">Pulse</span>
         </div>
 
         {/* Dynamic heartbeat ECG track below name */}

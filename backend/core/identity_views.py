@@ -283,7 +283,7 @@ class MfaReplaceView(NoStoreMixin, generics.GenericAPIView):
                 {
                     "secret": raw,
                     "uri": pyotp.TOTP(raw).provisioning_uri(
-                        user.email, issuer_name="Pulse Services"
+                        user.email, issuer_name="H2NODE Pulse"
                     ),
                 }
             )

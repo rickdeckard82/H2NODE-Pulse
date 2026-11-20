@@ -113,7 +113,7 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Pulse Services API",
+    "TITLE": "H2NODE Pulse API",
     "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["core.authentication.IsIdentityAdmin"],

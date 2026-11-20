@@ -116,7 +116,7 @@ export function Auth({
       <section className="welcome">
         <p className="eyebrow pulse-eyebrow">
           <span className="pulse-status-dot" aria-hidden="true" />
-          PULSE SERVICES · SUPORTE INTERNO
+          H2NODE PULSE · SUPORTE INTERNO
         </p>
         <h1>
           Seu suporte.

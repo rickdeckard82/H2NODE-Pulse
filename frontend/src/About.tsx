@@ -62,7 +62,7 @@ const documents: Record<
         <Company legal={legal} role="Empresa responsável" />
         <h3>Finalidade</h3>
         <p>
-          O Pulse Services é o sistema interno de chamados da empresa. Use-o
+          O H2NODE Pulse é o sistema interno de chamados da empresa. Use-o
           somente para pedir e prestar suporte relacionado ao trabalho.
         </p>
         <h3>Conta e acesso</h3>

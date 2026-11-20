@@ -512,7 +512,7 @@ test("MFA ativado no perfil, dispositivo lembrado e desativação", async ({
   const uri = new URL(decoded!.data);
   expect(uri.protocol).toBe("otpauth:");
   expect(uri.hostname).toBe("totp");
-  expect(uri.searchParams.get("issuer")).toBe("Pulse Services");
+  expect(uri.searchParams.get("issuer")).toBe("H2NODE Pulse");
   const secret = uri.searchParams.get("secret")!;
   expect(secret === (await page.locator(".secret").innerText())).toBeTruthy();
   await audit(page);

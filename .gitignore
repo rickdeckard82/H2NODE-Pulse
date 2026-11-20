@@ -14,3 +14,7 @@ work/
 secrets/
 *.log
 .DS_Store
+
+# Instruções de agentes (não versionar)
+AGENTS.md
+CLAUDE.md

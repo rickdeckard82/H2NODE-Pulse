@@ -52,14 +52,14 @@ def deliver_one():
             return False
         sender, connection = config
         delivered = send_mail(
-            f"Pulse Services — {labels[token.purpose]}",
+            f"H2NODE Pulse — {labels[token.purpose]}",
             (
-                "Uma conta foi criada para você no Pulse Services. No portal, clique em "
+                "Uma conta foi criada para você no H2NODE Pulse. No portal, clique em "
                 "Recuperar senha, informe este e-mail e use o código abaixo para definir "
                 f"sua senha (válido por 72 horas):\n{raw}\n"
                 if token.purpose == "invite"
                 else f"Seu código de uso único (válido por 30 minutos):\n{raw}\n\n"
-                "Use-o no portal Pulse Services. Se não fez esta solicitação, ignore a mensagem."
+                "Use-o no portal H2NODE Pulse. Se não fez esta solicitação, ignore a mensagem."
             ),
             sender,
             [token.email],

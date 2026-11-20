@@ -229,7 +229,7 @@ function App() {
           key={logoPulseKey}
           className="brand brand-animated"
           href="/"
-          aria-label="Pulse Services"
+          aria-label="H2NODE Pulse"
           onClick={(e) => {
             e.preventDefault();
             if (view !== "portal") setView("portal");
@@ -240,22 +240,30 @@ function App() {
             <span className="brand-icon-ripple" />
             <span className="brand-icon">
               <svg viewBox="0 0 32 32" width="32" height="32">
-                <rect width="32" height="32" rx="9" fill="#174dcc" />
+                <defs>
+                  <linearGradient id="brand-ecg-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#a78bfa" />
+                    <stop offset="100%" stopColor="#22d3ee" />
+                  </linearGradient>
+                </defs>
+                <rect width="32" height="32" rx="9" fill="#0b1022" />
                 <path
                   className="brand-icon-ecg"
                   d="M5 17 h6 l2 4.5 l3.5 -11.5 l3 9 l2 -3.5 h5.5"
                   fill="none"
-                  stroke="#ffffff"
+                  stroke="url(#brand-ecg-grad)"
                   strokeWidth="2.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
+                <circle cx="5" cy="17" r="2.4" fill="#a78bfa" />
+                <circle cx="27" cy="17" r="2.4" fill="#22d3ee" />
               </svg>
             </span>
           </span>
           <span className="brand-text">
-            <span className="brand-pulse">Pulse</span>
-            <span className="brand-services">Services</span>
+            <span className="brand-pulse">H2NODE</span>
+            <span className="brand-services">Pulse</span>
           </span>
         </a>
         {user && (
@@ -425,7 +433,7 @@ function App() {
       <footer>
         <Waves />
         <nav className="footer-links" aria-label="Informações do sistema">
-          <span>Pulse Services</span>
+          <span>H2NODE Pulse</span>
           <button className="link" onClick={() => setAbout("terms")}>
             Termos de uso
           </button>

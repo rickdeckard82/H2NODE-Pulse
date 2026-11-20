@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Pulse Services API
+  title: H2NODE Pulse API
   version: 0.3.0
 paths:
   /api/v1/auth/confirm/:

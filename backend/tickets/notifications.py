@@ -196,7 +196,7 @@ def _message(delivery):
     if event.comment_id:
         body.extend(["Mensagem:", event.comment.body, ""])
     body.extend(["Acesse o portal para acompanhar:", link])
-    return f"[Pulse Services] {label} · #{ticket.number}", "\n".join(body)
+    return f"[H2NODE Pulse] {label} · #{ticket.number}", "\n".join(body)
 
 
 def _send_email(to, content):
@@ -386,11 +386,11 @@ def check_one():
             return False
         if check.channel == NotificationDelivery.Channel.EMAIL:
             content = (
-                "[Pulse Services] Teste controlado de SMTP",
-                "Este e-mail confirma a comunicação do Pulse Services com o SMTP configurado.",
+                "[H2NODE Pulse] Teste controlado de SMTP",
+                "Este e-mail confirma a comunicação do H2NODE Pulse com o SMTP configurado.",
             )
         else:
-            content = {"text": "Pulse Services · teste controlado da integração"}
+            content = {"text": "H2NODE Pulse · teste controlado da integração"}
         direct = check.channel == NotificationDelivery.Channel.CHAT_DM
         to = check.requested_by.chat_space if direct else check.requested_by.email
         try:
