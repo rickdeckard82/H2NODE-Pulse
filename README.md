@@ -19,7 +19,6 @@ Gestão interna de chamados de TI. Backend Django/DRF, frontend React/TypeScript
 - [Portal e anexos privados](docs/PORTAL_ANEXOS.md)
 - [Operação e API de tickets](docs/TICKETS.md)
 - [Decisões de tickets e auditoria](docs/decisoes/0003-tickets.md)
-- [Instruções para Codex e Claude](agent.md), carregadas por `AGENTS.md` e `CLAUDE.md`
 - [Contrato OpenAPI inicial](docs/openapi.yaml)
 - [Operação e Nginx Proxy Manager](docs/OPERACAO.md)
 - [Runner do CI no servidor Docker](infra/ci-runner/README.md)
