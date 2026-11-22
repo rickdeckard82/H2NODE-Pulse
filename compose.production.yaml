@@ -1,4 +1,4 @@
-# Requires .env configured from .env.production.example, and host firewall limiting NPM.
+# Requires .env configured from .env.production.example, and a host firewall that only lets the reverse proxy reach the gateway port.
 services:
   api:
     environment:

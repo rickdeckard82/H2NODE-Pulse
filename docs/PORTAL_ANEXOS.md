@@ -8,10 +8,10 @@ permissões, transições, concorrência, idempotência e visibilidade.
 
 ## Uso
 
-Entre com sua conta corporativa confirmada. Perfis privilegiados devem cadastrar
-ou validar MFA. Contas sem domínio permitido/confirmado não acessam o portal.
-Em ambiente sem SMTP configurado não há entrega de confirmação; não existe
-senha padrão nem bypass de cadastro. Use o bootstrap operacional da identidade.
+Entre com sua conta corporativa confirmada. Contas de domínios não cadastrados não acessam o
+portal. Sem SMTP configurado, ninguém recebe o código de confirmação do cadastro; não existe
+senha padrão. O primeiro administrador é criado pelo `BOOTSTRAP_ADMIN_*` (veja
+[INSTALACAO.md](INSTALACAO.md)).
 
 No portal, abra um chamado escolhendo a categoria; a prioridade vem sugerida por ela e pode ser trocada. Anexos são
 incluídos em uma resposta depois da abertura. O colaborador vê seus chamados;
@@ -54,7 +54,7 @@ download. Ausência de arquivo ou integridade inválida bloqueia a entrega.
 
 `antimalware` usa imagem oficial ClamAV fixada por digest e volume `clamav_data`
 para assinaturas. Rede `scanner_updates` permite baixar atualizações; limitar saída
-aos serviços de atualização na infraestrutura de homologação. Recomenda-se reservar
+aos servidores de atualização do ClamAV, se a sua rede permitir. Recomenda-se reservar
 4 GiB para o scanner. A API continua funcionando se o scanner ficar indisponível;
 anexos permanecem em quarentena. Verifique `docker compose ps antimalware` e os
 logs do scanner, sem registrar conteúdo de documentos. O estado `healthy` e a data
@@ -64,10 +64,8 @@ certifica a atualização das assinaturas.
 O worker registra cada tentativa, usa backoff até 1 hora e retenta indefinidamente
 sem liberar arquivos não verificados. A transação/lock é liberada quando o processo
 morre, permitindo recuperação. Não existe operação pública de liberar manualmente
-arquivo. Blobs bloqueados continuam privados, aguardando política de retenção da
-etapa 7. Falha de processo entre gravar blob e commit pode deixar arquivo órfão
-inacessível: tratamento de retenção deve reconciliar volume e banco antes de apagar.
-Backup/restauração futura deve incluir banco, volume e chaves de identidade.
+arquivo. Arquivos bloqueados continuam privados e são apagados pela retenção de dados junto
+com o chamado. O backup inclui o banco, o volume de anexos e a chave de identidade.
 
 Referências técnicas: [ClamAV Docker](https://docs.clamav.net/manual/Installing/Docker.html),
 [protocolo INSTREAM](https://docs.clamav.net/manual/Usage/ClamdProtocol.html),

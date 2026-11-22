@@ -1,4 +1,20 @@
-# Administrador inicial, SMTP e domínios de confiança
+# Guia do administrador
+
+Configurações feitas depois da [instalação](INSTALACAO.md), quase todas pelo menu
+**Administração** do portal. Ordem sugerida para uma instalação nova:
+
+1. Entrar com o administrador inicial e ativar a verificação em duas etapas em **Perfil**.
+2. Configurar o e-mail em **Administração → SMTP**. Sem ele ninguém recebe o código de
+   confirmação do cadastro.
+3. Conferir os **Domínios de confiança**: só e-mails desses domínios podem se cadastrar.
+4. Preencher **Empresa** (nome e logo que aparecem no topo).
+5. Criar as **Áreas**, os **Grupos** de atendimento, as **Categorias** (cada uma leva o
+   chamado a um grupo) e os **Membros dos grupos**. Se quiser, defina a **Política de SLA**
+   (expediente e prazos) e a **Política de reabertura** (por quantas horas um chamado fechado
+   pode ser reaberto).
+6. Promover as contas: quem se cadastra entra como **Usuário** (só lê a wiki) e precisa ser
+   promovido a Colaborador para abrir chamados, ou a Técnico/Gestor para atender.
+7. Opcional: Google Chat, retenção de dados e backup ([BACKUP.md](BACKUP.md)).
 
 ## Primeiro acesso pelo Docker
 
@@ -90,8 +106,7 @@ confirmar posse do e-mail. Subdomínios não herdam confiança automaticamente.
 Desativar um domínio bloqueia as contas afetadas e revoga sessões; a API impede
 bloquear o último administrador ativo.
 
-O SMTP também envia notificações de chamados (etapa 5). Homologação com
-provedores reais e produção continuam pendentes.
+O mesmo SMTP envia os avisos de chamados.
 
 ## Empresa
 

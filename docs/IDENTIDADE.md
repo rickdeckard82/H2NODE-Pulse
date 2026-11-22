@@ -1,37 +1,28 @@
-# Operação e contrato de identidade
+# Contas, login e MFA
 
-A etapa 2 entrega a API; a interface de identidade/administração será integrada
-na etapa 4. O contrato completo está em `docs/openapi.yaml`. Nenhum domínio ou
-usuário corporativo é criado automaticamente.
+Referência das regras de conta e da API de identidade, para quem integra ou desenvolve. Para
+configurar pelo portal, veja o [Guia do administrador](CONFIGURACOES.md). O contrato completo
+está em [openapi.yaml](openapi.yaml). Nenhum domínio ou usuário é criado automaticamente.
 
-## Preparação
+## Chave de identidade
 
-Executar `python infra/bootstrap.py` novamente após atualizar: ele acrescenta
-`secrets/identity_key.txt` sem sobrescrever segredos. Preservar essa chave fora do
-banco e em backup protegido. Não a regenerar: segredos MFA e mensagens pendentes
-existentes deixariam de ser decifráveis. Django/API/worker leem o arquivo montado.
+`secrets/identity_key.txt` cifra no banco os segredos de MFA, a senha do SMTP, o webhook e a
+chave do Google Chat e as mensagens na fila de envio. Ela é criada pelo `infra/bootstrap.py`.
+**Não a gere de novo nem a perca:** sem ela, esses dados não podem mais ser lidos. Guarde uma
+cópia fora do servidor; o backup automático também a inclui.
 
-Na etapa 3, o bootstrap também acrescenta a senha separada de `pulse_runtime`.
-Consultar `TICKETS.md` para o job de permissões e a operação de migrações; a API
-passa a usar a conta restrita, sem credenciais de proprietária do banco.
+## E-mail por variáveis de ambiente (alternativa)
 
-`docker compose up --build --wait --wait-timeout 180` aplica a migração aditiva
-0002. O índice único de e-mail ignora endereços vazios legados, mas bloqueia
-duplicidades não vazias sem diferenciar maiúsculas. Se houver contas anteriores,
-revisar duplicidades antes da migração e confirmar seus e-mails; nenhuma conta
-legada ganha acesso automaticamente. Não apagar contas para fazer a migração passar.
-
-## E-mail e primeiro administrador
-
-O worker base tem uma rede de saída SMTP, mas não envia sem configuração. A configuração pelo painel é descrita em [CONFIGURACOES.md](CONFIGURACOES.md); os parâmetros de ambiente abaixo continuam como fallback enquanto nenhuma configuração do painel foi salva. Para uma integração
-autorizada, preparar host/remetente/usuário e arquivo protegido de senha fora do
-Git; definir `EMAIL_HOST`, `EMAIL_PORT` (587 por padrão), `EMAIL_HOST_USER`,
+O normal é configurar o e-mail pela tela (veja [CONFIGURACOES.md](CONFIGURACOES.md)). Enquanto
+nenhuma configuração for salva pela tela, o worker usa as variáveis de ambiente abaixo. Para
+isso, prepare o servidor, o remetente, o usuário e um arquivo com a senha fora do Git; definir `EMAIL_HOST`, `EMAIL_PORT` (587 por padrão), `EMAIL_HOST_USER`,
 `DEFAULT_FROM_EMAIL` e `SMTP_SECRET_PATH`. Não colocar a senha em `.env` ou no
 comando. O override `compose.identity-smtp.yaml` monta o segredo apenas no worker
 e acrescenta sua rede de saída. STARTTLS e verificação de certificado são
 obrigatórios; não há opção de desligá-los na configuração de produção.
 
-Após autorização aplicável para enviar à caixa configurada:
+Exemplo, com o comando interativo que cria o primeiro administrador (alternativa ao
+`BOOTSTRAP_ADMIN_*` do `.env`):
 
 ```sh
 docker compose -f compose.yaml -f compose.identity-smtp.yaml config --quiet
@@ -39,10 +30,9 @@ docker compose -f compose.yaml -f compose.identity-smtp.yaml up -d --wait
 docker compose exec api python manage.py bootstrap_admin --email EMAIL_CORPORATIVO --domain DOMINIO_EXATO
 ```
 
-Substituir os dois argumentos por valores reais autorizados. Em homologação
-adicionar também `-f compose.production.yaml` antes do override SMTP. Restringir
-egress no host ao provedor configurado. O teste local desta etapa usa servidor
-SMTP sintético em loopback; não comprova TLS/aceite do provedor corporativo.
+Substitua os dois argumentos pelos valores reais. Em produção, inclua também
+`-f compose.production.yaml` antes do override SMTP. Se possível, limite a saída de rede do
+servidor ao provedor de e-mail.
 
 O comando solicita a senha duas vezes sem eco, cadastra o domínio inicial e
 recusa execução se já existe administrador. Não cria senha padrão, não marca
@@ -121,16 +111,16 @@ Domínios não são renomeados: cadastrar o novo e desativar o anterior.
 
 Toda alteração administrativa de conta revoga sessões. Mudança para papel sem
 atendimento ou desativação remove memberships. Não é possível remover o último
-administrador ativo, inclusive desativando seu domínio. Administração não concede
-acesso a conteúdo de tickets; essa autorização será definida na etapa 3.
+administrador ativo, inclusive desativando seu domínio. O acesso a chamados segue as regras
+de [TICKETS.md](TICKETS.md).
 
 ## Diagnóstico e testes
 
 O worker processa uma mensagem a cada ciclo. Erro SMTP mantém a mensagem cifrada
 com retry/backoff até expirar; sucesso remove seu payload. Nunca imprimir o
 conteúdo da fila, credenciais ou exceções SMTP que possam repetir dados sensíveis.
-Contadores `attempts`, `next_attempt_at`, `sent_at` permitem inspeção operacional.
-O painel de notificações da etapa 5 ainda não existe.
+Contadores `attempts`, `next_attempt_at`, `sent_at` permitem inspeção operacional. Os
+avisos de chamados aparecem em **Administração → Entregas**.
 
 ```sh
 python tests/run_identity.py
@@ -140,7 +130,7 @@ Esse comando usa `compose.test.yaml` e um PostgreSQL separado em tmpfs. Cria o
 banco de testes com o administrador do cluster isolado; os testes usam a role
 `pulse`, sem superuser/createdb. Ao terminar, para/remove somente o container
 temporário de testes. Não executa testes no banco da aplicação e não remove seus
-volumes. O CI executa a mesma suíte depois do build. Os dados são sintéticos.
+volumes. Os dados são sintéticos.
 
 O provisionamento automático opt-in via `.env` e a exceção auditada de confiança
 no e-mail do administrador inicial estão em [CONFIGURACOES.md](CONFIGURACOES.md).

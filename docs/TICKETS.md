@@ -1,38 +1,15 @@
-# Operação e API de tickets
+# Chamados
 
-Etapa 3: núcleo e API, sem telas de atendimento ou anexos. Contrato completo em
-`docs/openapi.yaml` (0.3.0); decisões em `docs/decisoes/0003-tickets.md`.
-
-## Atualização local e contas do banco
-
-```sh
-python infra/bootstrap.py
-docker compose config --quiet
-docker compose up --build -d --wait --wait-timeout 180
-```
-
-O bootstrap acrescenta `secrets/postgres_runtime_password.txt` sem substituir os
-segredos anteriores. A senha antiga da aplicação passa a ser exclusiva de migração.
-Ordem: banco saudável → migrate (`pulse`) → db-permissions → API/worker
-(`pulse_runtime`) → gateway. Nenhum volume é recriado.
-
-`db-permissions` usa o administrador somente em job operacional, configura a senha
-runtime a partir do arquivo protegido e aplica grants no banco configurado. Não
-montar a senha administrativa ou de migração em API/worker. Não executar
-`manage.py migrate` no container API; para migrações, usar o serviço `migrate`.
-`migrate --check` e `makemigrations --check --dry-run` são consultas e continuam
-disponíveis na API. Ao alterar migrações, executar novamente o fluxo completo.
-
-Rotação da senha runtime exige atualizar o arquivo protegido, executar o job de
-permissões e recriar consumidores em uma janela coordenada. Senhas administrativas
-e da role `pulse` continuam exigindo rotação explícita no PostgreSQL. Não apagar
-volumes nem substituir arquivos aleatórios para tentar recuperar uma senha.
+Regras de acesso, ciclo de vida e API dos chamados, para quem integra ou desenvolve. Para
+configurar pelo portal, veja o [Guia do administrador](CONFIGURACOES.md). Contrato completo
+em [openapi.yaml](openapi.yaml); motivos das escolhas em
+[decisoes/0003-tickets.md](decisoes/0003-tickets.md). Contas do banco e migrações estão em
+[OPERACAO.md](OPERACAO.md#senhas-do-banco).
 
 ## Configuração inicial
 
-Usar administrador com e-mail confirmado/MFA. Nenhum dado corporativo foi criado
-por esta entrega. Os passos são realizados pela API, preservando sessão e CSRF
-conforme `IDENTIDADE.md`:
+Feita por um administrador, pelo menu **Administração** ou pela API (com sessão e CSRF,
+conforme [IDENTIDADE.md](IDENTIDADE.md)). Nenhum dado de empresa vem pré-cadastrado.
 
 1. Criar áreas e grupos; atribuir área aos colaboradores, confirmar suas contas e
    promover os técnicos/gestores necessários.
@@ -43,7 +20,7 @@ conforme `IDENTIDADE.md`:
 3. Criar categorias em `/api/v1/categories/`: `name`, `group`, `restricted`,
    `is_active`. Categoria roteia a abertura ao grupo. Mudanças não reclassificam
    tickets existentes.
-4. Quando a empresa definir uma janela, POST `/api/v1/settings/reopen-policies/`
+4. Para permitir reabrir chamados fechados, POST `/api/v1/settings/reopen-policies/`
    com `hours` (0–8760) e `reason`. A versão mais recente aplica-se a novas
    aberturas; zero ou ausência de política desabilita reabertura de Fechado.
 
@@ -142,18 +119,12 @@ pelo navegador. Sem autorização, ambos ficam vazios e o `client_os` enviado é
 descartado. O evento `created` registra apenas `device_info_shared`. Os campos
 seguem a retenção do chamado. IP local (WebRTC) não é coletado.
 
-## Validação e pendências
+## Testes
 
-`python tests/run_identity.py` agora executa identidade e tickets no cluster
-descartável, migra como proprietário, configura grants e exercita tickets sob
-`pulse_runtime`. Um teste autentica uma conexão separada como runtime para provar
-que ela não consegue assumir a role proprietária nem alterar o schema.
-
-A outbox persiste intenções, sem enviar notificações de tickets. Telas/anexos
-pertencem à etapa 4; SMTP/Chat, retries e painel operacional à etapa 5; SLA à
-etapa 6. Políticas de retenção/eliminação e suas roles privilegiadas serão definidas
-na etapa 7. A proteção append-only não impede alterações por administradores do
-banco e não substitui backup/arquivo protegido de auditoria.
+`python tests/run_identity.py` executa os testes de identidade e chamados em um PostgreSQL
+descartável. Os chamados são testados com a conta restrita `pulse_runtime`, e um teste
+confirma que ela não consegue alterar a estrutura do banco. A proteção do log de auditoria
+contra alteração não vale para o dono do banco; ela não substitui o backup.
 
 ## SLA e relatórios
 

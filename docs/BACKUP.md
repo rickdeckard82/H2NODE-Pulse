@@ -39,6 +39,8 @@ de trabalho. O FTP só recebe dados cifrados; use FTPS (padrão) para proteger t
 
 ## Operação
 
+Com o `make`: `make backup` (backup agora), `make backup-list` e `make backup-verify`. Sem ele:
+
 ```bash
 C="docker compose -f compose.yaml -f compose.production.yaml -f compose.backup.yaml"
 $C run --rm backup-tools run            # backup agora

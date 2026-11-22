@@ -1,5 +1,8 @@
 # Migração: Pulse Services → H2NODE Pulse
 
+> **Só para instalações anteriores à versão 0.2.0.** Em uma instalação nova, ignore este
+> documento e siga [INSTALACAO.md](INSTALACAO.md).
+
 O sistema passou a se chamar **H2NODE Pulse** na versão **0.2.0** do frontend. A troca é de
 nome, logotipo e textos: banco, anexos, contas, sessões, MFA e chamados continuam os mesmos.
 
@@ -23,7 +26,7 @@ O script:
   `--producao`).
 
 O `docker compose` pode avisar que os volumes foram criados por outro projeto: é esperado.
-O Proxy Host do NPM não muda (mesmo IP e porta do gateway).
+O proxy reverso não muda (mesmo IP e porta do gateway).
 
 ## O que continua com o nome antigo (de propósito)
 
