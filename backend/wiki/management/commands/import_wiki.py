@@ -19,7 +19,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--author", required=True, help="E-mail de um gestor ou administrador.")
-        parser.add_argument("--file", required=True, help="JSON com title, body, tags e created_at.")
+        parser.add_argument("--file", required=True, help="JSON exportado da wiki.")
         parser.add_argument("--dry-run", action="store_true")
 
     @transaction.atomic

@@ -178,8 +178,12 @@ class ImportTests(TicketHelpers, TestCase):
         self.addCleanup(temp.cleanup)
         self.file = Path(temp.name) / "wiki.json"
         pages = [
-            {"title": "Limpar o cache do navegador", "body": "Passos.", "tags": ["Suporte"],
-             "created_at": "2026-01-15T10:00:00+00:00"},
+            {
+                "title": "Limpar o cache do navegador",
+                "body": "Passos.",
+                "tags": ["Suporte"],
+                "created_at": "2026-01-15T10:00:00+00:00",
+            },
             {"title": "Reiniciar o roteador", "body": "Passos.", "tags": ["Suporte"]},
         ]
         self.file.write_text(json.dumps(pages), encoding="utf-8")
