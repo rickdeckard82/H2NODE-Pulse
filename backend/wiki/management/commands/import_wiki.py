@@ -13,15 +13,13 @@ from core.models import User
 from wiki.models import WikiPage
 from wiki.views import EDITORS, PageInput
 
-DEFAULT_FILE = Path(__file__).resolve().parents[2] / "seed" / "wiki.json"
-
 
 class Command(BaseCommand):
     help = "Importa páginas da wiki de um JSON. Idempotente por título."
 
     def add_arguments(self, parser):
         parser.add_argument("--author", required=True, help="E-mail de um gestor ou administrador.")
-        parser.add_argument("--file", default=str(DEFAULT_FILE))
+        parser.add_argument("--file", required=True, help="JSON com title, body, tags e created_at.")
         parser.add_argument("--dry-run", action="store_true")
 
     @transaction.atomic

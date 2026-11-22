@@ -1,3 +1,4 @@
+import json
 import tempfile
 import uuid
 from io import StringIO
@@ -172,17 +173,28 @@ class ImportTests(TicketHelpers, TestCase):
     def setUpTestData(cls):
         cls.make_fixtures()
 
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.file = Path(temp.name) / "wiki.json"
+        pages = [
+            {"title": "Limpar o cache do navegador", "body": "Passos.", "tags": ["Suporte"],
+             "created_at": "2026-01-15T10:00:00+00:00"},
+            {"title": "Reiniciar o roteador", "body": "Passos.", "tags": ["Suporte"]},
+        ]
+        self.file.write_text(json.dumps(pages), encoding="utf-8")
+
     def run_import(self, *args):
         out = StringIO()
-        call_command("import_wiki", *args, stdout=out)
+        call_command("import_wiki", "--file", str(self.file), *args, stdout=out)
         return out.getvalue()
 
-    def test_bundled_pages_import_once_with_original_dates(self):
+    def test_pages_import_once_with_original_dates(self):
         author = ["--author", self.manager.email]
-        self.assertIn("Simulação: 10 criada(s)", self.run_import(*author, "--dry-run"))
+        self.assertIn("Simulação: 2 criada(s)", self.run_import(*author, "--dry-run"))
         self.assertEqual(WikiPage.objects.count(), 0)
-        self.assertIn("10 criada(s), 0 já existente(s)", self.run_import(*author))
-        self.assertIn("0 criada(s), 10 já existente(s)", self.run_import(*author))
+        self.assertIn("2 criada(s), 0 já existente(s)", self.run_import(*author))
+        self.assertIn("0 criada(s), 2 já existente(s)", self.run_import(*author))
         page = WikiPage.objects.get(title__contains="Limpar o cache")
         self.assertEqual(
             (page.author, page.tags, page.created_at.year), (self.manager, ["Suporte"], 2026)
